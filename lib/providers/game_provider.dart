@@ -449,6 +449,41 @@ class GameNotifier extends Notifier<GameState?> {
     _save();
   }
 
+  /// Stadtweite Marketing-Kampagne buchen
+  void bookCityCampaign(String cityId, MarketingCampaign campaign) {
+    if (state == null) return;
+    state = GameEngine.bookCityCampaign(state!, cityId, campaign);
+    _save();
+  }
+
+  /// Konzernweite Marketing-Kampagne buchen
+  void bookGlobalCampaign(MarketingCampaign campaign) {
+    if (state == null) return;
+    state = GameEngine.bookGlobalCampaign(state!, campaign);
+    _save();
+  }
+
+  /// Globalen Preis für ein Produkt setzen (wirkt auf alle Filialen ohne Stadtpreis-Override)
+  void setGlobalPrice(String productId, double price) {
+    if (state == null) return;
+    state = GameEngine.setGlobalPrice(state!, productId, price);
+    _save();
+  }
+
+  /// Stadtweisen Preis für ein Produkt setzen
+  void setCityPrice(String cityId, String productId, double price) {
+    if (state == null) return;
+    state = GameEngine.setCityPrice(state!, cityId, productId, price);
+    _save();
+  }
+
+  /// Preisstrategie konzernweit anwenden: 'cheap' / 'normal' / 'premium'
+  void applyPriceStrategy(String strategy) {
+    if (state == null) return;
+    state = GameEngine.applyPriceStrategy(state!, strategy);
+    _save();
+  }
+
   /// Permanenten Shop-Upgrade kaufen (WLAN, Musik, Klima, etc.)
   void buyUpgrade(String shopId, UpgradeData upgrade) {
     if (state == null) return;

@@ -24,6 +24,10 @@ class MarketingCampaign {
   final MarketingScope scope;
   final MarketingRisk risk;
 
+  /// Direkte Markenbekanntheit-Erhöhung pro Tag (nur bei city/global-Kampagnen
+  /// sinnvoll; shop-Kampagnen wirken über reputationBoostPerDay).
+  final double brandAwarenessDelta;
+
   const MarketingCampaign({
     required this.id,
     required this.name,
@@ -38,6 +42,7 @@ class MarketingCampaign {
     this.avgOrderValueMod = 0,
     this.viralChance = 0,
     this.risk = MarketingRisk.low,
+    this.brandAwarenessDelta = 0,
   });
 
   /// Wirkt die Kampagne über mehrere Tage (false = einmaliger Schub)?

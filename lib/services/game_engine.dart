@@ -53,8 +53,10 @@ class GameEngine {
     final compPressure =
         state == null ? 1.0 : CompetitorEngine.competitionPressure(state, shop.cityId, shop.reputation);
 
-    // Aktive Marketing-Kampagnen
-    final campaignBoost = _activeCampaignBoost(shop, effectiveDay);
+    // Aktive Marketing-Kampagnen (Shop + Stadt + Konzern)
+    final campaignBoost = _activeCampaignBoost(shop, effectiveDay)
+        + _activeCityCampaignBoost(shop, effectiveDay, state)
+        + _activeGlobalCampaignBoost(effectiveDay, state);
     final campaignAOV = _activeCampaignAvgOrderMod(shop, effectiveDay);
 
     // Permanente Upgrades (WLAN, Musik, etc.) — inkl. aktiver globaler Upgrades
@@ -277,6 +279,17 @@ class GameEngine {
       );
     }).toList();
 
+    // Abgelaufene Stadt/Konzern-Kampagnen entfernen
+    final cleanedCityCampaigns = stateWithComp.activeCityCampaigns.map(
+      (cityId, list) => MapEntry(
+        cityId,
+        list.where((c) => c.isActive(today + 1)).toList(),
+      ),
+    );
+    final cleanedGlobalCampaigns = stateWithComp.activeGlobalCampaigns
+        .where((c) => c.isActive(today + 1))
+        .toList();
+
     // Laufende Kosten globaler Konzern-Upgrades (einmal pro Tag, nicht pro Shop)
     final globalUpgradeCost = globalUpgradeDailyCost(stateWithComp);
     final totalCosts = totalRent + totalSalaries + totalIngredients + globalUpgradeCost;
@@ -340,6 +353,8 @@ class GameEngine {
       unlockedCityIds: newUnlocked,
       brand: newBrand,
       stocks: updatedStocks,
+      activeCityCampaigns: cleanedCityCampaigns,
+      activeGlobalCampaigns: cleanedGlobalCampaigns,
     );
     managerState = CorporateEngine.applyManagerAutoPricing(managerState);
     managerState = CorporateEngine.applyAutoHire(managerState);
@@ -364,6 +379,27 @@ class GameEngine {
     // Plus Upgrade-Boost (Premium-Inneneinrichtung, Loyalty-App, globale Upgrades)
     for (final shop in shops) {
       newAwareness += _upgradeBrandPerDay(shop, state);
+    }
+    // Marketing-Kampagnen brandAwarenessDelta
+    final processedCities = <String>{};
+    for (final shop in shops) {
+      if (!processedCities.add(shop.cityId)) continue; // bereits gezählt
+      for (final ac in (state.activeCityCampaigns[shop.cityId] ?? <ActiveCampaign>[])) {
+        if (!ac.isActive(state.currentDay)) continue;
+        final campaign = kAllMarketingCampaigns.firstWhere(
+          (c) => c.id == ac.campaignId,
+          orElse: () => kAllMarketingCampaigns.first,
+        );
+        newAwareness += campaign.brandAwarenessDelta;
+      }
+    }
+    for (final ac in state.activeGlobalCampaigns) {
+      if (!ac.isActive(state.currentDay)) continue;
+      final campaign = kAllMarketingCampaigns.firstWhere(
+        (c) => c.id == ac.campaignId,
+        orElse: () => kAllMarketingCampaigns.first,
+      );
+      newAwareness += campaign.brandAwarenessDelta;
     }
     // Plateaut: je höher, desto langsamer wächst es weiter
     if (newAwareness > 30) {
@@ -429,7 +465,11 @@ class GameEngine {
 
     final defaultProducts = kAllProducts
         .where((p) => p.isDefault)
-        .map((p) => ShopProduct(productId: p.id, price: p.basePrice))
+        .map((p) {
+          final cityP = state.cityPrices[shop.cityId] ?? {};
+          final price = cityP[p.id] ?? state.globalPrices[p.id] ?? p.basePrice;
+          return ShopProduct(productId: p.id, price: price);
+        })
         .toList();
 
     final newShop = shop.copyWith(menu: defaultProducts);
@@ -497,6 +537,118 @@ class GameEngine {
       cash: state.cash - campaign.cost,
       shops: newShops,
     );
+  }
+
+  /// Stadtweite Marketing-Kampagne buchen
+  static GameState bookCityCampaign(
+      GameState state, String cityId, MarketingCampaign campaign) {
+    if (state.cash < campaign.cost) return state;
+    final today = state.currentDay;
+    final active = ActiveCampaign(
+      campaignId: campaign.id,
+      startDay: today,
+      endDay: today + (campaign.durationDays > 0 ? campaign.durationDays : 1),
+    );
+    // Reputations-Boost einmalig auf alle Filialen der Stadt anwenden
+    final newShops = state.shops.map((shop) {
+      if (shop.cityId != cityId) return shop;
+      final newRep = (shop.reputation + campaign.reputationBoostOnce).clamp(0.5, 5.0);
+      return shop.copyWith(reputation: newRep);
+    }).toList();
+    // Kampagne in cityId-Bucket eintragen
+    final newCityCampaigns =
+        Map<String, List<ActiveCampaign>>.from(state.activeCityCampaigns);
+    final bucket = List<ActiveCampaign>.from(newCityCampaigns[cityId] ?? []);
+    bucket.add(active);
+    newCityCampaigns[cityId] = bucket;
+    return _trackInvestment(state, campaign.cost).copyWith(
+      cash: state.cash - campaign.cost,
+      shops: newShops,
+      activeCityCampaigns: newCityCampaigns,
+    );
+  }
+
+  /// Konzernweite Marketing-Kampagne buchen
+  static GameState bookGlobalCampaign(
+      GameState state, MarketingCampaign campaign) {
+    if (state.cash < campaign.cost) return state;
+    final today = state.currentDay;
+    final active = ActiveCampaign(
+      campaignId: campaign.id,
+      startDay: today,
+      endDay: today + (campaign.durationDays > 0 ? campaign.durationDays : 1),
+    );
+    // Einmalige Reputation für alle Filialen
+    final newShops = state.shops.map((shop) {
+      final newRep = (shop.reputation + campaign.reputationBoostOnce).clamp(0.5, 5.0);
+      return shop.copyWith(reputation: newRep);
+    }).toList();
+    return _trackInvestment(state, campaign.cost).copyWith(
+      cash: state.cash - campaign.cost,
+      shops: newShops,
+      activeGlobalCampaigns: [...state.activeGlobalCampaigns, active],
+    );
+  }
+
+  /// Globalen Preis für ein Produkt setzen.
+  /// Wirkt sofort auf alle Filialen ohne Stadtpreis-Überschreibung.
+  static GameState setGlobalPrice(
+      GameState state, String productId, double price) {
+    final newGlobalPrices = Map<String, double>.from(state.globalPrices);
+    newGlobalPrices[productId] = price;
+    final newShops = state.shops.map((shop) {
+      final cityP = state.cityPrices[shop.cityId] ?? {};
+      if (cityP.containsKey(productId)) return shop; // city-Preis bleibt
+      final updatedMenu = shop.menu.map((sp) {
+        if (sp.productId != productId) return sp;
+        return sp.copyWith(price: price);
+      }).toList();
+      return shop.copyWith(menu: updatedMenu);
+    }).toList();
+    return state.copyWith(globalPrices: newGlobalPrices, shops: newShops);
+  }
+
+  /// Stadtweisen Preis für ein Produkt setzen.
+  /// Überschreibt den globalen Preis für alle Filialen in dieser Stadt.
+  static GameState setCityPrice(
+      GameState state, String cityId, String productId, double price) {
+    final newCityPrices =
+        Map<String, Map<String, double>>.from(state.cityPrices);
+    final cityMap = Map<String, double>.from(newCityPrices[cityId] ?? {});
+    cityMap[productId] = price;
+    newCityPrices[cityId] = cityMap;
+    final newShops = state.shops.map((shop) {
+      if (shop.cityId != cityId) return shop;
+      final updatedMenu = shop.menu.map((sp) {
+        if (sp.productId != productId) return sp;
+        return sp.copyWith(price: price);
+      }).toList();
+      return shop.copyWith(menu: updatedMenu);
+    }).toList();
+    return state.copyWith(cityPrices: newCityPrices, shops: newShops);
+  }
+
+  /// Preisstrategie konzernweit anwenden.
+  /// 'cheap' → −15 %, 'normal' → Basispreis, 'premium' → +20 %
+  /// Stadtpreisüberschreibungen bleiben unverändert.
+  static GameState applyPriceStrategy(GameState state, String strategy) {
+    const multipliers = {'cheap': 0.85, 'normal': 1.0, 'premium': 1.20};
+    final mult = multipliers[strategy] ?? 1.0;
+    final newGlobalPrices = <String, double>{};
+    for (final p in kAllProducts) {
+      newGlobalPrices[p.id] = p.basePrice * mult;
+    }
+    final newShops = state.shops.map((shop) {
+      final cityP = state.cityPrices[shop.cityId] ?? {};
+      final updatedMenu = shop.menu.map((sp) {
+        if (cityP.containsKey(sp.productId)) return sp; // city-Preis bleibt
+        final newPrice = newGlobalPrices[sp.productId];
+        if (newPrice == null) return sp;
+        return sp.copyWith(price: newPrice);
+      }).toList();
+      return shop.copyWith(menu: updatedMenu);
+    }).toList();
+    return state.copyWith(globalPrices: newGlobalPrices, shops: newShops);
   }
 
   static GameState takeLoan(GameState state, Loan loan) {
@@ -870,6 +1022,37 @@ class GameEngine {
     return mod;
   }
 
+  /// Aktive Stadt-Kampagnen-Boost auf Kundenzahl für diesen Shop.
+  static double _activeCityCampaignBoost(Shop shop, int day, GameState? state) {
+    if (state == null) return 0;
+    final cityCampaigns = state.activeCityCampaigns[shop.cityId] ?? [];
+    double boost = 0;
+    for (final ac in cityCampaigns) {
+      if (!ac.isActive(day)) continue;
+      final campaign = kAllMarketingCampaigns.firstWhere(
+        (c) => c.id == ac.campaignId,
+        orElse: () => kAllMarketingCampaigns.first,
+      );
+      boost += campaign.customerBoost;
+    }
+    return boost;
+  }
+
+  /// Aktive Konzern-Kampagnen-Boost auf Kundenzahl (gilt für alle Filialen).
+  static double _activeGlobalCampaignBoost(int day, GameState? state) {
+    if (state == null) return 0;
+    double boost = 0;
+    for (final ac in state.activeGlobalCampaigns) {
+      if (!ac.isActive(day)) continue;
+      final campaign = kAllMarketingCampaigns.firstWhere(
+        (c) => c.id == ac.campaignId,
+        orElse: () => kAllMarketingCampaigns.first,
+      );
+      boost += campaign.customerBoost;
+    }
+    return boost;
+  }
+
   static double _dailyVariation(Shop shop, int day) {
     final seed = shop.id.hashCode ^ (day * 2654435761);
     final rng = Random(seed);
@@ -931,6 +1114,24 @@ class GameEngine {
       final campaign = kAllCampaigns.firstWhere(
         (c) => c.id == ac.campaignId,
         orElse: () => kAllCampaigns.first,
+      );
+      sumScore += campaign.reputationBoostPerDay;
+    }
+    // Aktive Stadt-Kampagnen-Reputations-Boost
+    for (final ac in (state.activeCityCampaigns[shop.cityId] ?? <ActiveCampaign>[])) {
+      if (!ac.isActive(state.currentDay)) continue;
+      final campaign = kAllMarketingCampaigns.firstWhere(
+        (c) => c.id == ac.campaignId,
+        orElse: () => kAllMarketingCampaigns.first,
+      );
+      sumScore += campaign.reputationBoostPerDay;
+    }
+    // Aktive Konzern-Kampagnen-Reputations-Boost
+    for (final ac in state.activeGlobalCampaigns) {
+      if (!ac.isActive(state.currentDay)) continue;
+      final campaign = kAllMarketingCampaigns.firstWhere(
+        (c) => c.id == ac.campaignId,
+        orElse: () => kAllMarketingCampaigns.first,
       );
       sumScore += campaign.reputationBoostPerDay;
     }

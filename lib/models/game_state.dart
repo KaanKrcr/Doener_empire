@@ -3,6 +3,7 @@ import 'mission_model.dart';
 import 'brand_model.dart';
 import 'competitor_model.dart';
 import 'employee_model.dart';
+import 'marketing_model.dart';
 import 'stock_model.dart';
 import 'production_model.dart';
 
@@ -158,6 +159,23 @@ class GameState {
   final List<String> managerEmployeeIds;   // Mitarbeiter-IDs, die Manager sind
   final List<String> globalUpgradeIds;    // Konzern-Upgrades (scope = global)
 
+  // ── Globale und stadtweite Preissteuerung ─────────────────────────────────
+  /// Globale Standardpreise: productId → Preis.
+  /// Neue Filialen erben diese Preise; bestehende werden bei
+  /// `setGlobalPrice` / `applyPriceStrategy` sofort aktualisiert.
+  final Map<String, double> globalPrices;
+
+  /// Stadtweite Preisübersteuerungen: cityId → productId → Preis.
+  /// Stadtpreise haben Vorrang vor globalPrices.
+  final Map<String, Map<String, double>> cityPrices;
+
+  // ── Globale und stadtweite Marketing-Kampagnen ────────────────────────────
+  /// Stadtweite aktive Kampagnen: cityId → Liste aktiver Kampagnen.
+  final Map<String, List<ActiveCampaign>> activeCityCampaigns;
+
+  /// Konzernweit aktive Kampagnen (wirken auf alle Filialen + Brand).
+  final List<ActiveCampaign> activeGlobalCampaigns;
+
   const GameState({
     required this.companyName,
     required this.founderName,
@@ -183,6 +201,10 @@ class GameState {
     this.facilities = const [],
     this.managerEmployeeIds = const [],
     this.globalUpgradeIds = const [],
+    this.globalPrices = const {},
+    this.cityPrices = const {},
+    this.activeCityCampaigns = const {},
+    this.activeGlobalCampaigns = const [],
   });
 
   factory GameState.initial({
@@ -215,6 +237,10 @@ class GameState {
       facilities: const [],
       managerEmployeeIds: const [],
       globalUpgradeIds: const [],
+      globalPrices: const {},
+      cityPrices: const {},
+      activeCityCampaigns: const {},
+      activeGlobalCampaigns: const [],
     );
   }
 
@@ -256,6 +282,10 @@ class GameState {
     List<ProductionFacility>? facilities,
     List<String>? managerEmployeeIds,
     List<String>? globalUpgradeIds,
+    Map<String, double>? globalPrices,
+    Map<String, Map<String, double>>? cityPrices,
+    Map<String, List<ActiveCampaign>>? activeCityCampaigns,
+    List<ActiveCampaign>? activeGlobalCampaigns,
   }) {
     return GameState(
       companyName: companyName ?? this.companyName,
@@ -283,6 +313,10 @@ class GameState {
       facilities: facilities ?? this.facilities,
       managerEmployeeIds: managerEmployeeIds ?? this.managerEmployeeIds,
       globalUpgradeIds: globalUpgradeIds ?? this.globalUpgradeIds,
+      globalPrices: globalPrices ?? this.globalPrices,
+      cityPrices: cityPrices ?? this.cityPrices,
+      activeCityCampaigns: activeCityCampaigns ?? this.activeCityCampaigns,
+      activeGlobalCampaigns: activeGlobalCampaigns ?? this.activeGlobalCampaigns,
     );
   }
 
@@ -311,6 +345,12 @@ class GameState {
         'facilities': facilities.map((f) => f.toJson()).toList(),
         'managerEmployeeIds': managerEmployeeIds,
         'globalUpgradeIds': globalUpgradeIds,
+        'globalPrices': globalPrices,
+        'cityPrices': cityPrices.map((k, v) => MapEntry(k, v)),
+        'activeCityCampaigns': activeCityCampaigns.map(
+            (k, v) => MapEntry(k, v.map((c) => c.toJson()).toList())),
+        'activeGlobalCampaigns':
+            activeGlobalCampaigns.map((c) => c.toJson()).toList(),
       };
 
   factory GameState.fromJson(Map<String, dynamic> j) {
@@ -380,6 +420,24 @@ class GameState {
           j['managerEmployeeIds'] as List? ?? const []),
       globalUpgradeIds: List<String>.from(
           j['globalUpgradeIds'] as List? ?? const []),
+      globalPrices: (j['globalPrices'] as Map<String, dynamic>? ?? {}).map(
+          (k, v) => MapEntry(k, (v as num).toDouble())),
+      cityPrices: (j['cityPrices'] as Map<String, dynamic>? ?? {}).map(
+          (cityId, priceMap) => MapEntry(
+                cityId,
+                (priceMap as Map<String, dynamic>).map(
+                    (pid, price) => MapEntry(pid, (price as num).toDouble())),
+              )),
+      activeCityCampaigns: (j['activeCityCampaigns'] as Map<String, dynamic>? ?? {})
+          .map((cityId, list) => MapEntry(
+                cityId,
+                (list as List)
+                    .map((e) => ActiveCampaign.fromJson(e as Map<String, dynamic>))
+                    .toList(),
+              )),
+      activeGlobalCampaigns: (j['activeGlobalCampaigns'] as List? ?? [])
+          .map((e) => ActiveCampaign.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 }

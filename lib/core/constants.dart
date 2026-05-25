@@ -583,6 +583,137 @@ const List<MarketingCampaign> kAllCampaigns = [
   ),
 ];
 
+// ─── Stadtweite Marketing-Kampagnen ──────────────────────────────────────────
+// Wirken auf alle Filialen einer Stadt (customerBoost, reputation, brand).
+
+const List<MarketingCampaign> kCityMarketingCampaigns = [
+  MarketingCampaign(
+    id: 'city_plakat',
+    name: 'Stadtweite Plakate',
+    description: 'Plakatwände in der ganzen Stadt — alle Filialen profitieren.',
+    emoji: '🪧',
+    cost: 3000,
+    durationDays: 7,
+    scope: MarketingScope.city,
+    customerBoost: 0.15,
+    reputationBoostPerDay: 0.02,
+    risk: MarketingRisk.low,
+  ),
+  MarketingCampaign(
+    id: 'city_social',
+    name: 'Stadtweite Social-Media-Kampagne',
+    description: 'TikTok & Instagram, geotargeted auf die ganze Stadt.',
+    emoji: '📲',
+    cost: 6000,
+    durationDays: 10,
+    scope: MarketingScope.city,
+    customerBoost: 0.25,
+    reputationBoostPerDay: 0.05,
+    brandAwarenessDelta: 0.3,
+    risk: MarketingRisk.low,
+  ),
+  MarketingCampaign(
+    id: 'city_event',
+    name: 'Stadt-Event (Pop-Up Stand)',
+    description:
+        'Eigener Stand auf einem Stadtfest oder Markt — starker Reputations-Boost.',
+    emoji: '🎪',
+    cost: 5000,
+    durationDays: 3,
+    scope: MarketingScope.city,
+    customerBoost: 0.40,
+    reputationBoostOnce: 0.4,
+    reputationBoostPerDay: 0.06,
+    brandAwarenessDelta: 0.5,
+    risk: MarketingRisk.medium,
+  ),
+  MarketingCampaign(
+    id: 'city_radio',
+    name: 'Stadtweiter Radio-Spot',
+    description: 'Lokaler Radiosender — breite Hörerschaft in der ganzen Stadt.',
+    emoji: '📻',
+    cost: 8000,
+    durationDays: 14,
+    scope: MarketingScope.city,
+    customerBoost: 0.20,
+    reputationBoostPerDay: 0.03,
+    brandAwarenessDelta: 0.4,
+    risk: MarketingRisk.low,
+  ),
+];
+
+// ─── Konzernweite Marketing-Kampagnen ─────────────────────────────────────────
+// Wirken auf ALLE Filialen + steigern Brand Awareness.
+
+const List<MarketingCampaign> kGlobalMarketingCampaigns = [
+  MarketingCampaign(
+    id: 'tv_werbung',
+    name: 'TV-Werbung (national)',
+    description:
+        'Nationaler TV-Spot. Massiver Marken-Boost — alle Filialen profitieren.',
+    emoji: '📺',
+    cost: 25000,
+    durationDays: 14,
+    scope: MarketingScope.global,
+    customerBoost: 0.20,
+    reputationBoostPerDay: 0.03,
+    brandAwarenessDelta: 1.5,
+    risk: MarketingRisk.low,
+  ),
+  MarketingCampaign(
+    id: 'influencer_national',
+    name: 'Influencer-Kampagne (national)',
+    description:
+        'Bekannter Food-Influencer mit 500k+ Followern. Viral-Chance hoch.',
+    emoji: '⭐',
+    cost: 15000,
+    durationDays: 7,
+    scope: MarketingScope.global,
+    customerBoost: 0.30,
+    reputationBoostOnce: 0.5,
+    reputationBoostPerDay: 0.06,
+    brandAwarenessDelta: 2.0,
+    viralChance: 0.25,
+    risk: MarketingRisk.medium,
+  ),
+  MarketingCampaign(
+    id: 'brand_launch',
+    name: 'Marken-Relaunch',
+    description:
+        'Neues Logo, neues Erscheinungsbild — Premium-Image für alle Filialen.',
+    emoji: '🏷️',
+    cost: 20000,
+    durationDays: 30,
+    scope: MarketingScope.global,
+    customerBoost: 0.10,
+    reputationBoostPerDay: 0.04,
+    brandAwarenessDelta: 0.8,
+    risk: MarketingRisk.low,
+  ),
+  MarketingCampaign(
+    id: 'treue_programm',
+    name: 'Treue-Programm-Kampagne',
+    description:
+        'Bundesweite Stempelkarten-Aktion. Stammkunden +++ besonders lohnend '
+        'wenn Stammkunden-App schon aktiv ist.',
+    emoji: '💳',
+    cost: 10000,
+    durationDays: 21,
+    scope: MarketingScope.global,
+    customerBoost: 0.12,
+    reputationBoostPerDay: 0.05,
+    brandAwarenessDelta: 0.5,
+    risk: MarketingRisk.low,
+  ),
+];
+
+/// Alle Kampagnen kombiniert (für Lookup nach ID)
+const List<MarketingCampaign> kAllMarketingCampaigns = [
+  ...kAllCampaigns,
+  ...kCityMarketingCampaigns,
+  ...kGlobalMarketingCampaigns,
+];
+
 // ─── Startkapital ─────────────────────────────────────────────────────────────
 
 const double kStartingCash = 15000.0; // Startkapital: 15.000 €

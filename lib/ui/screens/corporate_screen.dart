@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import '../../core/theme.dart';
 import '../../core/constants.dart';
 import '../../models/competitor_model.dart';
+import '../../models/marketing_model.dart';
+import '../../models/product_model.dart';
 import '../../models/production_model.dart';
 import '../../models/stock_model.dart';
 import '../../providers/game_provider.dart';
@@ -33,7 +35,7 @@ class _CorporateScreenState extends ConsumerState<CorporateScreen>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 4, vsync: this);
+    _tabs = TabController(length: 5, vsync: this);
   }
 
   @override
@@ -108,6 +110,7 @@ class _CorporateScreenState extends ConsumerState<CorporateScreen>
                   Tab(text: 'Produktion'),
                   Tab(text: 'M&A'),
                   Tab(text: 'Upgrades'),
+                  Tab(text: 'Strategie'),
                 ],
               ),
             ),
@@ -119,6 +122,7 @@ class _CorporateScreenState extends ConsumerState<CorporateScreen>
                   _ProductionTab(game: game),
                   _MATab(game: game),
                   _GlobalUpgradesTab(game: game),
+                  _StrategieTab(game: game),
                 ],
               ),
             ),
@@ -1078,9 +1082,9 @@ class _GlobalUpgradeCard extends StatelessWidget {
                   AppColors.success,
                 ),
               if (upgrade.reputationPerDay > 0)
-                _Chip('+Reputation', AppColors.gold),
+                const _Chip('+Reputation', AppColors.gold),
               if (upgrade.brandPerDay > 0)
-                _Chip('+Markenbekanntheit', AppColors.secondary),
+                const _Chip('+Markenbekanntheit', AppColors.secondary),
               if (shopCount > 0)
                 _Chip('Wirkt in $shopCount Filiale${shopCount == 1 ? "" : "n"}',
                     AppColors.textMuted),
@@ -1168,6 +1172,518 @@ class _Chip extends StatelessWidget {
           fontWeight: FontWeight.w700,
           color: color,
         ),
+      ),
+    );
+  }
+}
+
+// ── STRATEGIE-TAB ─────────────────────────────────────────────────────────────
+
+class _StrategieTab extends ConsumerWidget {
+  final dynamic game;
+  const _StrategieTab({required this.game});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cash = game.cash as double;
+    final currentDay = game.currentDay as int;
+    final globalPrices = (game.globalPrices as Map).cast<String, double>();
+    final shops = (game.shops as List);
+    final activeCityCampaigns =
+        game.activeCityCampaigns as Map<String, List<ActiveCampaign>>;
+    final activeGlobalCampaigns =
+        game.activeGlobalCampaigns as List<ActiveCampaign>;
+
+    final citiesWithShops =
+        shops.map((s) => (s as dynamic).cityId as String).toSet().toList();
+
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        // ── Preisstrategie ────────────────────────────────────────────────
+        _buildSectionHeader('💰', 'PREISSTRATEGIE'),
+        const SizedBox(height: 10),
+        _PriceStrategySection(globalPrices: globalPrices),
+        const SizedBox(height: 28),
+
+        // ── Stadtweite Marketing ──────────────────────────────────────────
+        _buildSectionHeader('🏙️', 'STADTWEITE MARKETING'),
+        const SizedBox(height: 10),
+        if (citiesWithShops.isEmpty)
+          const Padding(
+            padding: EdgeInsets.only(bottom: 12),
+            child: Text(
+              'Eröffne zuerst eine Filiale, um stadtweite Kampagnen zu buchen.',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+            ),
+          )
+        else
+          for (final cityId in citiesWithShops) ...[
+            _CityMarketingSection(
+              cityId: cityId,
+              activeCityCampaigns: activeCityCampaigns[cityId] ?? const [],
+              cash: cash,
+              currentDay: currentDay,
+            ),
+            const SizedBox(height: 10),
+          ],
+        const SizedBox(height: 16),
+
+        // ── Konzernweites Marketing ────────────────────────────────────────
+        _buildSectionHeader('🌐', 'KONZERNWEITES MARKETING'),
+        const SizedBox(height: 10),
+        for (final campaign in kGlobalMarketingCampaigns)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _MarketingCampaignCard(
+              campaign: campaign,
+              activeCampaign:
+                  _findActive(activeGlobalCampaigns, campaign.id, currentDay),
+              cash: cash,
+              currentDay: currentDay,
+              onBook: () =>
+                  ref.read(gameProvider.notifier).bookGlobalCampaign(campaign),
+            ),
+          ),
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  ActiveCampaign? _findActive(
+      List<ActiveCampaign> list, String id, int day) {
+    try {
+      return list.firstWhere((c) => c.campaignId == id && c.isActive(day));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Widget _buildSectionHeader(String emoji, String label) {
+    return Row(
+      children: [
+        Text(emoji, style: const TextStyle(fontSize: 16)),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 11,
+            color: AppColors.textMuted,
+            letterSpacing: 2,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Preisstrategie-Sektion ─────────────────────────────────────────────────────
+
+class _PriceStrategySection extends ConsumerWidget {
+  final Map<String, double> globalPrices;
+  const _PriceStrategySection({required this.globalPrices});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            _StrategyButton(
+              label: '💚 Günstig',
+              subtitle: '−15 %',
+              onTap: () => ref
+                  .read(gameProvider.notifier)
+                  .applyPriceStrategy('cheap'),
+            ),
+            const SizedBox(width: 8),
+            _StrategyButton(
+              label: '⚖️ Normal',
+              subtitle: 'Basispreis',
+              onTap: () => ref
+                  .read(gameProvider.notifier)
+                  .applyPriceStrategy('normal'),
+            ),
+            const SizedBox(width: 8),
+            _StrategyButton(
+              label: '💎 Premium',
+              subtitle: '+20 %',
+              onTap: () => ref
+                  .read(gameProvider.notifier)
+                  .applyPriceStrategy('premium'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        const Text(
+          'EINZELNE PRODUKTPREISE GLOBAL',
+          style: TextStyle(
+            fontSize: 10,
+            color: AppColors.textMuted,
+            letterSpacing: 1.5,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 6),
+        for (final p in kAllProducts)
+          _GlobalPriceRow(
+            product: p,
+            currentPrice: globalPrices[p.id] ?? p.basePrice,
+            onMinus: () {
+              final cur = globalPrices[p.id] ?? p.basePrice;
+              ref
+                  .read(gameProvider.notifier)
+                  .setGlobalPrice(p.id, (cur - 0.25).clamp(0.5, 99.0));
+            },
+            onPlus: () {
+              final cur = globalPrices[p.id] ?? p.basePrice;
+              ref
+                  .read(gameProvider.notifier)
+                  .setGlobalPrice(p.id, (cur + 0.25).clamp(0.5, 99.0));
+            },
+          ),
+      ],
+    );
+  }
+}
+
+class _StrategyButton extends StatelessWidget {
+  final String label;
+  final String subtitle;
+  final VoidCallback onTap;
+  const _StrategyButton(
+      {required this.label, required this.subtitle, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding:
+              const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+          decoration: BoxDecoration(
+            color: AppColors.bgCard,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                    fontSize: 10, color: AppColors.textMuted),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GlobalPriceRow extends StatelessWidget {
+  final ProductData product;
+  final double currentPrice;
+  final VoidCallback onMinus;
+  final VoidCallback onPlus;
+  const _GlobalPriceRow({
+    required this.product,
+    required this.currentPrice,
+    required this.onMinus,
+    required this.onPlus,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isAtBase = (currentPrice - product.basePrice).abs() < 0.005;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Text(product.emoji, style: const TextStyle(fontSize: 16)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              product.name,
+              style: const TextStyle(
+                  fontSize: 12, color: AppColors.textSecondary),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.remove, size: 16),
+            onPressed: currentPrice > 0.5 ? onMinus : null,
+            padding: EdgeInsets.zero,
+            constraints:
+                const BoxConstraints(minWidth: 28, minHeight: 28),
+            color: AppColors.textMuted,
+          ),
+          SizedBox(
+            width: 68,
+            child: Text(
+              '${_fmtPrice.format(currentPrice)} €',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: isAtBase
+                    ? AppColors.textSecondary
+                    : AppColors.primary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.add, size: 16),
+            onPressed: currentPrice < 50.0 ? onPlus : null,
+            padding: EdgeInsets.zero,
+            constraints:
+                const BoxConstraints(minWidth: 28, minHeight: 28),
+            color: AppColors.primary,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Stadtweite Marketing-Sektion ───────────────────────────────────────────────
+
+class _CityMarketingSection extends ConsumerWidget {
+  final String cityId;
+  final List<ActiveCampaign> activeCityCampaigns;
+  final double cash;
+  final int currentDay;
+  const _CityMarketingSection({
+    required this.cityId,
+    required this.activeCityCampaigns,
+    required this.cash,
+    required this.currentDay,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final city = kAllCities.firstWhere(
+      (c) => c.id == cityId,
+      orElse: () => kAllCities.first,
+    );
+    final activeCount =
+        activeCityCampaigns.where((c) => c.isActive(currentDay)).length;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: ExpansionTile(
+        initiallyExpanded: activeCount > 0,
+        tilePadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+        childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+        title: Row(
+          children: [
+            Text(city.emoji, style: const TextStyle(fontSize: 18)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                city.name,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+            if (activeCount > 0)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withAlpha(30),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '$activeCount aktiv',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        children: [
+          for (final campaign in kCityMarketingCampaigns)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _MarketingCampaignCard(
+                campaign: campaign,
+                activeCampaign: _findActive(
+                    activeCityCampaigns, campaign.id, currentDay),
+                cash: cash,
+                currentDay: currentDay,
+                onBook: () => ref
+                    .read(gameProvider.notifier)
+                    .bookCityCampaign(cityId, campaign),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  ActiveCampaign? _findActive(
+      List<ActiveCampaign> list, String id, int day) {
+    try {
+      return list.firstWhere((c) => c.campaignId == id && c.isActive(day));
+    } catch (_) {
+      return null;
+    }
+  }
+}
+
+// ── Marketing-Kampagnen-Karte ──────────────────────────────────────────────────
+
+class _MarketingCampaignCard extends StatelessWidget {
+  final MarketingCampaign campaign;
+  final ActiveCampaign? activeCampaign;
+  final double cash;
+  final int currentDay;
+  final VoidCallback onBook;
+  const _MarketingCampaignCard({
+    required this.campaign,
+    required this.activeCampaign,
+    required this.cash,
+    required this.currentDay,
+    required this.onBook,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isActive = activeCampaign != null;
+    final canAfford = cash >= campaign.cost;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isActive
+            ? AppColors.primary.withAlpha(15)
+            : AppColors.bgCard,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isActive
+              ? AppColors.primary.withAlpha(100)
+              : AppColors.border,
+          width: isActive ? 1.5 : 1.0,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(campaign.emoji,
+                  style: const TextStyle(fontSize: 22)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      campaign.name,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      campaign.description,
+                      style: const TextStyle(
+                          fontSize: 11, color: AppColors.textMuted),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: [
+              if (campaign.customerBoost > 0)
+                _Chip(
+                  '+${(campaign.customerBoost * 100).round()}% Kunden',
+                  AppColors.accent,
+                ),
+              if (campaign.reputationBoostPerDay > 0)
+                const _Chip('+Rep/Tag', AppColors.gold),
+              if (campaign.brandAwarenessDelta > 0)
+                _Chip(
+                  '+${campaign.brandAwarenessDelta.toStringAsFixed(1)} Marke/Tag',
+                  AppColors.secondary,
+                ),
+              _Chip('${campaign.durationDays} Tage', AppColors.textMuted),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Text(
+                '${_fmt.format(campaign.cost)} €',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const Spacer(),
+              if (isActive)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withAlpha(30),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '⏱ noch ${activeCampaign!.remainingDays(currentDay)} Tage',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                )
+              else
+                ElevatedButton(
+                  onPressed: canAfford ? onBook : null,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                    textStyle: const TextStyle(fontSize: 12),
+                  ),
+                  child: const Text('Buchen'),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }
