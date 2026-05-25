@@ -1,5 +1,10 @@
 import 'shop_model.dart';
 import 'mission_model.dart';
+import 'brand_model.dart';
+import 'competitor_model.dart';
+import 'employee_model.dart';
+import 'stock_model.dart';
+import 'production_model.dart';
 
 class Loan {
   final String id;
@@ -138,10 +143,19 @@ class GameState {
   final double totalRevenue;
   final double totalProfit;
   final List<DailyRecord> history;
-  final List<Mission> missions;       // Quest/Goal-Liste
-  final int customersServedTotal;     // Achievement-Counter
-  final List<String> seenEventIds;    // damit Events sich nicht zu oft wiederholen
-  final bool tutorialDone;            // First-Run-Onboarding gesehen?
+  final List<Mission> missions;
+  final int customersServedTotal;
+  final List<String> seenEventIds;
+  final bool tutorialDone;
+  final BrandStats brand;                  // Markenbekanntheit + City-Rep
+  final List<Competitor> competitors;      // KI-Konkurrenz
+  final List<String> achievementIds;       // freigeschaltete Achievements
+  final List<Employee> employeePool;       // Bewerber-Pool (rotiert wöchentlich)
+  final int lastEmployeePoolDay;           // wann wurde Pool zuletzt rotiert?
+  final int currentHour;                   // 0..14 — Tag-Tick-Counter, stoppt bei 14
+  final StockState stocks;                 // Börse / Aktienkurs
+  final List<ProductionFacility> facilities; // Produktions-Anlagen
+  final List<String> managerEmployeeIds;   // Mitarbeiter-IDs, die Manager sind
 
   const GameState({
     required this.companyName,
@@ -158,9 +172,17 @@ class GameState {
     this.customersServedTotal = 0,
     this.seenEventIds = const [],
     this.tutorialDone = false,
+    this.brand = const BrandStats(),
+    this.competitors = const [],
+    this.achievementIds = const [],
+    this.employeePool = const [],
+    this.lastEmployeePoolDay = 0,
+    this.currentHour = 0,
+    this.stocks = const StockState(),
+    this.facilities = const [],
+    this.managerEmployeeIds = const [],
   });
 
-  // Startzustand
   factory GameState.initial({
     required String companyName,
     required String founderName,
@@ -181,6 +203,15 @@ class GameState {
       customersServedTotal: 0,
       seenEventIds: const [],
       tutorialDone: false,
+      brand: const BrandStats(brandAwareness: 5.0, cityReputation: {}),
+      competitors: const [],
+      achievementIds: const [],
+      employeePool: const [],
+      lastEmployeePoolDay: 0,
+      currentHour: 0,
+      stocks: const StockState(),
+      facilities: const [],
+      managerEmployeeIds: const [],
     );
   }
 
@@ -189,6 +220,14 @@ class GameState {
 
   double get activeLoansTotal =>
       loans.where((l) => !l.isPaidOff).fold(0.0, (s, l) => s + l.remainingDebt);
+
+  /// Konkurrenten in einer bestimmten Stadt
+  List<Competitor> competitorsIn(String cityId) =>
+      competitors.where((c) => c.cityId == cityId).toList();
+
+  /// Markttreiber: hat der Spieler in dieser Stadt eine Filiale?
+  bool hasShopIn(String cityId) =>
+      shops.any((s) => s.cityId == cityId);
 
   GameState copyWith({
     String? companyName,
@@ -204,6 +243,15 @@ class GameState {
     int? customersServedTotal,
     List<String>? seenEventIds,
     bool? tutorialDone,
+    BrandStats? brand,
+    List<Competitor>? competitors,
+    List<String>? achievementIds,
+    List<Employee>? employeePool,
+    int? lastEmployeePoolDay,
+    int? currentHour,
+    StockState? stocks,
+    List<ProductionFacility>? facilities,
+    List<String>? managerEmployeeIds,
   }) {
     return GameState(
       companyName: companyName ?? this.companyName,
@@ -221,6 +269,15 @@ class GameState {
           customersServedTotal ?? this.customersServedTotal,
       seenEventIds: seenEventIds ?? this.seenEventIds,
       tutorialDone: tutorialDone ?? this.tutorialDone,
+      brand: brand ?? this.brand,
+      competitors: competitors ?? this.competitors,
+      achievementIds: achievementIds ?? this.achievementIds,
+      employeePool: employeePool ?? this.employeePool,
+      lastEmployeePoolDay: lastEmployeePoolDay ?? this.lastEmployeePoolDay,
+      currentHour: currentHour ?? this.currentHour,
+      stocks: stocks ?? this.stocks,
+      facilities: facilities ?? this.facilities,
+      managerEmployeeIds: managerEmployeeIds ?? this.managerEmployeeIds,
     );
   }
 
@@ -239,6 +296,15 @@ class GameState {
         'customersServedTotal': customersServedTotal,
         'seenEventIds': seenEventIds,
         'tutorialDone': tutorialDone,
+        'brand': brand.toJson(),
+        'competitors': competitors.map((c) => c.toJson()).toList(),
+        'achievementIds': achievementIds,
+        'employeePool': employeePool.map((e) => e.toJson()).toList(),
+        'lastEmployeePoolDay': lastEmployeePoolDay,
+        'currentHour': currentHour,
+        'stocks': stocks.toJson(),
+        'facilities': facilities.map((f) => f.toJson()).toList(),
+        'managerEmployeeIds': managerEmployeeIds,
       };
 
   factory GameState.fromJson(Map<String, dynamic> j) {
@@ -278,6 +344,34 @@ class GameState {
       seenEventIds:
           List<String>.from(j['seenEventIds'] as List? ?? const []),
       tutorialDone: j['tutorialDone'] as bool? ?? false,
+      brand: j['brand'] != null
+          ? BrandStats.fromJson(j['brand'] as Map<String, dynamic>)
+          : const BrandStats(),
+      competitors: (j['competitors'] as List?)
+              ?.map((e) =>
+                  Competitor.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const [],
+      achievementIds:
+          List<String>.from(j['achievementIds'] as List? ?? const []),
+      employeePool: (j['employeePool'] as List?)
+              ?.map((e) => Employee.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const [],
+      lastEmployeePoolDay:
+          (j['lastEmployeePoolDay'] as num?)?.toInt() ?? 0,
+      currentHour:
+          (j['currentHour'] as num?)?.toInt() ?? 0,
+      stocks: j['stocks'] != null
+          ? StockState.fromJson(j['stocks'] as Map<String, dynamic>)
+          : const StockState(),
+      facilities: (j['facilities'] as List?)
+              ?.map((e) =>
+                  ProductionFacility.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const [],
+      managerEmployeeIds: List<String>.from(
+          j['managerEmployeeIds'] as List? ?? const []),
     );
   }
 }

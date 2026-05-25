@@ -3,6 +3,7 @@ import '../models/product_model.dart';
 import '../models/equipment_model.dart';
 import '../models/employee_model.dart';
 import '../models/marketing_model.dart';
+import '../models/time_profile_model.dart';
 
 // ─── Städte ──────────────────────────────────────────────────────────────────
 
@@ -187,7 +188,7 @@ const List<ProductData> kAllProducts = [
     basePrice: 6.50,
     ingredientCostPerUnit: 1.80,
     category: ProductCategory.doener,
-    isDefault: false,
+    isDefault: true,
     requiredEquipmentId: null,
   ),
   ProductData(
@@ -307,6 +308,7 @@ const List<EquipmentData> kAllEquipment = [
     qualityBonus: 0.10,
     category: EquipmentCategory.sonstiges,
     unlocksProductId: 'pommes',
+    additionalUnlocks: ['doenerbox'],
   ),
 
   // Lahmacun-Ofen
@@ -370,28 +372,108 @@ const List<EmployeeTypeData> kEmployeeTypes = [
 
 const Map<CityTier, List<LocationTemplate>> kLocationTemplates = {
   CityTier.klein: [
-    LocationTemplate(name: 'Marktplatz', footTrafficFactor: 1.2, rentFactor: 1.3),
-    LocationTemplate(name: 'Hauptstraße', footTrafficFactor: 1.0, rentFactor: 1.0),
-    LocationTemplate(name: 'Bahnhofsnähe', footTrafficFactor: 0.9, rentFactor: 0.9),
-    LocationTemplate(name: 'Randlage', footTrafficFactor: 0.5, rentFactor: 0.6),
+    LocationTemplate(
+      name: 'Marktplatz',
+      footTrafficFactor: 1.2,
+      rentFactor: 1.3,
+      personality: LocationPersonality.touristic,
+    ),
+    LocationTemplate(
+      name: 'Hauptstraße',
+      footTrafficFactor: 1.0,
+      rentFactor: 1.0,
+      personality: LocationPersonality.business,
+    ),
+    LocationTemplate(
+      name: 'Bahnhofsnähe',
+      footTrafficFactor: 0.9,
+      rentFactor: 0.9,
+      personality: LocationPersonality.transit,
+    ),
+    LocationTemplate(
+      name: 'Randlage',
+      footTrafficFactor: 0.5,
+      rentFactor: 0.6,
+      personality: LocationPersonality.residential,
+    ),
   ],
   CityTier.mittel: [
-    LocationTemplate(name: 'Fußgängerzone', footTrafficFactor: 1.4, rentFactor: 1.6),
-    LocationTemplate(name: 'Einkaufszentrum', footTrafficFactor: 1.3, rentFactor: 1.5),
-    LocationTemplate(name: 'Bahnhof', footTrafficFactor: 1.1, rentFactor: 1.2),
-    LocationTemplate(name: 'Wohnviertel', footTrafficFactor: 0.7, rentFactor: 0.8),
+    LocationTemplate(
+      name: 'Fußgängerzone',
+      footTrafficFactor: 1.4,
+      rentFactor: 1.6,
+      personality: LocationPersonality.touristic,
+    ),
+    LocationTemplate(
+      name: 'Einkaufszentrum',
+      footTrafficFactor: 1.3,
+      rentFactor: 1.5,
+      personality: LocationPersonality.business,
+    ),
+    LocationTemplate(
+      name: 'Bahnhof',
+      footTrafficFactor: 1.1,
+      rentFactor: 1.2,
+      personality: LocationPersonality.transit,
+    ),
+    LocationTemplate(
+      name: 'Wohnviertel',
+      footTrafficFactor: 0.7,
+      rentFactor: 0.8,
+      personality: LocationPersonality.residential,
+    ),
   ],
   CityTier.gross: [
-    LocationTemplate(name: 'Innenstadt-Premium', footTrafficFactor: 1.6, rentFactor: 2.0),
-    LocationTemplate(name: 'Shoppingcenter', footTrafficFactor: 1.4, rentFactor: 1.7),
-    LocationTemplate(name: 'Uni-Viertel', footTrafficFactor: 1.2, rentFactor: 1.3),
-    LocationTemplate(name: 'Stadtrand', footTrafficFactor: 0.8, rentFactor: 0.9),
+    LocationTemplate(
+      name: 'Innenstadt-Premium',
+      footTrafficFactor: 1.6,
+      rentFactor: 2.0,
+      personality: LocationPersonality.business,
+    ),
+    LocationTemplate(
+      name: 'Shoppingcenter',
+      footTrafficFactor: 1.4,
+      rentFactor: 1.7,
+      personality: LocationPersonality.touristic,
+    ),
+    LocationTemplate(
+      name: 'Uni-Viertel',
+      footTrafficFactor: 1.2,
+      rentFactor: 1.3,
+      personality: LocationPersonality.university,
+    ),
+    LocationTemplate(
+      name: 'Stadtrand',
+      footTrafficFactor: 0.8,
+      rentFactor: 0.9,
+      personality: LocationPersonality.residential,
+    ),
   ],
   CityTier.metropole: [
-    LocationTemplate(name: 'Top-Lage Mitte', footTrafficFactor: 2.0, rentFactor: 2.8),
-    LocationTemplate(name: 'Touristenviertel', footTrafficFactor: 1.8, rentFactor: 2.4),
-    LocationTemplate(name: 'Businessviertel', footTrafficFactor: 1.5, rentFactor: 2.0),
-    LocationTemplate(name: 'Trendbezirk', footTrafficFactor: 1.3, rentFactor: 1.8),
+    LocationTemplate(
+      name: 'Top-Lage Mitte',
+      footTrafficFactor: 2.0,
+      rentFactor: 2.8,
+      personality: LocationPersonality.touristic,
+    ),
+    LocationTemplate(
+      name: 'Touristenviertel',
+      footTrafficFactor: 1.8,
+      rentFactor: 2.4,
+      personality: LocationPersonality.touristic,
+    ),
+    LocationTemplate(
+      name: 'Businessviertel',
+      footTrafficFactor: 1.5,
+      rentFactor: 2.0,
+      personality: LocationPersonality.business,
+    ),
+    LocationTemplate(
+      name: 'Trendbezirk',
+      footTrafficFactor: 1.3,
+      rentFactor: 1.8,
+      personality: LocationPersonality.nightlife,
+    ),
   ],
 };
 
@@ -499,24 +581,11 @@ const List<MarketingCampaign> kAllCampaigns = [
     reputationBoostPerDay: 0.03,
     risk: MarketingRisk.low,
   ),
-  MarketingCampaign(
-    id: 'loyalty_app',
-    name: 'Stammkunden-App',
-    description:
-        'Eigene Bonus-App: Stempelkarten, Gutscheine. Dauerhafter Stammkunden-Bonus.',
-    emoji: '💳',
-    cost: 4000,
-    durationDays: 30,
-    scope: MarketingScope.shop,
-    customerBoost: 0.15,
-    reputationBoostPerDay: 0.02,
-    risk: MarketingRisk.low,
-  ),
 ];
 
 // ─── Startkapital ─────────────────────────────────────────────────────────────
 
-const double kStartingCash = 15000.0;
+const double kStartingCash = 15000.0; // Startkapital: 15.000 €
 const double kTickIntervalSeconds = 3.0; // alle 3 Sek. ein Spieltick (= 1 Spielstunde)
 const int kHoursPerDay = 24;
 const double kDailyOpenHours = 14.0; // Laden offen von 10-24 Uhr

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme.dart';
 import '../../models/event_model.dart';
+import '../../models/achievement_model.dart';
 import '../../providers/game_provider.dart';
 
 final _fmt = NumberFormat('#,##0', 'de_DE');
@@ -186,6 +187,60 @@ class DayEndDialog extends ConsumerWidget {
                       ),
                     ),
                   ],
+                  if (r.newAchievements.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    for (final a in r.newAchievements)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 6),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.secondary.withAlpha(30),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                              color: AppColors.secondary.withAlpha(80)),
+                        ),
+                        child: Row(
+                          children: [
+                            Text(a.emoji,
+                                style: const TextStyle(fontSize: 18)),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'TROPHÄE!',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      color: AppColors.secondary,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 2,
+                                    ),
+                                  ),
+                                  Text(
+                                    a.title,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Text(
+                              '+${a.tier.points} Pkt',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.secondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
                   const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,
@@ -196,7 +251,7 @@ class DayEndDialog extends ConsumerWidget {
                         if (r.event != null) {
                           Future.microtask(() {
                             if (context.mounted) {
-                              EventDialog.show(context, r.event!, ref);
+                              EventDialog.show(context, r.event!);
                             }
                           });
                         }
@@ -271,22 +326,24 @@ class _SummaryRow extends StatelessWidget {
 
 // ── Event-Dialog ──────────────────────────────────────────────────────────
 
-class EventDialog extends StatelessWidget {
+class EventDialog extends ConsumerWidget {
   final GameEvent event;
-  final WidgetRef ref;
-  const EventDialog({super.key, required this.event, required this.ref});
+  const EventDialog({super.key, required this.event});
 
+  /// Backwards-kompatible Signatur — `ref` wird ignoriert weil der Dialog
+  /// jetzt selbst ein ConsumerWidget ist und ref über `WidgetRef` im build
+  /// bekommt. Dadurch funktioniert der Pop-Context zuverlässig.
   static Future<void> show(
-      BuildContext context, GameEvent event, WidgetRef ref) {
+      BuildContext context, GameEvent event, [WidgetRef? ref]) {
     return showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => EventDialog(event: event, ref: ref),
+      builder: (_) => EventDialog(event: event),
     );
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final categoryColor = switch (event.category) {
       EventCategory.good => AppColors.success,
       EventCategory.bad => AppColors.danger,
@@ -377,12 +434,15 @@ class EventDialog extends StatelessWidget {
                     _ChoiceButton(
                       choice: c,
                       onTap: () {
+                        // Erst State anwenden (synchron), dann Dialog schließen,
+                        // dann Snackbar zeigen (außerhalb des Dialog-Contexts).
                         ref
                             .read(gameProvider.notifier)
                             .applyEventChoice(event, c);
-                        Navigator.of(context).pop();
-                        // Resultat zeigen
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        final navigator = Navigator.of(context);
+                        final messenger = ScaffoldMessenger.maybeOf(context);
+                        navigator.pop();
+                        messenger?.showSnackBar(
                           SnackBar(
                             content: Text(c.effect.resultMessage),
                             duration: const Duration(seconds: 4),
@@ -409,51 +469,55 @@ class _ChoiceButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
+    // Material-Wrapper ist nötig damit InkWell-Taps registriert werden.
+    return Material(
+      color: AppColors.bgSurface,
       borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.bgSurface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                choice.label,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ),
-            if (choice.cost != null && choice.cost! > 0) ...[
-              const SizedBox(width: 8),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.danger.withAlpha(30),
-                  borderRadius: BorderRadius.circular(6),
-                ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            children: [
+              Expanded(
                 child: Text(
-                  '-${_fmt.format(choice.cost!)} €',
+                  choice.label,
                   style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.danger,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
                   ),
                 ),
               ),
+              if (choice.cost != null && choice.cost! > 0) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.danger.withAlpha(30),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '-${_fmt.format(choice.cost!)} €',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.danger,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(width: 6),
+              const Icon(Icons.chevron_right_rounded,
+                  color: AppColors.textMuted, size: 18),
             ],
-            const SizedBox(width: 6),
-            const Icon(Icons.chevron_right_rounded,
-                color: AppColors.textMuted, size: 18),
-          ],
+          ),
         ),
       ),
     );

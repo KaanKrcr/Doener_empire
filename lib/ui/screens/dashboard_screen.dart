@@ -10,6 +10,8 @@ import '../widgets/animated_money.dart';
 import '../widgets/mission_banner.dart';
 import '../widgets/day_end_dialog.dart';
 import '../widgets/money_pulse.dart';
+import '../widgets/bankruptcy_dialog.dart';
+import '../widgets/quarterly_report_dialog.dart';
 
 final _fmtInt = NumberFormat('#,##0', 'de_DE');
 const _kWeekdays = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
@@ -35,6 +37,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       if (result.missionCompleted != null && mounted) {
         await MissionCompletedDialog.show(context, result.missionCompleted!);
       }
+      if (result.quarterlyReport != null && mounted) {
+        await QuarterlyReportDialog.show(context, result.quarterlyReport!);
+      }
       notifier.clearLastDayResult();
     }
     if (mounted) setState(() => _endingDay = false);
@@ -51,6 +56,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           // Stream zurücksetzen für nächste Mission
           ref.read(instantMissionProvider.notifier).state = null;
         });
+      }
+    });
+
+    // ── Insolvenz-Listener ─────────────────────────────────────────────
+    // Cash unter 0 → Pleite-Dialog mit Kredit-/Schließungs-/Game-Over-Optionen.
+    // Triggert beim ÜBERGANG von >=0 zu <0 (nicht jeden Tick wenn schon negativ).
+    ref.listen(gameProvider, (prev, next) {
+      if (next == null) return;
+      final wasOk = prev == null || prev.cash >= 0;
+      final isNowBad = next.cash < 0;
+      if (wasOk && isNowBad && mounted) {
+        BankruptcyDialog.show(context);
       }
     });
 
@@ -233,6 +250,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         ? '-${_fmtInt.format(game.activeLoansTotal)} €'
                         : 'Keine',
                   ),
+                  _KpiCard(
+                    icon: Icons.campaign_rounded,
+                    iconColor: AppColors.gold,
+                    label: 'Marke',
+                    value: '${game.brand.brandAwareness.toStringAsFixed(0)}/100',
+                  ),
+                  _KpiCard(
+                    icon: Icons.emoji_events_rounded,
+                    iconColor: AppColors.secondary,
+                    label: 'Trophäen',
+                    value: '${game.achievementIds.length}',
+                  ),
                 ]),
               ),
             ),
@@ -273,10 +302,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 delegate: SliverChildBuilderDelegate(
                   (context, i) {
                     final shop = game.shops[i];
-                    final revenue = GameEngine.calculateDailyRevenue(shop, day: game.currentDay);
-                    final costs = GameEngine.calculateDailyCosts(shop, day: game.currentDay);
+                    final revenue = GameEngine.calculateDailyRevenue(shop, day: game.currentDay, state: game);
+                    final costs = GameEngine.calculateDailyCosts(shop, day: game.currentDay, state: game);
                     final profit = revenue - costs;
-                    final customers = GameEngine.calculateDailyCustomers(shop, day: game.currentDay);
+                    final customers = GameEngine.calculateDailyCustomers(shop, day: game.currentDay, state: game);
 
                     return Padding(
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
@@ -355,7 +384,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 children: [
                                   _ShopMini(
                                       icon: Icons.people_outline,
-                                      label: '${_fmtInt.format(customers)}',
+                                      label: _fmtInt.format(customers),
                                       sub: 'Kunden',
                                       color: AppColors.accent),
                                   const SizedBox(width: 16),

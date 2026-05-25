@@ -7,6 +7,7 @@ import '../../core/theme.dart';
 import '../../core/constants.dart';
 import '../../models/city_model.dart';
 import '../../models/shop_model.dart';
+import '../../models/time_profile_model.dart';
 import '../../providers/game_provider.dart';
 import '../main_scaffold.dart';
 
@@ -73,6 +74,7 @@ class _OpenShopScreenState extends ConsumerState<OpenShopScreen> {
       equipment: const [],
       employees: const [],
       dayOpened: game.currentDay,
+      personality: locations[_selectedLocation].personality,
     );
 
     ref.read(gameProvider.notifier).openShop(shop);
@@ -257,6 +259,7 @@ class _LocationTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final ft = (cityData.footTrafficBase * template.footTrafficFactor).round();
     final rent = cityData.rentBase * template.rentFactor;
+    final pers = template.personality;
 
     return GestureDetector(
       onTap: onTap,
@@ -275,6 +278,7 @@ class _LocationTile extends StatelessWidget {
           ),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(
               isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
@@ -286,18 +290,35 @@ class _LocationTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(template.name,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                        color: isSelected
-                            ? AppColors.textPrimary
-                            : AppColors.textSecondary,
-                      )),
+                  Row(
+                    children: [
+                      Text(template.name,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                            color: isSelected
+                                ? AppColors.textPrimary
+                                : AppColors.textSecondary,
+                          )),
+                      const SizedBox(width: 8),
+                      Text(pers.emoji, style: const TextStyle(fontSize: 14)),
+                    ],
+                  ),
                   Text(
                     '${_fmt.format(ft)} Laufkundschaft  ·  ${_fmt.format(rent)} €/Woche',
                     style: const TextStyle(
                         fontSize: 12, color: AppColors.textMuted),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${pers.label}: ${pers.description}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isSelected
+                          ? AppColors.secondary
+                          : AppColors.textMuted,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ),

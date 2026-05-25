@@ -201,6 +201,9 @@ class AppTheme {
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         behavior: SnackBarBehavior.floating,
         elevation: 0,
+        // Floating Snackbar darf den Bottom-Tab-Bereich nicht überlagern.
+        insetPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: AppColors.bgCard,

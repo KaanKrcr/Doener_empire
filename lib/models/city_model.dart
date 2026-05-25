@@ -1,3 +1,5 @@
+import 'time_profile_model.dart';
+
 enum CityTier { klein, mittel, gross, metropole }
 
 extension CityTierLabel on CityTier {
@@ -43,10 +45,12 @@ class LocationTemplate {
   final String name;
   final double footTrafficFactor;
   final double rentFactor;
+  final LocationPersonality personality;
 
   const LocationTemplate({
     required this.name,
     required this.footTrafficFactor,
     required this.rentFactor,
+    this.personality = LocationPersonality.touristic,
   });
 }

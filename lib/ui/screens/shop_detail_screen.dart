@@ -9,6 +9,8 @@ import '../../models/shop_model.dart';
 import '../../models/product_model.dart';
 import '../../models/equipment_model.dart';
 import '../../models/employee_model.dart';
+import '../../models/marketing_model.dart';
+import '../../models/upgrade_model.dart';
 import '../../providers/game_provider.dart';
 import '../../services/game_engine.dart';
 import 'dart:math';
@@ -36,7 +38,7 @@ class _ShopDetailScreenState extends ConsumerState<ShopDetailScreen>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 3, vsync: this);
+    _tabs = TabController(length: 5, vsync: this);
   }
 
   @override
@@ -71,9 +73,9 @@ class _ShopDetailScreenState extends ConsumerState<ShopDetailScreen>
     }
 
     final today = game.currentDay;
-    final stats = GameEngine.calculateShopStats(currentShop, day: today);
+    final stats = GameEngine.calculateShopStats(currentShop, day: today, state: game);
     final revenue = stats.actualRevenue;
-    final costs = GameEngine.calculateDailyCosts(currentShop, day: today);
+    final costs = GameEngine.calculateDailyCosts(currentShop, day: today, state: game);
     final profit = revenue - costs;
     final customers = stats.actualCustomers;
 
@@ -186,10 +188,13 @@ class _ShopDetailScreenState extends ConsumerState<ShopDetailScreen>
               dividerColor: Colors.transparent,
               labelColor: AppColors.primary,
               unselectedLabelColor: AppColors.textMuted,
+              isScrollable: true,
               tabs: const [
                 Tab(text: 'Sortiment'),
                 Tab(text: 'Equipment'),
                 Tab(text: 'Personal'),
+                Tab(text: 'Marketing'),
+                Tab(text: 'Ausstattung'),
               ],
             ),
           ),
@@ -201,6 +206,8 @@ class _ShopDetailScreenState extends ConsumerState<ShopDetailScreen>
                 _ProductsTab(shop: currentShop),
                 _EquipmentTab(shop: currentShop, cash: game.cash),
                 _EmployeesTab(shop: currentShop, cash: game.cash),
+                _MarketingTab(shop: currentShop, cash: game.cash, currentDay: today),
+                _UpgradesTab(shop: currentShop, cash: game.cash),
               ],
             ),
           ),
@@ -571,7 +578,9 @@ class _EquipmentTab extends ConsumerWidget {
                 ref.read(gameProvider.notifier).buyEquipment(shop.id, eq);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                      content: Text('${eq.name} gekauft! ${eq.emoji}')),
+                    content: Text('${eq.name} gekauft ${eq.emoji}'),
+                    duration: const Duration(milliseconds: 1500),
+                  ),
                 );
               },
             ),
@@ -711,6 +720,60 @@ class _EmployeesTab extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        // ── HR-Manager Toggle ──────────────────────────────────────────
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: shop.autoHire
+                ? AppColors.gold.withAlpha(25)
+                : AppColors.bgCard,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: shop.autoHire
+                  ? AppColors.gold.withAlpha(80)
+                  : AppColors.border,
+            ),
+          ),
+          child: Row(
+            children: [
+              const Text('🧑‍💼', style: TextStyle(fontSize: 22)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'HR-Manager',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      shop.autoHire
+                          ? 'Stellt bei Engpass automatisch ein (Pauschale: 3 Tagesgehälter pro Hire)'
+                          : 'Off — du stellst alle Mitarbeiter selbst ein.',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textMuted,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                value: shop.autoHire,
+                activeThumbColor: AppColors.gold,
+                onChanged: (_) =>
+                    ref.read(gameProvider.notifier).toggleAutoHire(shop.id),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+
         // ── Personal-Kapazitäts-Indikator ───────────────────────────────
         Container(
           padding: const EdgeInsets.all(14),
@@ -854,9 +917,15 @@ class _EmployeesTab extends ConsumerWidget {
         onPick: (cand) {
           Navigator.pop(ctx);
           ref.read(gameProvider.notifier).hireEmployee(shop.id, cand);
+          // Kurze Snackbar oben — verdeckt keine Buttons unten.
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-                content: Text('${cand.name} eingestellt! ${type.emoji}')),
+              content: Text('${cand.name} eingestellt ${type.emoji}'),
+              duration: const Duration(milliseconds: 1500),
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              dismissDirection: DismissDirection.horizontal,
+            ),
           );
         },
       ),
@@ -1068,6 +1137,16 @@ class _CandidateCard extends StatelessWidget {
               icon: Icons.workspace_premium_outlined,
               color: AppColors.gold),
 
+          if (candidate.traits.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final t in candidate.traits) _PersonalityChip(trait: t),
+              ],
+            ),
+          ],
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
@@ -1251,7 +1330,71 @@ class _EmployeeCard extends StatelessWidget {
               _MiniTrait(icon: Icons.workspace_premium_outlined, value: employee.experience, color: AppColors.gold),
             ],
           ),
+          // Persönlichkeits-Traits
+          if (employee.traits.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final t in employee.traits) _PersonalityChip(trait: t),
+                if (employee.daysEmployed > 30)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.cream.withAlpha(25),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '📅 ${employee.daysEmployed} Tage',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: AppColors.cream,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+class _PersonalityChip extends StatelessWidget {
+  final PersonalityTrait trait;
+  const _PersonalityChip({required this.trait});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = trait.isPositive ? AppColors.accent : AppColors.danger;
+    return Tooltip(
+      message: trait.description,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: color.withAlpha(28),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withAlpha(70)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(trait.emoji, style: const TextStyle(fontSize: 10)),
+            const SizedBox(width: 4),
+            Text(
+              trait.label,
+              style: TextStyle(
+                fontSize: 10,
+                color: color,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1377,6 +1520,584 @@ class _ShopStat extends StatelessWidget {
         Text(label,
             style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
       ],
+    );
+  }
+}
+
+// ── Marketing-Tab ─────────────────────────────────────────────────────────
+
+class _MarketingTab extends ConsumerWidget {
+  final Shop shop;
+  final double cash;
+  final int currentDay;
+  const _MarketingTab({
+    required this.shop,
+    required this.cash,
+    required this.currentDay,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final active = shop.activeCampaigns
+        .where((c) => c.isActive(currentDay))
+        .toList();
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // Aktive Kampagnen
+        if (active.isNotEmpty) ...[
+          const Text(
+            'LAUFENDE KAMPAGNEN',
+            style: TextStyle(
+              fontSize: 11,
+              color: AppColors.textMuted,
+              letterSpacing: 2,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          for (final ac in active) ...[
+            _ActiveCampaignCard(active: ac, currentDay: currentDay),
+            const SizedBox(height: 8),
+          ],
+          const SizedBox(height: 16),
+        ],
+
+        const Text(
+          'VERFÜGBARE KAMPAGNEN',
+          style: TextStyle(
+            fontSize: 11,
+            color: AppColors.textMuted,
+            letterSpacing: 2,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 8),
+        for (final c in kAllCampaigns) ...[
+          _CampaignCard(
+            campaign: c,
+            canAfford: cash >= c.cost,
+            alreadyActive: active.any((a) => a.campaignId == c.id),
+            onBook: () {
+              if (cash < c.cost) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Nicht genug Kapital')),
+                );
+                return;
+              }
+              ref.read(gameProvider.notifier).bookCampaign(shop.id, c);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('${c.name} läuft jetzt ${c.emoji}'),
+                  duration: const Duration(milliseconds: 1500),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+        ],
+      ],
+    );
+  }
+}
+
+class _ActiveCampaignCard extends StatelessWidget {
+  final ActiveCampaign active;
+  final int currentDay;
+  const _ActiveCampaignCard({required this.active, required this.currentDay});
+
+  @override
+  Widget build(BuildContext context) {
+    final campaign = kAllCampaigns.firstWhere(
+      (c) => c.id == active.campaignId,
+      orElse: () => kAllCampaigns.first,
+    );
+    final remaining = active.remainingDays(currentDay);
+    final progress = active.progress(currentDay);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.accent.withAlpha(20),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.accent.withAlpha(80)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Text(campaign.emoji, style: const TextStyle(fontSize: 24)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(campaign.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                          fontSize: 14,
+                        )),
+                    Text(
+                      '+${(campaign.customerBoost * 100).round()}% Kunden  ·  Noch $remaining Tag${remaining == 1 ? "" : "e"}',
+                      style: const TextStyle(
+                          fontSize: 11, color: AppColors.accent),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: progress,
+              backgroundColor: AppColors.bgSurface,
+              valueColor:
+                  const AlwaysStoppedAnimation(AppColors.accent),
+              minHeight: 5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CampaignCard extends StatelessWidget {
+  final MarketingCampaign campaign;
+  final bool canAfford;
+  final bool alreadyActive;
+  final VoidCallback onBook;
+  const _CampaignCard({
+    required this.campaign,
+    required this.canAfford,
+    required this.alreadyActive,
+    required this.onBook,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final riskColor = switch (campaign.risk) {
+      MarketingRisk.low => AppColors.success,
+      MarketingRisk.medium => AppColors.warning,
+      MarketingRisk.high => AppColors.danger,
+    };
+    final riskLabel = switch (campaign.risk) {
+      MarketingRisk.low => 'sicher',
+      MarketingRisk.medium => 'mittel',
+      MarketingRisk.high => 'riskant',
+    };
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(campaign.emoji, style: const TextStyle(fontSize: 28)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(campaign.name,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary,
+                            )),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: riskColor.withAlpha(35),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            riskLabel,
+                            style: TextStyle(
+                                fontSize: 9,
+                                color: riskColor,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.5),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(campaign.description,
+                        style: const TextStyle(
+                            fontSize: 11, color: AppColors.textMuted)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              _CampaignStat(
+                label: '+${(campaign.customerBoost * 100).round()}%',
+                sub: 'Kunden',
+                color: AppColors.accent,
+              ),
+              const SizedBox(width: 14),
+              _CampaignStat(
+                label: '${campaign.durationDays}d',
+                sub: 'Laufzeit',
+                color: AppColors.secondary,
+              ),
+              const SizedBox(width: 14),
+              if (campaign.avgOrderValueMod != 0)
+                _CampaignStat(
+                  label:
+                      '${campaign.avgOrderValueMod > 0 ? "+" : ""}${(campaign.avgOrderValueMod * 100).round()}%',
+                  sub: 'Marge',
+                  color: campaign.avgOrderValueMod > 0
+                      ? AppColors.success
+                      : AppColors.danger,
+                ),
+              const Spacer(),
+              if (alreadyActive)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.accent.withAlpha(35),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text('Läuft',
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.accent,
+                          fontWeight: FontWeight.w800)),
+                )
+              else
+                ElevatedButton(
+                  onPressed: canAfford ? onBook : null,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                    textStyle: const TextStyle(fontSize: 12),
+                  ),
+                  child: Text('${_fmtInt.format(campaign.cost)} €'),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CampaignStat extends StatelessWidget {
+  final String label;
+  final String sub;
+  final Color color;
+  const _CampaignStat({
+    required this.label,
+    required this.sub,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: color,
+            )),
+        Text(sub,
+            style: const TextStyle(
+                fontSize: 9, color: AppColors.textMuted)),
+      ],
+    );
+  }
+}
+
+// ── Ausstattung-/Upgrade-Tab ────────────────────────────────────────────────
+
+class _UpgradesTab extends ConsumerWidget {
+  final Shop shop;
+  final double cash;
+  const _UpgradesTab({required this.shop, required this.cash});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Gruppiert nach Kategorie
+    final byCategory = <UpgradeCategory, List<UpgradeData>>{};
+    for (final u in kAllUpgrades) {
+      byCategory.putIfAbsent(u.category, () => []).add(u);
+    }
+
+    // Bereits gekaufte oben anzeigen
+    final owned =
+        shop.upgradeIds.map((id) => upgradeById(id)).whereType<UpgradeData>().toList();
+    final monthlyTotal =
+        owned.fold(0.0, (s, u) => s + u.monthlyCost);
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        if (owned.isNotEmpty) ...[
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.accent.withAlpha(20),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.accent.withAlpha(80)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.check_circle_outline,
+                    color: AppColors.accent, size: 22),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${owned.length} aktive Ausstattung${owned.length == 1 ? "" : "en"}',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.accent,
+                        ),
+                      ),
+                      Text(
+                        '${_fmtInt.format(monthlyTotal)} €/Monat laufende Kosten',
+                        style: const TextStyle(
+                            fontSize: 11, color: AppColors.textMuted),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+        for (final cat in UpgradeCategory.values) ...[
+          if (byCategory[cat] != null) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Text(
+                cat.label.toUpperCase(),
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textMuted,
+                  letterSpacing: 2,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            for (final u in byCategory[cat]!) ...[
+              _UpgradeCard(
+                upgrade: u,
+                owned: shop.hasUpgrade(u.id),
+                canAfford: cash >= u.installCost,
+                onBuy: () {
+                  if (cash < u.installCost) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Nicht genug Kapital')),
+                    );
+                    return;
+                  }
+                  ref.read(gameProvider.notifier).buyUpgrade(shop.id, u);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('${u.name} installiert ${u.emoji}'),
+                      duration: const Duration(milliseconds: 1500),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ],
+        ],
+      ],
+    );
+  }
+}
+
+class _UpgradeCard extends StatelessWidget {
+  final UpgradeData upgrade;
+  final bool owned;
+  final bool canAfford;
+  final VoidCallback onBuy;
+
+  const _UpgradeCard({
+    required this.upgrade,
+    required this.owned,
+    required this.canAfford,
+    required this.onBuy,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: owned
+              ? AppColors.accent.withAlpha(120)
+              : AppColors.border,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(upgrade.emoji, style: const TextStyle(fontSize: 28)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(upgrade.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        )),
+                    Text(upgrade.description,
+                        style: const TextStyle(
+                            fontSize: 11, color: AppColors.textMuted)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 10,
+            runSpacing: 6,
+            children: [
+              if (upgrade.customerBoost > 0)
+                _UpgradeStatChip(
+                  label: '+${(upgrade.customerBoost * 100).round()}% Kunden',
+                  color: AppColors.accent,
+                ),
+              if (upgrade.avgOrderValueBoost != 0)
+                _UpgradeStatChip(
+                  label: upgrade.avgOrderValueBoost > 0
+                      ? '+${(upgrade.avgOrderValueBoost * 100).round()}% Bestellwert'
+                      : '${(upgrade.avgOrderValueBoost * 100).round()}% Bestellwert',
+                  color: upgrade.avgOrderValueBoost > 0
+                      ? AppColors.success
+                      : AppColors.warning,
+                ),
+              if (upgrade.reputationPerDay > 0)
+                _UpgradeStatChip(
+                  label: '+${(upgrade.reputationPerDay * 100).toStringAsFixed(1)} Rep/Tag',
+                  color: AppColors.gold,
+                ),
+              if (upgrade.brandPerDay > 0)
+                _UpgradeStatChip(
+                  label: '+Marke',
+                  color: AppColors.secondary,
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      upgrade.installCost > 0
+                          ? 'Einmalig ${_fmtInt.format(upgrade.installCost)} €'
+                          : 'Keine Anschaffung',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    Text(
+                      '${_fmtInt.format(upgrade.monthlyCost)} €/Monat laufend',
+                      style: const TextStyle(
+                          fontSize: 11, color: AppColors.warning),
+                    ),
+                  ],
+                ),
+              ),
+              if (owned)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.accent.withAlpha(35),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Text(
+                    '✓ Aktiv',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.accent,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                )
+              else
+                ElevatedButton(
+                  onPressed: canAfford ? onBuy : null,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 8),
+                    textStyle: const TextStyle(fontSize: 12),
+                  ),
+                  child: Text(upgrade.installCost > 0
+                      ? 'Installieren'
+                      : 'Abonnieren'),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UpgradeStatChip extends StatelessWidget {
+  final String label;
+  final Color color;
+  const _UpgradeStatChip({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withAlpha(30),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          color: color,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
     );
   }
 }

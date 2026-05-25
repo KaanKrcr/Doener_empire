@@ -4,18 +4,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/cities_screen.dart';
+import 'screens/stats_screen.dart';
+import 'screens/corporate_screen.dart';
 import 'screens/finance_screen.dart';
 import 'screens/bank_screen.dart';
 
-/// Public, damit andere Screens (z.B. Shop-Detail, Open-Shop) gezielt
-/// auf einen bestimmten Tab im MainScaffold zurückspringen können.
 final navIndexProvider = StateProvider<int>((ref) => 0);
 
-// Tab-Indizes als Konstanten zur Lesbarkeit
 const int kTabDashboard = 0;
 const int kTabCities = 1;
-const int kTabFinance = 2;
-const int kTabBank = 3;
+const int kTabStats = 2;
+const int kTabCorporate = 3;
+const int kTabFinance = 4;
+const int kTabBank = 5;
 
 class MainScaffold extends ConsumerWidget {
   const MainScaffold({super.key});
@@ -23,6 +24,8 @@ class MainScaffold extends ConsumerWidget {
   static final _screens = [
     const DashboardScreen(),
     const CitiesScreen(),
+    const StatsScreen(),
+    const CorporateScreen(),
     const FinanceScreen(),
     const BankScreen(),
   ];
@@ -79,14 +82,16 @@ class _BottomNav extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _NavItem(icon: Icons.storefront_rounded, label: 'Imbiss', index: 0, current: currentIndex, onTap: onTap),
               _NavItem(icon: Icons.place_rounded, label: 'Städte', index: 1, current: currentIndex, onTap: onTap),
-              _NavItem(icon: Icons.receipt_long_rounded, label: 'Finanzen', index: 2, current: currentIndex, onTap: onTap),
-              _NavItem(icon: Icons.account_balance_rounded, label: 'Bank', index: 3, current: currentIndex, onTap: onTap),
+              _NavItem(icon: Icons.emoji_events_rounded, label: 'Imperium', index: 2, current: currentIndex, onTap: onTap),
+              _NavItem(icon: Icons.business_center_rounded, label: 'Konzern', index: 3, current: currentIndex, onTap: onTap),
+              _NavItem(icon: Icons.receipt_long_rounded, label: 'Finanzen', index: 4, current: currentIndex, onTap: onTap),
+              _NavItem(icon: Icons.account_balance_rounded, label: 'Bank', index: 5, current: currentIndex, onTap: onTap),
             ],
           ),
         ),
@@ -120,7 +125,7 @@ class _NavItem extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         decoration: BoxDecoration(
           color: isActive ? AppColors.primary.withAlpha(26) : Colors.transparent,
           borderRadius: BorderRadius.circular(14),
@@ -133,7 +138,7 @@ class _NavItem extends StatelessWidget {
               duration: const Duration(milliseconds: 200),
               child: Icon(
                 icon,
-                size: 24,
+                size: 20,
                 color: isActive ? AppColors.primary : AppColors.textMuted,
               ),
             ),
@@ -141,7 +146,7 @@ class _NavItem extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 9,
                 fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
                 color: isActive ? AppColors.primary : AppColors.textMuted,
               ),

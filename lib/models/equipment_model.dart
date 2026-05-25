@@ -13,6 +13,10 @@ class EquipmentData {
   final EquipmentCategory category;
   final String? unlocksProductId;
 
+  /// Zusätzlich freigeschaltete Produkte (über das primäre `unlocksProductId`
+  /// hinaus). Z.B. Fritteuse schaltet Pommes + Döner-Box frei.
+  final List<String> additionalUnlocks;
+
   const EquipmentData({
     required this.id,
     required this.name,
@@ -25,7 +29,15 @@ class EquipmentData {
     this.ingredientSavingBonus = 0.0,
     required this.category,
     this.unlocksProductId,
+    this.additionalUnlocks = const [],
   });
+
+  /// Alle Produkte die dieses Equipment freischaltet.
+  List<String> get allUnlockedProducts {
+    final result = <String>[...additionalUnlocks];
+    if (unlocksProductId != null) result.insert(0, unlocksProductId!);
+    return result;
+  }
 }
 
 class ShopEquipment {

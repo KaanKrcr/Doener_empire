@@ -2,6 +2,7 @@ import 'product_model.dart';
 import 'equipment_model.dart';
 import 'employee_model.dart';
 import 'marketing_model.dart';
+import 'time_profile_model.dart';
 
 class Shop {
   final String id;
@@ -17,6 +18,9 @@ class Shop {
   final double reputation; // 0.0 – 5.0
   final int dayOpened;
   final List<ActiveCampaign> activeCampaigns;
+  final LocationPersonality personality;
+  final List<String> upgradeIds;
+  final bool autoHire; // HR-Manager stellt automatisch bei Engpass ein
 
   const Shop({
     required this.id,
@@ -32,12 +36,21 @@ class Shop {
     this.reputation = 3.0,
     required this.dayOpened,
     this.activeCampaigns = const [],
+    this.personality = LocationPersonality.touristic,
+    this.upgradeIds = const [],
+    this.autoHire = false,
   });
+
+  bool hasUpgrade(String upgradeId) => upgradeIds.contains(upgradeId);
 
   double get dailyRent => weeklyRent / 7.0;
 
   bool hasEquipment(String equipmentId) =>
       equipment.any((e) => e.equipmentId == equipmentId);
+
+  /// Gibt das Zeitprofil dieses Standorts zurück.
+  TimeProfile get timeProfile =>
+      kTimeProfiles[personality] ?? kTimeProfiles[LocationPersonality.touristic]!;
 
   Shop copyWith({
     String? name,
@@ -47,6 +60,9 @@ class Shop {
     List<Employee>? employees,
     double? reputation,
     List<ActiveCampaign>? activeCampaigns,
+    LocationPersonality? personality,
+    List<String>? upgradeIds,
+    bool? autoHire,
   }) {
     return Shop(
       id: id,
@@ -62,6 +78,9 @@ class Shop {
       reputation: reputation ?? this.reputation,
       dayOpened: dayOpened,
       activeCampaigns: activeCampaigns ?? this.activeCampaigns,
+      personality: personality ?? this.personality,
+      upgradeIds: upgradeIds ?? this.upgradeIds,
+      autoHire: autoHire ?? this.autoHire,
     );
   }
 
@@ -80,6 +99,9 @@ class Shop {
         'dayOpened': dayOpened,
         'activeCampaigns':
             activeCampaigns.map((c) => c.toJson()).toList(),
+        'personality': personality.name,
+        'upgradeIds': upgradeIds,
+        'autoHire': autoHire,
       };
 
   factory Shop.fromJson(Map<String, dynamic> j) => Shop(
@@ -106,5 +128,12 @@ class Shop {
                     ActiveCampaign.fromJson(e as Map<String, dynamic>))
                 .toList() ??
             const [],
+        personality: LocationPersonality.values.firstWhere(
+          (p) => p.name == (j['personality'] as String?),
+          orElse: () => LocationPersonality.touristic,
+        ),
+        upgradeIds:
+            List<String>.from(j['upgradeIds'] as List? ?? const []),
+        autoHire: j['autoHire'] as bool? ?? false,
       );
 }

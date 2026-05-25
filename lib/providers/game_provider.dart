@@ -8,9 +8,17 @@ import '../models/employee_model.dart';
 import '../models/equipment_model.dart';
 import '../models/mission_model.dart';
 import '../models/event_model.dart';
+import '../models/marketing_model.dart';
+import '../models/achievement_model.dart';
+import '../models/city_model.dart';
+import '../models/upgrade_model.dart';
+import '../models/competitor_model.dart';
+import '../models/production_model.dart';
+import '../models/stock_model.dart';
 import '../services/game_engine.dart';
 import '../services/mission_engine.dart';
 import '../services/save_service.dart';
+import '../services/corporate_engine.dart';
 import '../core/constants.dart';
 
 /// Resultat-Container für UI-Notifications nach Tag-Ende.
@@ -22,6 +30,8 @@ class DayEndResult {
   final int customers;
   final GameEvent? event;
   final Mission? missionCompleted;
+  final List<Achievement> newAchievements;
+  final QuarterlyReport? quarterlyReport;
 
   DayEndResult({
     required this.day,
@@ -31,13 +41,15 @@ class DayEndResult {
     required this.customers,
     this.event,
     this.missionCompleted,
+    this.newAchievements = const [],
+    this.quarterlyReport,
   });
 }
 
 class GameNotifier extends Notifier<GameState?> {
   Timer? _tickTimer;
 
-  /// Last day-end result für Dialog-Anzeige. Wird von Dashboard ge-watch'd.
+  /// Last day-end result für Dialog-Anzeige.
   DayEndResult? lastDayResult;
 
   @override
@@ -50,6 +62,11 @@ class GameNotifier extends Notifier<GameState?> {
       companyName: companyName,
       founderName: founderName,
       startCash: kStartingCash,
+    );
+    // Initial Bewerber-Pool
+    state = state!.copyWith(
+      employeePool: _generateEmployeePool(),
+      lastEmployeePoolDay: 1,
     );
     await SaveService.save(state!);
     _startTickTimer();
@@ -65,7 +82,7 @@ class GameNotifier extends Notifier<GameState?> {
 
   Future<bool> hasSavedGame() => SaveService.hasSave();
 
-  // ── Stündliche Echtzeit-Einnahmen (nur Kontostand-Tropfen) ────────────
+  // ── Stündliche Echtzeit-Einnahmen ────────────────────────────────────
 
   void _startTickTimer() {
     _tickTimer?.cancel();
@@ -77,9 +94,22 @@ class GameNotifier extends Notifier<GameState?> {
 
   void _onHourTick() {
     if (state == null) return;
+    if (state!.shops.isEmpty) return;
+    // Tagesgrenze: 14 Geschäftsstunden. Danach wartet das Spiel auf manuelles
+    // Tag-Ende — verhindert "stundenlang Tag 1 stehen lassen = Millionär".
+    if (state!.currentHour >= kDailyOpenHours.toInt()) return;
+
     final hourlyRevenue = GameEngine.calculateHourlyRevenue(state!);
-    // Kein Day-Auto-End mehr! Spieler entscheidet manuell.
-    state = state!.copyWith(cash: state!.cash + hourlyRevenue);
+    final hourlyCosts = GameEngine.calculateHourlyCosts(state!);
+    final netHour = hourlyRevenue - hourlyCosts;
+
+    state = state!.copyWith(
+      cash: state!.cash + netHour,
+      currentHour: state!.currentHour + 1,
+    );
+
+    // Live-Mission-Check: Cash-basierte Aufträge können sofort triggern.
+    _checkMissions();
   }
 
   void stopTimers() {
@@ -88,45 +118,83 @@ class GameNotifier extends Notifier<GameState?> {
 
   // ── Manueller Tag-Ende ──────────────────────────────────────────────────
 
-  /// Beendet den aktuellen Spieltag. Zieht Kosten/Kredite ab, ruft
-  /// Mission-Check & Event-Auswahl. Speichert das Ergebnis in [lastDayResult]
-  /// damit das UI einen Summary-Dialog zeigen kann.
   void endDay() {
     if (state == null) return;
     final oldState = state!;
     final today = oldState.currentDay;
 
-    // Heutige Werte vor Tagesabschluss messen
     final preview = _previewToday(oldState);
 
-    // GameEngine.processDay verändert Reputation, History, Loans, Cash...
     var newState = GameEngine.processDay(oldState);
 
-    // Heutige Kosten/Loans wurden bereits im stündlichen Tick simuliert?
-    // Nein — der hourly tick fügt nur Revenue zu. Day-End rechnet die Kosten ab.
-    // Da processDay den vollen netCash anwendet (revenue - costs - loanPay) UND
-    // wir aber bereits die Revenue über den ganzen Tag ausgezahlt haben,
-    // müssen wir die doppelt gezahlte Revenue rückerstatten.
-    final dailyRevenueDup = preview.revenue;
+    // Ticks haben bereits einen Anteil von (Revenue - Kosten) zum Cash
+    // hinzugefügt. processDay rechnet jetzt aber den vollen Tag (inkl. Loans).
+    // Korrektur: den Tick-Anteil herausnehmen, damit nichts doppelt verbucht ist.
+    final hoursElapsed = oldState.currentHour.clamp(0, kDailyOpenHours.toInt());
+    final tickShare = hoursElapsed / kDailyOpenHours;
+    final liveNetAlreadyAdded =
+        (preview.revenue - preview.costs) * tickShare;
     newState = newState.copyWith(
-      cash: newState.cash - dailyRevenueDup,
+      cash: newState.cash - liveNetAlreadyAdded,
+      currentHour: 0, // Neuer Tag → Hour-Counter zurücksetzen
     );
 
-    // Kunden-Counter
     newState = newState.copyWith(
       customersServedTotal: oldState.customersServedTotal + preview.customers,
     );
 
-    // Mission-Check (kann Belohnung in Cash addieren)
+    // Mitarbeiter-Pool wöchentlich rotieren
+    if (newState.currentDay - newState.lastEmployeePoolDay >= 7) {
+      newState = newState.copyWith(
+        employeePool: _generateEmployeePool(),
+        lastEmployeePoolDay: newState.currentDay,
+      );
+    }
+
+    // Lucky-Trinkgeld: pro Lucky-Mitarbeiter 5% Chance auf Bonus
+    double luckyBonus = 0;
+    for (final shop in newState.shops) {
+      for (final emp in shop.employees) {
+        if (emp.hasTrait(PersonalityTrait.lucky) && Random().nextDouble() < 0.05) {
+          luckyBonus += 50 + Random().nextInt(150).toDouble();
+        }
+      }
+    }
+    if (luckyBonus > 0) {
+      newState = newState.copyWith(cash: newState.cash + luckyBonus);
+    }
+
+    // Mission-Check
     final missionResult =
         MissionEngine.checkAndApply(newState, newState.missions);
     newState = missionResult.state;
 
-    // Event ziehen (20-30% Chance, je nach Filialen)
+    // Achievement-Check
+    final newAchievs = _checkAchievements(newState);
+    if (newAchievs.isNotEmpty) {
+      newState = newState.copyWith(
+        achievementIds: [
+          ...newState.achievementIds,
+          ...newAchievs.map((a) => a.id),
+        ],
+      );
+    }
+
+    // Event ziehen (gewichtet)
     GameEvent? rolledEvent;
-    final eventChance = (oldState.shops.length * 0.10).clamp(0.0, 0.40);
+    final eventChance =
+        (oldState.shops.length * 0.10).clamp(0.0, 0.45);
     if (Random().nextDouble() < eventChance && oldState.shops.isNotEmpty) {
-      rolledEvent = _rollEvent(oldState.seenEventIds);
+      rolledEvent = _rollEvent(oldState);
+    }
+
+    // Quartalsbericht prüfen
+    QuarterlyReport? quarterlyReport;
+    if (CorporateEngine.isQuarterDue(newState)) {
+      final (newStocks, report) =
+          CorporateEngine.generateQuarterlyReport(newState);
+      newState = newState.copyWith(stocks: newStocks);
+      quarterlyReport = report;
     }
 
     state = newState;
@@ -138,26 +206,34 @@ class GameNotifier extends Notifier<GameState?> {
       customers: preview.customers,
       event: rolledEvent,
       missionCompleted: missionResult.justCompleted,
+      newAchievements: newAchievs,
+      quarterlyReport: quarterlyReport,
     );
     _save();
   }
 
-  /// Spieler wählt eine Event-Option (oder schließt ohne Wahl)
+  /// Spieler wählt eine Event-Option
   void applyEventChoice(GameEvent event, EventChoice choice) {
     if (state == null) return;
     final s = state!;
     final newCash = s.cash + choice.effect.cashDelta;
 
-    // Reputation auf alle Shops anwenden (vereinfacht)
     final newShops = s.shops.map((shop) {
       final newRep =
           (shop.reputation + choice.effect.reputationDelta).clamp(0.5, 5.0);
       return shop.copyWith(reputation: newRep);
     }).toList();
 
+    final newBrand = s.brand.copyWith(
+      brandAwareness:
+          (s.brand.brandAwareness + choice.effect.brandAwarenessDelta)
+              .clamp(0.0, 100.0),
+    );
+
     state = s.copyWith(
       cash: newCash,
       shops: newShops,
+      brand: newBrand,
       seenEventIds: [...s.seenEventIds, event.id],
     );
     _save();
@@ -168,9 +244,9 @@ class GameNotifier extends Notifier<GameState?> {
     double costs = 0;
     int customers = 0;
     for (final shop in s.shops) {
-      revenue += GameEngine.calculateDailyRevenue(shop, day: s.currentDay);
-      costs += GameEngine.calculateDailyCosts(shop, day: s.currentDay);
-      customers += GameEngine.calculateDailyCustomers(shop, day: s.currentDay);
+      revenue += GameEngine.calculateDailyRevenue(shop, day: s.currentDay, state: s);
+      costs += GameEngine.calculateDailyCosts(shop, day: s.currentDay, state: s);
+      customers += GameEngine.calculateDailyCustomers(shop, day: s.currentDay, state: s);
     }
     final loanPayments = s.loans
         .where((l) => !l.isPaidOff)
@@ -183,12 +259,91 @@ class GameNotifier extends Notifier<GameState?> {
     );
   }
 
-  GameEvent? _rollEvent(List<String> seenIds) {
-    // Bevorzuge ungesehene Events, sonst random
-    final unseen =
-        kAllEvents.where((e) => !seenIds.contains(e.id)).toList();
-    final pool = unseen.isNotEmpty ? unseen : kAllEvents;
-    return pool[Random().nextInt(pool.length)];
+  /// Event ziehen mit Anforderungs-Check und Gewichtung.
+  GameEvent? _rollEvent(GameState state) {
+    final hasMetro = state.shops.any((s) {
+      final c = kAllCities.firstWhere(
+        (c) => c.id == s.cityId,
+        orElse: () => kAllCities.first,
+      );
+      return c.tier == CityTier.metropole;
+    });
+
+    // Filter: Anforderungen erfüllt?
+    final eligible = kAllEvents.where((e) {
+      if (e.requirements.minShops > state.shops.length) return false;
+      if (e.requirements.minDay > state.currentDay) return false;
+      if (e.requirements.minCash > state.cash) return false;
+      if (e.requirements.needsMetropolitanShop && !hasMetro) return false;
+      return true;
+    }).toList();
+
+    if (eligible.isEmpty) return null;
+
+    // Bevorzuge ungesehene
+    final unseen = eligible.where((e) => !state.seenEventIds.contains(e.id)).toList();
+    final pool = unseen.isNotEmpty ? unseen : eligible;
+
+    // Gewichtung
+    final weights = pool.map((e) {
+      switch (e.weight) {
+        case EventWeight.rare:
+          return 1;
+        case EventWeight.normal:
+          return 3;
+        case EventWeight.common:
+          return 6;
+      }
+    }).toList();
+    final total = weights.fold(0, (s, w) => s + w);
+    var pick = Random().nextInt(total);
+    for (var i = 0; i < pool.length; i++) {
+      pick -= weights[i];
+      if (pick < 0) return pool[i];
+    }
+    return pool.first;
+  }
+
+  /// Achievements prüfen — returnt NEUE freigeschaltete.
+  List<Achievement> _checkAchievements(GameState state) {
+    final newOnes = <Achievement>[];
+    final shopCount = state.shops.length;
+    final empCount = state.employeeCount;
+    final cash = state.cash;
+    final day = state.currentDay;
+    final customers = state.customersServedTotal;
+    final maxRep = state.shops.isEmpty
+        ? 0.0
+        : state.shops.fold(0.0, (m, s) => s.reputation > m ? s.reputation : m);
+    final brand = state.brand.brandAwareness;
+
+    for (final a in kAllAchievements) {
+      if (state.achievementIds.contains(a.id)) continue;
+      if (a.check(shopCount, empCount, state.totalRevenue, cash, day, customers, maxRep, brand, 0)) {
+        newOnes.add(a);
+      }
+    }
+    return newOnes;
+  }
+
+  /// Mitarbeiter-Pool generieren (8-10 zufällige Kandidaten)
+  List<Employee> _generateEmployeePool() {
+    final rng = Random();
+    final pool = <Employee>[];
+    final count = 8 + rng.nextInt(3);
+    for (var i = 0; i < count; i++) {
+      final type = kEmployeeTypes[rng.nextInt(kEmployeeTypes.length)];
+      final useMale = rng.nextBool();
+      final name = useMale
+          ? kMaleNames[rng.nextInt(kMaleNames.length)]
+          : kFemaleNames[rng.nextInt(kFemaleNames.length)];
+      pool.add(EmployeeFactory.createCandidate(
+        id: 'cand_${DateTime.now().microsecondsSinceEpoch}_$i',
+        type: type,
+        name: name,
+      ));
+    }
+    return pool;
   }
 
   void markTutorialDone() {
@@ -230,6 +385,31 @@ class GameNotifier extends Notifier<GameState?> {
     _save();
   }
 
+  /// Filiale schließen (z.B. bei Insolvenz oder freiwillig). Spieler bekommt
+  /// die Mietkaution (2 Wochen) zurück, alle Mitarbeiter werden entlassen.
+  void closeShop(String shopId) {
+    if (state == null) return;
+    final s = state!;
+    final shop = s.shops.firstWhere(
+      (sh) => sh.id == shopId,
+      orElse: () => s.shops.first,
+    );
+    final kaution = shop.weeklyRent * 2;
+    final newShops = s.shops.where((sh) => sh.id != shopId).toList();
+    state = s.copyWith(
+      cash: s.cash + kaution,
+      shops: newShops,
+    );
+    _save();
+  }
+
+  /// Insolvenz-Status: Cash unter Schwelle?
+  bool get isBankrupt {
+    final s = state;
+    if (s == null) return false;
+    return s.cash < 0;
+  }
+
   void updateProductPrice(String shopId, String productId, double newPrice) {
     if (state == null) return;
     state = GameEngine.updateProductPrice(state!, shopId, productId, newPrice);
@@ -262,28 +442,94 @@ class GameNotifier extends Notifier<GameState?> {
     _save();
   }
 
+  /// Marketing-Kampagne buchen
+  void bookCampaign(String shopId, MarketingCampaign campaign) {
+    if (state == null) return;
+    state = GameEngine.bookCampaign(state!, shopId, campaign);
+    _save();
+  }
+
+  /// Permanenten Shop-Upgrade kaufen (WLAN, Musik, Klima, etc.)
+  void buyUpgrade(String shopId, UpgradeData upgrade) {
+    if (state == null) return;
+    state = GameEngine.buyUpgrade(state!, shopId, upgrade);
+    _save();
+  }
+
+  // ── Corporate: IPO / Facilities / M&A / Manager ─────────────────────────
+
+  /// IPO durchführen — Spieler gibt Anteile ab für großen Cash-Schub.
+  void performIPO(double percentToFloat) {
+    if (state == null) return;
+    state = CorporateEngine.performIPO(state!, percentToFloat);
+    _save();
+  }
+
+  /// Produktions-Anlage bauen
+  void buildFacility(FacilityTemplate template) {
+    if (state == null) return;
+    state = CorporateEngine.buildFacility(state!, template);
+    _save();
+  }
+
+  /// Konkurrenten aufkaufen
+  void acquireCompetitor(Competitor c) {
+    if (state == null) return;
+    state = CorporateEngine.acquireCompetitor(state!, c);
+    _save();
+  }
+
+  /// Auto-Hire pro Filiale togglen — HR-Manager stellt automatisch ein
+  /// wenn Engpass + Cash vorhanden.
+  void toggleAutoHire(String shopId) {
+    if (state == null) return;
+    final s = state!;
+    final newShops = s.shops.map((shop) {
+      if (shop.id != shopId) return shop;
+      return shop.copyWith(autoHire: !shop.autoHire);
+    }).toList();
+    state = s.copyWith(shops: newShops);
+    _save();
+  }
+
+  /// Mitarbeiter zum Manager machen
+  void toggleManager(String employeeId) {
+    if (state == null) return;
+    final s = state!;
+    if (s.managerEmployeeIds.contains(employeeId)) {
+      state = CorporateEngine.unassignManager(s, employeeId);
+    } else {
+      state = CorporateEngine.assignManager(s, employeeId);
+    }
+    _save();
+  }
+
+  /// Pool manuell refreshen — kostet 500 € (Anti-Spam)
+  void refreshEmployeePool() {
+    if (state == null) return;
+    if (state!.cash < 500) return;
+    state = state!.copyWith(
+      cash: state!.cash - 500,
+      employeePool: _generateEmployeePool(),
+      lastEmployeePoolDay: state!.currentDay,
+    );
+    _save();
+  }
+
   Future<void> deleteGame() async {
     stopTimers();
     await SaveService.deleteSave();
     state = null;
   }
 
-  /// Prüft nach jeder Spielaktion ob eine Mission gerade erfüllt wurde.
-  /// Belohnung wird direkt auf den State angewendet.
-  /// Schreibt die erfüllte Mission in [instantMissionProvider] damit das UI
-  /// SOFORT (nicht erst am Tag-Ende) einen Glückwunsch-Dialog zeigt.
-  /// Kettet mehrere Erledigungen: falls eine Mission durch die Belohnung
-  /// (Cash) eine andere Mission triggert, wird auch die geprüft.
   Mission? _checkMissions() {
     if (state == null) return null;
     Mission? firstCompleted;
-    // Maximal 5 Iterationen (Schutz vor Endlos-Schleife)
     for (int i = 0; i < 5; i++) {
       final r = MissionEngine.checkAndApply(state!, state!.missions);
       state = r.state;
       if (r.justCompleted == null) break;
       firstCompleted ??= r.justCompleted;
-      // ins Stream-Provider schreiben
       ref.read(instantMissionProvider.notifier).state = r.justCompleted;
     }
     return firstCompleted;
@@ -312,34 +558,31 @@ final gameProvider = NotifierProvider<GameNotifier, GameState?>(GameNotifier.new
 final dailyRevenueProvider = Provider<double>((ref) {
   final game = ref.watch(gameProvider);
   if (game == null) return 0;
-  return game.shops.fold(0.0, (sum, s) => sum + GameEngine.calculateDailyRevenue(s, day: game.currentDay));
+  return game.shops.fold(0.0,
+      (sum, s) => sum + GameEngine.calculateDailyRevenue(s, day: game.currentDay, state: game));
 });
 
 final dailyCostsProvider = Provider<double>((ref) {
   final game = ref.watch(gameProvider);
   if (game == null) return 0;
-  return game.shops.fold(0.0, (sum, s) => sum + GameEngine.calculateDailyCosts(s, day: game.currentDay));
+  return game.shops.fold(0.0,
+      (sum, s) => sum + GameEngine.calculateDailyCosts(s, day: game.currentDay, state: game));
 });
 
 final dailyProfitProvider = Provider<double>((ref) {
   return ref.watch(dailyRevenueProvider) - ref.watch(dailyCostsProvider);
 });
 
-/// Aktive Mission (nicht null bis alle erledigt sind)
 final activeMissionProvider = Provider<Mission?>((ref) {
   final game = ref.watch(gameProvider);
   if (game == null) return null;
   return MissionEngine.activeMission(game.missions);
 });
 
-/// Progress (0..1) der aktiven Mission
 final activeMissionProgressProvider = Provider<double>((ref) {
   final game = ref.watch(gameProvider);
   if (game == null) return 0;
   return MissionEngine.activeProgress(game, game.missions);
 });
 
-/// One-shot Stream-Provider: enthält die gerade soeben erfüllte Mission
-/// (sofort, nicht erst am Tag-Ende). UI lauscht via ref.listen und zeigt
-/// den Glückwunsch-Dialog. Nach dem Anzeigen setzt UI auf null zurück.
 final instantMissionProvider = StateProvider<Mission?>((_) => null);
