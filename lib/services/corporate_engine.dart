@@ -8,6 +8,7 @@ import '../models/shop_model.dart';
 import '../models/product_model.dart';
 import '../models/city_model.dart';
 import '../core/constants.dart';
+import 'game_engine.dart';
 
 /// Corporate-Level-Operationen: IPO, Aktienkurs, Produktions-Anlagen, M&A.
 ///
@@ -318,58 +319,71 @@ class CorporateEngine {
     );
   }
 
-  /// Auto-Hire: pro Filiale mit `autoHire=true` wird bei Engpass automatisch
-  /// der beste passende Kandidat aus dem Bewerber-Pool eingestellt.
-  /// Spieler zahlt dafür Recruiter-Pauschale (3-Tages-Gehalt).
+  /// Auto-Hire: pro Filiale mit `autoHire=true` werden automatisch
+  /// Kandidaten eingestellt, bis der Mitarbeiter-Cap erreicht ist,
+  /// der Pool leer ist oder das Budget nicht ausreicht.
+  ///
+  /// Bis zu [_kMaxHiresPerShopPerDay] Hires pro Filiale pro Tag-Ende,
+  /// um Edge-Cases bei sehr kleinen Pools zu vermeiden.
+  ///
+  /// Recruiter-Pauschale: 3 Tages-Gehälter pro eingestelltem Kandidaten.
+  static const int _kMaxHiresPerShopPerDay = 5;
+
   static GameState applyAutoHire(GameState state) {
     if (state.employeePool.isEmpty) return state;
     var workingState = state;
 
-    for (final shop in List.from(state.shops)) {
-      if (!shop.autoHire) continue;
-      // Engpass-Check: rekommendiert mehr Mitarbeiter?
-      final stats = _shopUtilization(workingState, shop);
-      if (stats < 0.85) continue; // weniger als 85% ausgelastet → kein Hire
+    for (final initialShop in state.shops) {
+      if (!initialShop.autoHire) continue;
 
-      // Max-Cap erreicht?
-      final maxEmp = _maxEmployeesForCity(shop.cityId);
-      if (shop.employees.length >= maxEmp) continue;
+      final maxEmp = _maxEmployeesForCity(initialShop.cityId);
+      int hiresThisShop = 0;
 
-      // Besten Kandidaten finden
-      if (workingState.employeePool.isEmpty) break;
-      final sorted = List.from(workingState.employeePool);
-      sorted.sort((a, b) =>
-          (b.overallScore as double).compareTo(a.overallScore as double));
-      final best = sorted.first;
+      while (hiresThisShop < _kMaxHiresPerShopPerDay) {
+        // Aktuellen Zustand dieser Filiale aus workingState holen
+        final shop = workingState.shops.firstWhere(
+          (s) => s.id == initialShop.id,
+          orElse: () => initialShop,
+        );
 
-      // Recruiter-Pauschale: 3 Tagesgehälter
-      final fee = best.salaryPerDay * 3;
-      if (workingState.cash < fee) continue;
+        // Mitarbeiter-Cap erreicht?
+        if (shop.employees.length >= maxEmp) break;
 
-      // Einstellen
-      final newPool =
-          workingState.employeePool.where((e) => e.id != best.id).toList();
-      final newShops = workingState.shops.map((s) {
-        if (s.id != shop.id) return s;
-        return s.copyWith(employees: [...s.employees, best]);
-      }).toList();
-      workingState = workingState.copyWith(
-        cash: workingState.cash - fee,
-        shops: newShops,
-        employeePool: newPool,
-      );
+        // Echter Engpass-Check via GameEngine (Kapazität vs. Nachfrage)
+        final needsHelp =
+            GameEngine.isCapacityLimited(shop, state: workingState);
+        if (!needsHelp) break;
+
+        // Pool leer?
+        if (workingState.employeePool.isEmpty) break;
+
+        // Besten Kandidaten nach overallScore auswählen
+        final sorted = List.from(workingState.employeePool)
+          ..sort((a, b) => b.overallScore.compareTo(a.overallScore));
+        final best = sorted.first;
+
+        // Recruiter-Pauschale: 3 Tages-Gehälter
+        final fee = best.salaryPerDay * 3;
+        if (workingState.cash < fee) break;
+
+        // Einstellen
+        final newPool = workingState.employeePool
+            .where((e) => e.id != best.id)
+            .toList();
+        final newShops = workingState.shops.map((s) {
+          if (s.id != shop.id) return s;
+          return s.copyWith(employees: [...s.employees, best]);
+        }).toList();
+
+        workingState = workingState.copyWith(
+          cash: workingState.cash - fee,
+          shops: newShops,
+          employeePool: newPool,
+        );
+        hiresThisShop++;
+      }
     }
     return workingState;
-  }
-
-  /// Vereinfachter Auslastungs-Check für Auto-Hire
-  static double _shopUtilization(GameState state, dynamic shop) {
-    // Vereinfachung: nur "hat genug Mitarbeiter?" — wenn 1 oder weniger
-    // pro 100 Foot-Traffic, dann Engpass.
-    final ft = shop.footTraffic as int;
-    final empCount = (shop.employees as List).length;
-    final density = empCount / (ft / 1000.0);
-    return density < 1.0 ? 1.0 : 0.5;
   }
 
   static int _maxEmployeesForCity(String cityId) {

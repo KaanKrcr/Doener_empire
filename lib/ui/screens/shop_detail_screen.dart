@@ -1838,22 +1838,32 @@ class _UpgradesTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Gruppiert nach Kategorie
+    final game = ref.watch(gameProvider);
+    final globalIds = game?.globalUpgradeIds ?? const [];
+
+    // Nur Shop-Upgrades hier zeigen; globale → Konzern-Tab
+    const shopOnlyUpgrades = kShopUpgrades;
     final byCategory = <UpgradeCategory, List<UpgradeData>>{};
-    for (final u in kAllUpgrades) {
+    for (final u in shopOnlyUpgrades) {
       byCategory.putIfAbsent(u.category, () => []).add(u);
     }
 
-    // Bereits gekaufte oben anzeigen
-    final owned =
+    // Gekaufte Shop-Upgrades
+    final ownedShop =
         shop.upgradeIds.map((id) => upgradeById(id)).whereType<UpgradeData>().toList();
-    final monthlyTotal =
-        owned.fold(0.0, (s, u) => s + u.monthlyCost);
+    // Aktive globale Upgrades die auch diese Filiale betreffen
+    final activeGlobal = globalIds
+        .map((id) => upgradeById(id))
+        .whereType<UpgradeData>()
+        .toList();
+
+    final monthlyTotal = ownedShop.fold(0.0, (s, u) => s + u.monthlyCost);
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        if (owned.isNotEmpty) ...[
+        // ─ Aktive Shop-Upgrades ─────────────────────────────────────────
+        if (ownedShop.isNotEmpty) ...[
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -1871,7 +1881,7 @@ class _UpgradesTab extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${owned.length} aktive Ausstattung${owned.length == 1 ? "" : "en"}',
+                        '${ownedShop.length} aktive Ausstattung${ownedShop.length == 1 ? "" : "en"}',
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
@@ -1889,8 +1899,38 @@ class _UpgradesTab extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
         ],
+
+        // ─ Aktive Konzern-Upgrades (Info-Banner) ─────────────────────────
+        if (activeGlobal.isNotEmpty) ...[
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.secondary.withAlpha(18),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.secondary.withAlpha(60)),
+            ),
+            child: Row(
+              children: [
+                const Text('🏢', style: TextStyle(fontSize: 18)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Konzern-Upgrades aktiv: ${activeGlobal.map((u) => u.name).join(", ")}',
+                    style: const TextStyle(
+                        fontSize: 11, color: AppColors.textSecondary),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+
+        const SizedBox(height: 8),
+
+        // ─ Kaufbare Shop-Upgrades ─────────────────────────────────────────
         for (final cat in UpgradeCategory.values) ...[
           if (byCategory[cat] != null) ...[
             Padding(
@@ -2013,6 +2053,12 @@ class _UpgradeCard extends StatelessWidget {
                 _UpgradeStatChip(
                   label: '+Marke',
                   color: AppColors.secondary,
+                ),
+              if (upgrade.isDelivery)
+                _UpgradeStatChip(
+                  label:
+                      '${(upgrade.deliveryCommissionRate * 100).round()}% Provision',
+                  color: AppColors.warning,
                 ),
             ],
           ),

@@ -156,6 +156,7 @@ class GameState {
   final StockState stocks;                 // Börse / Aktienkurs
   final List<ProductionFacility> facilities; // Produktions-Anlagen
   final List<String> managerEmployeeIds;   // Mitarbeiter-IDs, die Manager sind
+  final List<String> globalUpgradeIds;    // Konzern-Upgrades (scope = global)
 
   const GameState({
     required this.companyName,
@@ -181,6 +182,7 @@ class GameState {
     this.stocks = const StockState(),
     this.facilities = const [],
     this.managerEmployeeIds = const [],
+    this.globalUpgradeIds = const [],
   });
 
   factory GameState.initial({
@@ -212,6 +214,7 @@ class GameState {
       stocks: const StockState(),
       facilities: const [],
       managerEmployeeIds: const [],
+      globalUpgradeIds: const [],
     );
   }
 
@@ -252,6 +255,7 @@ class GameState {
     StockState? stocks,
     List<ProductionFacility>? facilities,
     List<String>? managerEmployeeIds,
+    List<String>? globalUpgradeIds,
   }) {
     return GameState(
       companyName: companyName ?? this.companyName,
@@ -278,6 +282,7 @@ class GameState {
       stocks: stocks ?? this.stocks,
       facilities: facilities ?? this.facilities,
       managerEmployeeIds: managerEmployeeIds ?? this.managerEmployeeIds,
+      globalUpgradeIds: globalUpgradeIds ?? this.globalUpgradeIds,
     );
   }
 
@@ -305,6 +310,7 @@ class GameState {
         'stocks': stocks.toJson(),
         'facilities': facilities.map((f) => f.toJson()).toList(),
         'managerEmployeeIds': managerEmployeeIds,
+        'globalUpgradeIds': globalUpgradeIds,
       };
 
   factory GameState.fromJson(Map<String, dynamic> j) {
@@ -372,6 +378,8 @@ class GameState {
           const [],
       managerEmployeeIds: List<String>.from(
           j['managerEmployeeIds'] as List? ?? const []),
+      globalUpgradeIds: List<String>.from(
+          j['globalUpgradeIds'] as List? ?? const []),
     );
   }
 }

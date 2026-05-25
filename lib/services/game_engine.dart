@@ -57,9 +57,9 @@ class GameEngine {
     final campaignBoost = _activeCampaignBoost(shop, effectiveDay);
     final campaignAOV = _activeCampaignAvgOrderMod(shop, effectiveDay);
 
-    // Permanente Upgrades (WLAN, Musik, etc.)
-    final upgradeBoost = _upgradeCustomerBoost(shop);
-    final upgradeAOV = _upgradeAvgOrderBoost(shop);
+    // Permanente Upgrades (WLAN, Musik, etc.) — inkl. aktiver globaler Upgrades
+    final upgradeBoost = _upgradeCustomerBoost(shop, state);
+    final upgradeAOV = _upgradeAvgOrderBoost(shop, state);
 
     double totalDemand = 0;
     double totalRevenue = 0;
@@ -215,11 +215,16 @@ class GameEngine {
     final ingredientRatio = _weightedIngredientRatio(activeMenu);
     final ingredients = revenue * ingredientRatio * (1 - ingredientSaving);
 
+    // Liefer-Provision (Lieferando etc.) — nie negativ, immer <= Umsatz
+    final deliveryCommission =
+        _deliveryCommissionCost(shop, revenue, state).clamp(0.0, revenue);
+
     return ShopCostBreakdown(
         rent: rent,
         salaries: salaries,
         ingredients: ingredients,
-        upgrades: upgrades);
+        upgrades: upgrades,
+        deliveryCommission: deliveryCommission);
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -272,7 +277,9 @@ class GameEngine {
       );
     }).toList();
 
-    final totalCosts = totalRent + totalSalaries + totalIngredients;
+    // Laufende Kosten globaler Konzern-Upgrades (einmal pro Tag, nicht pro Shop)
+    final globalUpgradeCost = globalUpgradeDailyCost(stateWithComp);
+    final totalCosts = totalRent + totalSalaries + totalIngredients + globalUpgradeCost;
 
     // Kreditraten abziehen
     double loanPayments = 0;
@@ -354,9 +361,9 @@ class GameEngine {
     var newAwareness = brand.brandAwareness +
         (dailyCustomers / 100) * 0.02 +
         (dailyRevenue / 1000) * 0.005;
-    // Plus Upgrade-Boost (Premium-Inneneinrichtung, Loyalty-App)
+    // Plus Upgrade-Boost (Premium-Inneneinrichtung, Loyalty-App, globale Upgrades)
     for (final shop in shops) {
-      newAwareness += _upgradeBrandPerDay(shop);
+      newAwareness += _upgradeBrandPerDay(shop, state);
     }
     // Plateaut: je höher, desto langsamer wächst es weiter
     if (newAwareness > 30) {
@@ -403,10 +410,13 @@ class GameEngine {
   /// Wird im Tick zusammen mit hourlyRevenue verrechnet, damit der Spieler
   /// auch laufend Kosten merkt (Realismus + verhindert Endlos-Cash-Farmen).
   static double calculateHourlyCosts(GameState state) {
-    return state.shops.fold(0.0, (sum, shop) {
+    final shopCosts = state.shops.fold(0.0, (sum, shop) {
       return sum +
           calculateDailyCosts(shop, day: state.currentDay, state: state) / kDailyOpenHours;
     });
+    // Globale Upgrade-Kosten anteilig über den Tag verteilen
+    final globalCosts = globalUpgradeDailyCost(state) / kDailyOpenHours;
+    return shopCosts + globalCosts;
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -435,10 +445,25 @@ class GameEngine {
     );
   }
 
-  /// Permanenten Upgrade kaufen (z.B. WLAN, Klimaanlage, Stammkunden-App)
+  /// Permanenten Upgrade kaufen.
+  ///
+  /// • scope == shop   → nur diese Filiale; shopId muss übergeben werden.
+  /// • scope == global → konzernweit; shopId wird ignoriert, aber zur
+  ///   Konsistenz weiterhin akzeptiert.
   static GameState buyUpgrade(
       GameState state, String shopId, UpgradeData upgrade) {
     if (state.cash < upgrade.installCost) return state;
+
+    if (upgrade.isGlobal) {
+      // Bereits vorhanden?
+      if (state.globalUpgradeIds.contains(upgrade.id)) return state;
+      return _trackInvestment(state, upgrade.installCost).copyWith(
+        cash: state.cash - upgrade.installCost,
+        globalUpgradeIds: [...state.globalUpgradeIds, upgrade.id],
+      );
+    }
+
+    // Shop-Upgrade
     final newShops = state.shops.map((shop) {
       if (shop.id != shopId) return shop;
       if (shop.hasUpgrade(upgrade.id)) return shop;
@@ -731,49 +756,90 @@ class GameEngine {
 
   // ── Upgrade-Helpers ──────────────────────────────────────────────────────
 
-  static double _upgradeCustomerBoost(Shop shop) {
+  /// Effektive Upgrade-IDs: Shop-eigene + aktive globale Konzern-Upgrades.
+  /// Verhindert Doppelzählung bei Saves, die loyalty_app noch pro Shop hatten.
+  static List<String> _effectiveUpgradeIds(Shop shop, GameState? state) {
+    final ids = <String>{...shop.upgradeIds};
+    if (state != null) {
+      ids.addAll(state.globalUpgradeIds);
+    }
+    return ids.toList();
+  }
+
+  static double _upgradeCustomerBoost(Shop shop, [GameState? state]) {
     double boost = 0;
-    for (final id in shop.upgradeIds) {
+    for (final id in _effectiveUpgradeIds(shop, state)) {
       final u = upgradeById(id);
       if (u != null) boost += u.customerBoost;
     }
     return boost;
   }
 
-  static double _upgradeAvgOrderBoost(Shop shop) {
+  static double _upgradeAvgOrderBoost(Shop shop, [GameState? state]) {
     double boost = 0;
-    for (final id in shop.upgradeIds) {
+    for (final id in _effectiveUpgradeIds(shop, state)) {
       final u = upgradeById(id);
       if (u != null) boost += u.avgOrderValueBoost;
     }
     return boost;
   }
 
+  /// Tägliche Laufkosten der Upgrades.
+  /// Globale Upgrades werden nur EINMAL für den ganzen Konzern gezählt
+  /// (in calculateHourlyCosts / processDay), nicht pro Filiale.
   static double _upgradeDailyCost(Shop shop) {
     double cost = 0;
     for (final id in shop.upgradeIds) {
+      final u = upgradeById(id);
+      if (u != null && !u.isGlobal) cost += u.dailyCost;
+    }
+    return cost;
+  }
+
+  /// Tägliche Laufkosten aller globalen Upgrades (einmalig, konzernweit).
+  static double globalUpgradeDailyCost(GameState state) {
+    double cost = 0;
+    for (final id in state.globalUpgradeIds) {
       final u = upgradeById(id);
       if (u != null) cost += u.dailyCost;
     }
     return cost;
   }
 
-  static double _upgradeReputationPerDay(Shop shop) {
+  static double _upgradeReputationPerDay(Shop shop, [GameState? state]) {
     double v = 0;
-    for (final id in shop.upgradeIds) {
+    for (final id in _effectiveUpgradeIds(shop, state)) {
       final u = upgradeById(id);
       if (u != null) v += u.reputationPerDay;
     }
     return v;
   }
 
-  static double _upgradeBrandPerDay(Shop shop) {
+  static double _upgradeBrandPerDay(Shop shop, [GameState? state]) {
     double v = 0;
-    for (final id in shop.upgradeIds) {
+    for (final id in _effectiveUpgradeIds(shop, state)) {
       final u = upgradeById(id);
       if (u != null) v += u.brandPerDay;
     }
     return v;
+  }
+
+  /// Tägliche Liefer-Provision für einen Shop.
+  /// = revenue × deliveryRevenueFraction × effectiveCommissionRate
+  ///
+  /// Wenn das globale Upgrade [eigen_lieferdienst] aktiv ist, sinkt die
+  /// Provision auf 8 % statt der Plattform-Rate.
+  static double _deliveryCommissionCost(
+      Shop shop, double revenue, GameState? state) {
+    double cost = 0;
+    final hasOwnApp = state?.globalUpgradeIds.contains('eigen_lieferdienst') ?? false;
+    for (final id in shop.upgradeIds) {
+      final u = upgradeById(id);
+      if (u == null || !u.isDelivery) continue;
+      final rate = hasOwnApp ? 0.08 : u.deliveryCommissionRate;
+      cost += revenue * u.deliveryRevenueFraction * rate;
+    }
+    return cost;
   }
 
   /// Aktive Kampagnen-Boost auf Kundenzahl (additiv).
@@ -869,8 +935,8 @@ class GameEngine {
       sumScore += campaign.reputationBoostPerDay;
     }
 
-    // Permanente Upgrades (WLAN, Musik, etc.) — Reputations-Boost
-    sumScore += _upgradeReputationPerDay(shop);
+    // Permanente Upgrades (WLAN, Musik, etc.) — inkl. globale Konzern-Upgrades
+    sumScore += _upgradeReputationPerDay(shop, state);
 
     if (n == 0) return shop.reputation;
     final delta = sumScore / n;
@@ -934,11 +1000,18 @@ class ShopCostBreakdown {
   final double salaries;
   final double ingredients;
   final double upgrades;
+
+  /// Liefer-Provision (Lieferando etc.) — wird separat ausgewiesen,
+  /// damit Umsatz niemals durch diesen Posten negativ wird.
+  final double deliveryCommission;
+
   const ShopCostBreakdown({
     required this.rent,
     required this.salaries,
     required this.ingredients,
     this.upgrades = 0,
+    this.deliveryCommission = 0,
   });
-  double get total => rent + salaries + ingredients + upgrades;
+
+  double get total => rent + salaries + ingredients + upgrades + deliveryCommission;
 }
