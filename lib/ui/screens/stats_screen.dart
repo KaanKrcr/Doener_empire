@@ -5,6 +5,9 @@ import '../../core/constants.dart';
 import '../../models/competitor_model.dart';
 import '../../models/achievement_model.dart';
 import '../../models/city_model.dart';
+import '../../models/game_state.dart';
+import '../../models/shop_model.dart';
+import '../../models/time_profile_model.dart';
 import '../../providers/game_provider.dart';
 import '../../services/game_engine.dart';
 
@@ -95,7 +98,7 @@ class StatsScreen extends ConsumerWidget {
 }
 
 class _BrandCard extends StatelessWidget {
-  final dynamic game;
+  final GameState game;
   const _BrandCard({required this.game});
 
   @override
@@ -207,15 +210,15 @@ class _BrandCard extends StatelessWidget {
 }
 
 class _TimeHeatmapCard extends StatelessWidget {
-  final dynamic game;
+  final GameState game;
   const _TimeHeatmapCard({required this.game});
 
   @override
   Widget build(BuildContext context) {
     if (game.shops.isEmpty) return const SizedBox.shrink();
     // beste Filiale = höchste Reputation
-    final shops = List<dynamic>.from(game.shops);
-    shops.sort((a, b) => (b.reputation as double).compareTo(a.reputation));
+    final shops = List<Shop>.from(game.shops);
+    shops.sort((a, b) => b.reputation.compareTo(a.reputation));
     final shop = shops.first;
     final hours = GameEngine.hourlyCustomerCurve(shop, game.currentDay);
     final maxV = hours.isEmpty ? 1.0 : hours.reduce((a, b) => a > b ? a : b);
@@ -245,7 +248,7 @@ class _TimeHeatmapCard extends StatelessWidget {
               ),
               const Spacer(),
               Text(
-                shop.name as String,
+                shop.displayName,
                 style: const TextStyle(
                   fontSize: 12,
                   color: AppColors.textSecondary,
@@ -320,12 +323,12 @@ class _TimeHeatmapCard extends StatelessWidget {
 }
 
 class _AchievementsCard extends StatelessWidget {
-  final dynamic game;
+  final GameState game;
   const _AchievementsCard({required this.game});
 
   @override
   Widget build(BuildContext context) {
-    final unlocked = game.achievementIds as List<String>;
+    final unlocked = game.achievementIds;
     final total = kAllAchievements.length;
     final progress = total == 0 ? 0.0 : unlocked.length / total;
     final totalPoints = unlocked.fold(0, (s, id) {
@@ -428,8 +431,8 @@ class _AchievementChip extends StatelessWidget {
           children: [
             Opacity(
               opacity: unlocked ? 1.0 : 0.35,
-              child: Text(achievement.emoji,
-                  style: const TextStyle(fontSize: 14)),
+              child:
+                  Text(achievement.emoji, style: const TextStyle(fontSize: 14)),
             ),
             const SizedBox(width: 6),
             Text(
@@ -448,7 +451,7 @@ class _AchievementChip extends StatelessWidget {
 }
 
 class _CompetitorsCard extends StatelessWidget {
-  final dynamic game;
+  final GameState game;
   const _CompetitorsCard({required this.game});
 
   @override
@@ -508,8 +511,7 @@ class _CompetitorsCard extends StatelessWidget {
             for (final entry in byCity.entries) ...[
               _CityHeader(cityId: entry.key),
               const SizedBox(height: 6),
-              for (final c in entry.value)
-                _CompetitorRow(competitor: c),
+              for (final c in entry.value) _CompetitorRow(competitor: c),
               const SizedBox(height: 10),
             ],
         ],
@@ -638,12 +640,12 @@ class _CompetitorRow extends StatelessWidget {
 }
 
 class _CityRepCard extends StatelessWidget {
-  final dynamic game;
+  final GameState game;
   const _CityRepCard({required this.game});
 
   @override
   Widget build(BuildContext context) {
-    final reps = game.brand.cityReputation as Map<String, double>;
+    final reps = game.brand.cityReputation;
     final entries = reps.entries.toList();
     entries.sort((a, b) => b.value.compareTo(a.value));
 

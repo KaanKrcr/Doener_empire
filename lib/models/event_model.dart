@@ -60,8 +60,8 @@ class EventChoice {
 
 class EventEffect {
   final double cashDelta;
-  final double reputationDelta;       // wirkt auf ALLE Filialen
-  final double brandAwarenessDelta;   // wirkt auf Marken-Bekanntheit
+  final double reputationDelta; // wirkt auf ALLE Filialen
+  final double brandAwarenessDelta; // wirkt auf Marken-Bekanntheit
   final String resultMessage;
 
   const EventEffect({
@@ -117,8 +117,7 @@ const List<GameEvent> kAllEvents = [
   GameEvent(
     id: 'employee_sick',
     title: 'Mitarbeiter krank gemeldet',
-    description:
-        'Einer deiner Mitarbeiter ist krank. Wie reagierst du?',
+    description: 'Einer deiner Mitarbeiter ist krank. Wie reagierst du?',
     emoji: '🤒',
     category: EventCategory.bad,
     weight: EventWeight.common,
@@ -128,14 +127,16 @@ const List<GameEvent> kAllEvents = [
         effect: EventEffect(
           cashDelta: -150,
           reputationDelta: 0.05,
-          resultMessage: 'Lohnfortzahlung kostet, aber das Team weiß es zu schätzen.',
+          resultMessage:
+              'Lohnfortzahlung kostet, aber das Team weiß es zu schätzen.',
         ),
       ),
       EventChoice(
         label: 'Aushilfe für 1 Tag mieten (400 €)',
         effect: EventEffect(
           cashDelta: -400,
-          resultMessage: 'Aushilfe gefunden — Tagesbetrieb läuft ohne Einbußen.',
+          resultMessage:
+              'Aushilfe gefunden — Tagesbetrieb läuft ohne Einbußen.',
         ),
         cost: 400,
       ),
@@ -144,7 +145,8 @@ const List<GameEvent> kAllEvents = [
         effect: EventEffect(
           cashDelta: 100,
           reputationDelta: -0.05,
-          resultMessage: 'Du sparst Geld, aber bist erschöpft — Service leidet leicht.',
+          resultMessage:
+              'Du sparst Geld, aber bist erschöpft — Service leidet leicht.',
         ),
       ),
     ],
@@ -188,8 +190,7 @@ const List<GameEvent> kAllEvents = [
         effect: EventEffect(
           cashDelta: -500,
           reputationDelta: 0.2,
-          resultMessage:
-              'Stammkundschaft bleibt dank Aktion treu.',
+          resultMessage: 'Stammkundschaft bleibt dank Aktion treu.',
         ),
       ),
       EventChoice(
@@ -233,7 +234,8 @@ const List<GameEvent> kAllEvents = [
         effect: EventEffect(
           cashDelta: 500,
           reputationDelta: -0.20,
-          resultMessage: 'Geld gespart, aber Connaisseure schmecken den Unterschied.',
+          resultMessage:
+              'Geld gespart, aber Connaisseure schmecken den Unterschied.',
         ),
       ),
     ],
@@ -339,8 +341,7 @@ const List<GameEvent> kAllEvents = [
         effect: EventEffect(
           cashDelta: 2500,
           reputationDelta: 0.2,
-          resultMessage:
-              'Catering perfekt geliefert — 2.500 € extra Umsatz!',
+          resultMessage: 'Catering perfekt geliefert — 2.500 € extra Umsatz!',
         ),
       ),
       EventChoice(
@@ -429,7 +430,8 @@ const List<GameEvent> kAllEvents = [
         label: 'Diskret bleiben',
         effect: EventEffect(
           reputationDelta: 0.2,
-          resultMessage: 'Klassische Diskretion — der Koch empfiehlt dich privat weiter.',
+          resultMessage:
+              'Klassische Diskretion — der Koch empfiehlt dich privat weiter.',
         ),
       ),
     ],
@@ -464,8 +466,7 @@ const List<GameEvent> kAllEvents = [
   GameEvent(
     id: 'rainy_day',
     title: 'Dauerregen',
-    description:
-        'Den ganzen Tag schüttet es. Wenige Passanten heute.',
+    description: 'Den ganzen Tag schüttet es. Wenige Passanten heute.',
     emoji: '🌧️',
     category: EventCategory.neutral,
     weight: EventWeight.common,
@@ -474,7 +475,8 @@ const List<GameEvent> kAllEvents = [
         label: 'Lieferdienst anbieten (300 € Aufbau)',
         effect: EventEffect(
           cashDelta: 600,
-          resultMessage: 'Lieferaufträge gleichen den Ausfall aus — +600 € netto.',
+          resultMessage:
+              'Lieferaufträge gleichen den Ausfall aus — +600 € netto.',
         ),
         cost: 300,
       ),
@@ -482,7 +484,8 @@ const List<GameEvent> kAllEvents = [
         label: 'Personal eher gehen lassen',
         effect: EventEffect(
           cashDelta: -200,
-          resultMessage: 'Halber Tag = weniger Lohnkosten, aber auch weniger Umsatz.',
+          resultMessage:
+              'Halber Tag = weniger Lohnkosten, aber auch weniger Umsatz.',
         ),
       ),
     ],
@@ -516,8 +519,7 @@ const List<GameEvent> kAllEvents = [
   GameEvent(
     id: 'employee_quit_threat',
     title: 'Mitarbeiter droht zu kündigen',
-    description:
-        'Dein bester Mitarbeiter hat ein Angebot von der Konkurrenz.',
+    description: 'Dein bester Mitarbeiter hat ein Angebot von der Konkurrenz.',
     emoji: '😤',
     category: EventCategory.bad,
     requirements: EventRequirements(minShops: 2, minDay: 15),
@@ -536,7 +538,8 @@ const List<GameEvent> kAllEvents = [
         effect: EventEffect(
           cashDelta: 0,
           reputationDelta: -0.15,
-          resultMessage: 'Du verlierst Erfahrung. Andere Mitarbeiter sind nervös.',
+          resultMessage:
+              'Du verlierst Erfahrung. Andere Mitarbeiter sind nervös.',
         ),
       ),
     ],
@@ -572,8 +575,7 @@ const List<GameEvent> kAllEvents = [
   GameEvent(
     id: 'tax_audit',
     title: 'Finanzamt-Prüfung',
-    description:
-        'Das Finanzamt schaut sich deine Bücher an.',
+    description: 'Das Finanzamt schaut sich deine Bücher an.',
     emoji: '🧾',
     category: EventCategory.bad,
     requirements: EventRequirements(minDay: 40, minShops: 2),
@@ -590,7 +592,8 @@ const List<GameEvent> kAllEvents = [
         effect: EventEffect(
           cashDelta: -1500,
           reputationDelta: 0.10,
-          resultMessage: 'Profi findet Optimierungen — und das Image als seriös bleibt erhalten.',
+          resultMessage:
+              'Profi findet Optimierungen — und das Image als seriös bleibt erhalten.',
         ),
         cost: 1500,
       ),

@@ -25,19 +25,27 @@ enum AchievementTier { bronze, silber, gold, platin }
 extension AchievementTierLabel on AchievementTier {
   String get label {
     switch (this) {
-      case AchievementTier.bronze: return 'Bronze';
-      case AchievementTier.silber: return 'Silber';
-      case AchievementTier.gold: return 'Gold';
-      case AchievementTier.platin: return 'Platin';
+      case AchievementTier.bronze:
+        return 'Bronze';
+      case AchievementTier.silber:
+        return 'Silber';
+      case AchievementTier.gold:
+        return 'Gold';
+      case AchievementTier.platin:
+        return 'Platin';
     }
   }
 
   int get points {
     switch (this) {
-      case AchievementTier.bronze: return 10;
-      case AchievementTier.silber: return 25;
-      case AchievementTier.gold: return 50;
-      case AchievementTier.platin: return 100;
+      case AchievementTier.bronze:
+        return 10;
+      case AchievementTier.silber:
+        return 25;
+      case AchievementTier.gold:
+        return 50;
+      case AchievementTier.platin:
+        return 100;
     }
   }
 }
@@ -116,7 +124,8 @@ final List<Achievement> kAllAchievements = [
     description: 'Erreiche 50.000 € Konto.',
     emoji: '💵',
     tier: AchievementTier.silber,
-    check: (shops, emp, rev, cash, day, cust, rep, brand, comp) => cash >= 50000,
+    check: (shops, emp, rev, cash, day, cust, rep, brand, comp) =>
+        cash >= 50000,
   ),
   Achievement(
     id: 'thirty_days',
@@ -142,7 +151,8 @@ final List<Achievement> kAllAchievements = [
     description: 'Erreiche 250.000 € Konto.',
     emoji: '💎',
     tier: AchievementTier.gold,
-    check: (shops, emp, rev, cash, day, cust, rep, brand, comp) => cash >= 250000,
+    check: (shops, emp, rev, cash, day, cust, rep, brand, comp) =>
+        cash >= 250000,
   ),
   Achievement(
     id: 'brand_40',
@@ -158,7 +168,8 @@ final List<Achievement> kAllAchievements = [
     description: 'Bediene 10.000 Kunden insgesamt.',
     emoji: '🥳',
     tier: AchievementTier.gold,
-    check: (shops, emp, rev, cash, day, cust, rep, brand, comp) => cust >= 10000,
+    check: (shops, emp, rev, cash, day, cust, rep, brand, comp) =>
+        cust >= 10000,
   ),
 
   // Platin
@@ -168,7 +179,8 @@ final List<Achievement> kAllAchievements = [
     description: '1.000.000 € Gesamtumsatz.',
     emoji: '👑',
     tier: AchievementTier.platin,
-    check: (shops, emp, rev, cash, day, cust, rep, brand, comp) => rev >= 1000000,
+    check: (shops, emp, rev, cash, day, cust, rep, brand, comp) =>
+        rev >= 1000000,
   ),
   Achievement(
     id: 'brand_80',

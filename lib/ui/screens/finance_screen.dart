@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -38,8 +38,8 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // ── Übersicht ─────────────────────────────────────────────────
-          _Section('HEUTE'),
+          // Übersicht
+          const _Section('HEUTE'),
           const SizedBox(height: 8),
           _FinanceRow(
             label: 'Tagesumsatz',
@@ -55,19 +55,20 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
           ),
           _FinanceRow(
             label: 'Tagesprofit',
-            value: '${dailyProfit >= 0 ? "+" : ""}${_fmt.format(dailyProfit)} €',
+            value:
+                '${dailyProfit >= 0 ? "+" : ""}${_fmt.format(dailyProfit)} €',
             color: dailyProfit >= 0 ? AppColors.success : AppColors.danger,
             icon: Icons.account_balance_wallet_outlined,
             bold: true,
           ),
           const SizedBox(height: 20),
 
-          // ── Verlauf mit Zeitraum-Filter ──────────────────────────────
+          // Verlauf mit Zeitraum-Filter
           if (history.length >= 2) ...[
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _Section('FINANZVERLAUF'),
+                const _Section('FINANZVERLAUF'),
                 _RangeSelector(
                   selected: _rangeDays,
                   onChanged: (n) => setState(() => _rangeDays = n),
@@ -75,20 +76,23 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            _ChartLegend(),
+            const _ChartLegend(),
             const SizedBox(height: 8),
             SizedBox(
               height: 220,
               child: _FinanceChart(history: history),
             ),
             const SizedBox(height: 16),
-            _PeriodSummary(history: history),
+            _PeriodSummary(
+              history: history,
+              activeLoanDebt: game.activeLoansTotal,
+            ),
             const SizedBox(height: 20),
           ],
 
-          // ── Kostenstruktur (letzte 7 Tage) ────────────────────────────
+          // Kostenstruktur (letzte 7 Tage)
           if (game.history.isNotEmpty) ...[
-            _Section('KOSTENSTRUKTUR (letzte 7 Tage)'),
+            const _Section('KOSTENSTRUKTUR (letzte 7 Tage)'),
             const SizedBox(height: 8),
             _CostBreakdownCard(
               history: game.history.length > 7
@@ -98,8 +102,8 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
             const SizedBox(height: 20),
           ],
 
-          // ── Gesamtbilanz ──────────────────────────────────────────────
-          _Section('GESAMTBILANZ'),
+          // Gesamtbilanz
+          const _Section('GESAMTBILANZ'),
           const SizedBox(height: 8),
           _FinanceRow(
             label: 'Gesamtumsatz',
@@ -125,8 +129,8 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
           ),
           const SizedBox(height: 20),
 
-          // ── Filialen ──────────────────────────────────────────────────
-          _Section('FILIALEN'),
+          // Filialen
+          const _Section('FILIALEN'),
           const SizedBox(height: 8),
           if (game.shops.isEmpty)
             const Center(
@@ -156,21 +160,29 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Center(
-                          child:
-                              Text('🥙', style: TextStyle(fontSize: 22))),
+                          child: Text('🥙', style: TextStyle(fontSize: 22))),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(shop.name,
+                          Text(shop.displayName,
                               style: const TextStyle(
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.textPrimary)),
                           Text(shop.locationName,
                               style: const TextStyle(
                                   fontSize: 11, color: AppColors.textMuted)),
+                          if (shop.wasAcquired && shop.acquiredHint != null)
+                            Text(
+                              shop.acquiredHint!,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: AppColors.secondary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -226,9 +238,7 @@ class _RangeSelector extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
-                  color: selected == n
-                      ? AppColors.primary
-                      : Colors.transparent,
+                  color: selected == n ? AppColors.primary : Colors.transparent,
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
@@ -236,9 +246,7 @@ class _RangeSelector extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
-                    color: selected == n
-                        ? Colors.white
-                        : AppColors.textMuted,
+                    color: selected == n ? Colors.white : AppColors.textMuted,
                   ),
                 ),
               ),
@@ -256,13 +264,13 @@ class _ChartLegend extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
+    return const Wrap(
       spacing: 12,
       runSpacing: 6,
-      children: const [
+      children: [
         _LegendItem(color: AppColors.success, label: 'Umsatz'),
-        _LegendItem(color: AppColors.danger, label: 'Kosten'),
-        _LegendItem(color: AppColors.gold, label: 'Profit'),
+        _LegendItem(color: AppColors.danger, label: 'Ausgaben gesamt'),
+        _LegendItem(color: AppColors.gold, label: 'Nettogewinn'),
       ],
     );
   }
@@ -288,7 +296,8 @@ class _LegendItem extends StatelessWidget {
         ),
         const SizedBox(width: 6),
         Text(label,
-            style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+            style:
+                const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
       ],
     );
   }
@@ -346,8 +355,7 @@ class _FinanceChart extends StatelessWidget {
               reservedSize: 50,
               getTitlesWidget: (v, _) => Text(
                 _fmt.format(v),
-                style:
-                    const TextStyle(fontSize: 9, color: AppColors.textMuted),
+                style: const TextStyle(fontSize: 9, color: AppColors.textMuted),
               ),
             ),
           ),
@@ -386,7 +394,7 @@ class _FinanceChart extends StatelessWidget {
             getTooltipColor: (_) => AppColors.bgSurface,
             tooltipBorder: const BorderSide(color: AppColors.border),
             getTooltipItems: (spots) => spots.map((s) {
-              final labels = ['Umsatz', 'Kosten', 'Profit'];
+              final labels = ['Umsatz', 'Ausgaben gesamt', 'Nettogewinn'];
               return LineTooltipItem(
                 '${labels[s.barIndex]}: ${_fmt.format(s.y)} €',
                 TextStyle(
@@ -443,22 +451,40 @@ class _FinanceChart extends StatelessWidget {
 
 class _PeriodSummary extends StatelessWidget {
   final List<DailyRecord> history;
-  const _PeriodSummary({required this.history});
+  final double activeLoanDebt;
+  const _PeriodSummary({
+    required this.history,
+    required this.activeLoanDebt,
+  });
 
   @override
   Widget build(BuildContext context) {
-    double revSum = 0, costSum = 0, profSum = 0, invSum = 0, loanSum = 0;
+    double revSum = 0;
+    double operatingCostsSum = 0;
+    double deliveryCommissionSum = 0;
+    double profSum = 0;
+    double invSum = 0;
+    double loanSum = 0;
     for (final r in history) {
       revSum += r.revenue;
-      costSum += r.costs;
+      operatingCostsSum += r.costs;
+      deliveryCommissionSum += r.deliveryCommissionCosts;
       profSum += r.revenue - r.costs - r.loanPayments - r.investments;
       invSum += r.investments;
       loanSum += r.loanPayments;
     }
-    final bestDay = history.fold<DailyRecord?>(null,
-        (b, r) => b == null || r.revenue > b.revenue ? r : b);
-    final worstDay = history.fold<DailyRecord?>(null,
-        (b, r) => b == null || (r.revenue - r.costs - r.loanPayments - r.investments) < (b.revenue - b.costs - b.loanPayments - b.investments) ? r : b);
+    final operatingExcludingDelivery =
+        (operatingCostsSum - deliveryCommissionSum).clamp(0.0, double.infinity);
+    final totalOutflow = operatingCostsSum + invSum + loanSum;
+    final bestDay = history.fold<DailyRecord?>(
+        null, (b, r) => b == null || r.revenue > b.revenue ? r : b);
+    final worstDay = history.fold<DailyRecord?>(
+        null,
+        (b, r) => b == null ||
+                (r.revenue - r.costs - r.loanPayments - r.investments) <
+                    (b.revenue - b.costs - b.loanPayments - b.investments)
+            ? r
+            : b);
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -471,38 +497,56 @@ class _PeriodSummary extends StatelessWidget {
         children: [
           Row(
             children: [
-              _SummaryItem(label: 'Umsatz', value: '${_fmt.format(revSum)} €', color: AppColors.success),
-              _SummaryItem(label: 'Kosten', value: '${_fmt.format(costSum)} €', color: AppColors.danger),
               _SummaryItem(
-                label: 'Profit',
-                value:
-                    '${profSum >= 0 ? "+" : ""}${_fmt.format(profSum)} €',
+                label: 'Umsatz',
+                value: '${_fmt.format(revSum)} €',
+                color: AppColors.success,
+              ),
+              _SummaryItem(
+                label: 'Ausgaben',
+                value: '${_fmt.format(totalOutflow)} €',
+                color: AppColors.danger,
+              ),
+              _SummaryItem(
+                label: 'Gewinn',
+                value: '${profSum >= 0 ? "+" : ""}${_fmt.format(profSum)} €',
                 color: profSum >= 0 ? AppColors.success : AppColors.danger,
               ),
             ],
           ),
-          if (invSum > 0 || loanSum > 0) ...[
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                _SummaryItem(
-                  label: 'Investitionen',
-                  value: '${_fmt.format(invSum)} €',
-                  color: AppColors.secondary,
-                ),
-                _SummaryItem(
-                  label: 'Kreditraten',
-                  value: '${_fmt.format(loanSum)} €',
-                  color: AppColors.warning,
-                ),
-                _SummaryItem(
-                  label: 'Tage',
-                  value: '${history.length}',
-                  color: AppColors.textSecondary,
-                ),
-              ],
-            ),
-          ],
+          const SizedBox(height: 10),
+          const Divider(color: AppColors.border, height: 1),
+          const SizedBox(height: 10),
+          _DetailRow(
+            label: 'Operative Kosten (ohne Lieferprovision)',
+            value: '${_fmt.format(operatingExcludingDelivery)} €',
+            color: AppColors.textSecondary,
+          ),
+          _DetailRow(
+            label: 'Lieferprovision (separat)',
+            value: '${_fmt.format(deliveryCommissionSum)} €',
+            color: AppColors.danger,
+          ),
+          _DetailRow(
+            label: 'Investitionen/Upgrades (einmalig)',
+            value: '${_fmt.format(invSum)} €',
+            color: AppColors.secondary,
+          ),
+          _DetailRow(
+            label: 'Kreditraten',
+            value: '${_fmt.format(loanSum)} €',
+            color: AppColors.warning,
+          ),
+          _DetailRow(
+            label: 'Offene Kreditschulden',
+            value: '${_fmt.format(activeLoanDebt)} €',
+            color: AppColors.warning,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Zeitraum: ${history.length} Tage',
+            style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+          ),
           if (bestDay != null && worstDay != null) ...[
             const SizedBox(height: 10),
             const Divider(color: AppColors.border, height: 1),
@@ -544,11 +588,49 @@ class _PeriodSummary extends StatelessWidget {
   }
 }
 
+class _DetailRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+
+  const _DetailRow({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SummaryItem extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
-  const _SummaryItem({required this.label, required this.value, required this.color});
+  const _SummaryItem(
+      {required this.label, required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -557,8 +639,7 @@ class _SummaryItem extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label,
-              style: const TextStyle(
-                  fontSize: 10, color: AppColors.textMuted)),
+              style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
           Text(value,
               style: TextStyle(
                 fontSize: 13,
@@ -582,9 +663,10 @@ class _CostBreakdownCard extends StatelessWidget {
     final rent = history.fold(0.0, (s, r) => s + r.rentCosts);
     final sal = history.fold(0.0, (s, r) => s + r.salaryCosts);
     final ing = history.fold(0.0, (s, r) => s + r.ingredientCosts);
+    final del = history.fold(0.0, (s, r) => s + r.deliveryCommissionCosts);
     final loan = history.fold(0.0, (s, r) => s + r.loanPayments);
     final inv = history.fold(0.0, (s, r) => s + r.investments);
-    final total = rent + sal + ing + loan + inv;
+    final total = rent + sal + ing + del + loan + inv;
     if (total == 0) {
       return const SizedBox(
         height: 80,
@@ -599,6 +681,7 @@ class _CostBreakdownCard extends StatelessWidget {
       ('Miete', rent, AppColors.warning),
       ('Gehälter', sal, AppColors.accent),
       ('Zutaten', ing, AppColors.tomato),
+      ('Lieferprovision', del, AppColors.danger),
       ('Kreditraten', loan, AppColors.onion),
       ('Investitionen', inv, AppColors.secondary),
     ];
@@ -648,8 +731,7 @@ class _CostBreakdownCard extends StatelessWidget {
                   Expanded(
                     child: Text(it.$1,
                         style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary)),
+                            fontSize: 12, color: AppColors.textSecondary)),
                   ),
                   Text(
                     '${_fmt.format(it.$2)} €  (${((it.$2 / total) * 100).toStringAsFixed(0)}%)',

@@ -1,4 +1,4 @@
-import 'time_profile_model.dart';
+﻿import 'time_profile_model.dart';
 
 enum CityTier { klein, mittel, gross, metropole }
 

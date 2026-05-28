@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme.dart';
 import '../../models/game_state.dart';
 import '../../providers/game_provider.dart';
@@ -15,6 +16,8 @@ import '../widgets/quarterly_report_dialog.dart';
 
 final _fmtInt = NumberFormat('#,##0', 'de_DE');
 const _kWeekdays = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+const _kFeedbackFormUrl =
+    'https://docs.google.com/forms/d/e/1FAIpQLSd266LTUL-vKR4jLKv7fxXXy-BvsSxChM87O-n7Z4sceWhjvQ/viewform';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -43,6 +46,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       notifier.clearLastDayResult();
     }
     if (mounted) setState(() => _endingDay = false);
+  }
+
+  Future<void> _openFeedbackForm() async {
+    final uri = Uri.parse(_kFeedbackFormUrl);
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Feedback-Link konnte nicht geöffnet werden.'),
+        ),
+      );
+    }
   }
 
   @override
@@ -90,9 +105,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     // Daten aus History für Trend-Vergleiche
     final history = game.history;
     final yesterday = history.isNotEmpty ? history.last : null;
-    final last7 = history.length >= 7
-        ? history.sublist(history.length - 7)
-        : history;
+    final last7 =
+        history.length >= 7 ? history.sublist(history.length - 7) : history;
 
     final yRevenue = yesterday?.revenue ?? 0;
     final yCustomers = yesterday?.customers ?? 0;
@@ -113,6 +127,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             // ── Header ─────────────────────────────────────────────────
             SliverToBoxAdapter(
               child: _HeaderBar(game: game),
+            ),
+
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                child: _FeedbackButton(
+                  onPressed: _openFeedbackForm,
+                ),
+              ),
             ),
 
             // ── Kontostand Karte (mit Pulse-Glow) ─────────────────────
@@ -207,7 +230,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                  child: _WeekRevenueCard(records: last7, today: game.currentDay),
+                  child:
+                      _WeekRevenueCard(records: last7, today: game.currentDay),
                 ),
               ),
 
@@ -254,7 +278,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     icon: Icons.campaign_rounded,
                     iconColor: AppColors.gold,
                     label: 'Marke',
-                    value: '${game.brand.brandAwareness.toStringAsFixed(0)}/100',
+                    value:
+                        '${game.brand.brandAwareness.toStringAsFixed(0)}/100',
                   ),
                   _KpiCard(
                     icon: Icons.emoji_events_rounded,
@@ -302,10 +327,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 delegate: SliverChildBuilderDelegate(
                   (context, i) {
                     final shop = game.shops[i];
-                    final revenue = GameEngine.calculateDailyRevenue(shop, day: game.currentDay, state: game);
-                    final costs = GameEngine.calculateDailyCosts(shop, day: game.currentDay, state: game);
+                    final revenue = GameEngine.calculateDailyRevenue(shop,
+                        day: game.currentDay, state: game);
+                    final costs = GameEngine.calculateDailyCosts(shop,
+                        day: game.currentDay, state: game);
                     final profit = revenue - costs;
-                    final customers = GameEngine.calculateDailyCustomers(shop, day: game.currentDay, state: game);
+                    final customers = GameEngine.calculateDailyCustomers(shop,
+                        day: game.currentDay, state: game);
 
                     return Padding(
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
@@ -338,7 +366,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                       borderRadius: BorderRadius.circular(14),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: AppColors.primary.withAlpha(80),
+                                          color:
+                                              AppColors.primary.withAlpha(80),
                                           blurRadius: 14,
                                           offset: const Offset(0, 4),
                                         ),
@@ -352,10 +381,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                   const SizedBox(width: 14),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          shop.name,
+                                          shop.displayName,
                                           style: const TextStyle(
                                             fontSize: 15,
                                             fontWeight: FontWeight.w700,
@@ -363,7 +393,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                           ),
                                         ),
                                         Text(
-                                          shop.locationName,
+                                          shop.wasAcquired &&
+                                                  shop.acquiredHint != null
+                                              ? '${shop.locationName} · ${shop.acquiredHint}'
+                                              : shop.locationName,
                                           style: const TextStyle(
                                             fontSize: 12,
                                             color: AppColors.textMuted,
@@ -482,8 +515,8 @@ class _HeaderBar extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withAlpha(40),
                         borderRadius: BorderRadius.circular(6),
@@ -541,6 +574,36 @@ class _HeaderBar extends StatelessWidget {
   }
 }
 
+class _FeedbackButton extends StatelessWidget {
+  final VoidCallback onPressed;
+
+  const _FeedbackButton({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        icon: const Icon(Icons.feedback_outlined, size: 18),
+        label: const Text('Feedback geben'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.cream,
+          side: const BorderSide(color: AppColors.border),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          textStyle: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 14,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _CashCard extends StatelessWidget {
   final double cash;
   final double dailyRevenue;
@@ -578,8 +641,7 @@ class _CashCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Text('💰',
-                  style: TextStyle(fontSize: 16)),
+              const Text('💰', style: TextStyle(fontSize: 16)),
               const SizedBox(width: 6),
               Text(
                 'KASSE',
@@ -636,17 +698,20 @@ class _CashStat extends StatelessWidget {
   final String value;
   final Color color;
 
-  const _CashStat({required this.label, required this.value, required this.color});
+  const _CashStat(
+      {required this.label, required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 10, color: Colors.white70)),
+        Text(label,
+            style: const TextStyle(fontSize: 10, color: Colors.white70)),
         const SizedBox(height: 2),
         Text(value,
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: color)),
+            style: TextStyle(
+                fontSize: 13, fontWeight: FontWeight.w800, color: color)),
       ],
     );
   }
@@ -747,7 +812,8 @@ class _WeekRevenueCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final maxR = records.fold<double>(0, (m, r) => r.revenue > m ? r.revenue : m);
+    final maxR =
+        records.fold<double>(0, (m, r) => r.revenue > m ? r.revenue : m);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -760,8 +826,7 @@ class _WeekRevenueCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Text('📊',
-                  style: TextStyle(fontSize: 16)),
+              const Text('📊', style: TextStyle(fontSize: 16)),
               const SizedBox(width: 6),
               const Text(
                 'UMSATZ LETZTE TAGE',

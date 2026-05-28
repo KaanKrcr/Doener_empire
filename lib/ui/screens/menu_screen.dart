@@ -32,7 +32,10 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
   Future<void> _check() async {
     final has = await ref.read(gameProvider.notifier).hasSavedGame();
     if (mounted) {
-      setState(() { _hasSave = has; _loading = false; });
+      setState(() {
+        _hasSave = has;
+        _loading = false;
+      });
       _ctrl.forward();
     }
   }
@@ -115,7 +118,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                         ),
                       ),
                       const SizedBox(width: 16),
-                      Column(
+                      const Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
@@ -145,10 +148,8 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
 
                   // Tagline
                   Text(
-                    _hasSave
-                        ? 'Willkommen zurück.'
-                        : 'Dein Imperium\nwartet.',
-                    style: TextStyle(
+                    _hasSave ? 'Willkommen zurück.' : 'Dein Imperium\nwartet.',
+                    style: const TextStyle(
                       fontSize: 40,
                       fontWeight: FontWeight.w800,
                       color: AppColors.textPrimary,
@@ -193,14 +194,20 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                               label: 'Weiterspielen',
                               icon: Icons.play_arrow_rounded,
                               onTap: () async {
-                                await ref.read(gameProvider.notifier).loadGame();
+                                await ref
+                                    .read(gameProvider.notifier)
+                                    .loadGame();
                                 if (context.mounted) context.go('/game');
                               },
                             ),
                           if (_hasSave) const SizedBox(height: 12),
                           _SecondaryButton(
-                            label: _hasSave ? 'Neues Spiel starten' : 'Spiel starten',
-                            icon: _hasSave ? Icons.add_rounded : Icons.play_arrow_rounded,
+                            label: _hasSave
+                                ? 'Neues Spiel starten'
+                                : 'Spiel starten',
+                            icon: _hasSave
+                                ? Icons.add_rounded
+                                : Icons.play_arrow_rounded,
                             onTap: () => context.go('/new-game'),
                             primary: !_hasSave,
                           ),
@@ -209,7 +216,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                     ),
 
                   const SizedBox(height: 12),
-                  Center(
+                  const Center(
                     child: Text(
                       'Version 1.0',
                       style: TextStyle(
@@ -235,7 +242,8 @@ class _PrimaryButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
 
-  const _PrimaryButton({required this.label, required this.icon, required this.onTap});
+  const _PrimaryButton(
+      {required this.label, required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {

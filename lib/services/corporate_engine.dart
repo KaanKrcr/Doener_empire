@@ -7,8 +7,11 @@ import '../models/competitor_model.dart';
 import '../models/shop_model.dart';
 import '../models/product_model.dart';
 import '../models/city_model.dart';
+import '../models/employee_model.dart';
+import '../models/difficulty_model.dart';
 import '../core/constants.dart';
 import 'game_engine.dart';
+import 'hr_engine.dart';
 
 /// Corporate-Level-Operationen: IPO, Aktienkurs, Produktions-Anlagen, M&A.
 ///
@@ -33,12 +36,11 @@ class CorporateEngine {
     // Letztes Quartal extrapoliert als Cashflow
     final yearlyProfitEstimate = state.history.isEmpty
         ? 0.0
-        : state.history
-                .map((r) => r.profit)
-                .fold(0.0, (a, b) => a + b) *
+        : state.history.map((r) => r.profit).fold(0.0, (a, b) => a + b) *
             (365 / state.history.length);
-    final pe = 10.0; // P/E ratio
-    final cashflowValue = (yearlyProfitEstimate * pe).clamp(0.0, double.infinity);
+    const pe = 10.0; // P/E ratio
+    final cashflowValue =
+        (yearlyProfitEstimate * pe).clamp(0.0, double.infinity);
     return shopValue + brandValue + cashflowValue;
   }
 
@@ -86,7 +88,8 @@ class CorporateEngine {
     // Shop-Count
     final shopImpact = (state.shops.length - 10) / 1000;
 
-    final priceMove = (1.0 + noise + brandImpact + shopImpact).clamp(0.95, 1.05);
+    final priceMove =
+        (1.0 + noise + brandImpact + shopImpact).clamp(0.95, 1.05);
     final newPrice = (s.sharePrice * priceMove).clamp(0.01, double.infinity);
 
     final newHistory = [...s.priceHistory, newPrice];
@@ -112,7 +115,8 @@ class CorporateEngine {
       GameState state) {
     final s = state.stocks;
     final quarterStart = s.lastQuarterDay;
-    final quarterDays = state.history.where((r) => r.day >= quarterStart).toList();
+    final quarterDays =
+        state.history.where((r) => r.day >= quarterStart).toList();
 
     final qRevenue = quarterDays.fold(0.0, (a, r) => a + r.revenue);
     final qProfit = quarterDays.fold(0.0, (a, r) => a + r.profit);
@@ -128,20 +132,20 @@ class CorporateEngine {
     final newPrice = (s.sharePrice * priceMove).clamp(0.5, double.infinity);
 
     // Neue Analysten-Erwartung
-    final newExpectation =
-        (qProfit * 0.9 + s.analystExpectation * 0.1).clamp(0.0, double.infinity);
+    final newExpectation = (qProfit * 0.9 + s.analystExpectation * 0.1)
+        .clamp(0.0, double.infinity);
 
     String headline;
     if (deltaPercent > 0.20) {
-      headline = '🚀 SENSATION! Döner Empire übertrifft Erwartungen massiv';
+      headline = 'SENSATION! Döner Empire übertrifft Erwartungen massiv';
     } else if (deltaPercent > 0.05) {
-      headline = '📈 Gewinn schlägt Analysten-Prognose';
+      headline = 'Gewinn schlägt Analysten-Prognose';
     } else if (deltaPercent > -0.05) {
-      headline = 'Solides Quartal — im Rahmen der Erwartungen';
+      headline = 'Solides Quartal - im Rahmen der Erwartungen';
     } else if (deltaPercent > -0.20) {
-      headline = '⚠️ Aktie unter Druck — Quartal enttäuschend';
+      headline = 'Aktie unter Druck - Quartal enttäuschend';
     } else {
-      headline = '🔻 KURSEINBRUCH! Massive Gewinnwarnung';
+      headline = 'KURSEINBRUCH! Massive Gewinnwarnung';
     }
 
     final report = QuarterlyReport(
@@ -170,8 +174,7 @@ class CorporateEngine {
   // ── Production-Facilities ──────────────────────────────────────────────
 
   /// Baut eine Anlage. Returns neuer State.
-  static GameState buildFacility(
-      GameState state, FacilityTemplate template) {
+  static GameState buildFacility(GameState state, FacilityTemplate template) {
     if (state.cash < template.buildCost) return state;
     final facility = ProductionFacility(
       id: 'fac_${DateTime.now().microsecondsSinceEpoch}',
@@ -207,8 +210,7 @@ class CorporateEngine {
         orElse: () => kAllFacilityTemplates.first,
       );
       // B2B-Effizienz hängt von Markt-Größe ab (Konkurrenz-Anzahl)
-      final marketDemand =
-          (state.competitors.length / 10.0).clamp(0.3, 1.5);
+      final marketDemand = (state.competitors.length / 10.0).clamp(0.3, 1.5);
       total += template.b2bRevenuePerDay * marketDemand;
     }
     return total;
@@ -273,7 +275,8 @@ class CorporateEngine {
 
       newShops.add(Shop(
         id: 'aq_${c.id}_$i',
-        name: '${c.name} ${i + 1}',
+        name: state.companyName,
+        customName: null,
         cityId: c.cityId,
         locationName: loc.name,
         footTraffic: ft,
@@ -287,6 +290,8 @@ class CorporateEngine {
         reputation: c.reputation,
         dayOpened: state.currentDay,
         personality: loc.personality,
+        originalCompetitorName: c.name,
+        wasAcquired: true,
       ));
     }
 
@@ -313,25 +318,37 @@ class CorporateEngine {
   /// Entfernt Manager-Status
   static GameState unassignManager(GameState state, String employeeId) {
     return state.copyWith(
-      managerEmployeeIds: state.managerEmployeeIds
-          .where((id) => id != employeeId)
-          .toList(),
+      managerEmployeeIds:
+          state.managerEmployeeIds.where((id) => id != employeeId).toList(),
     );
   }
 
-  /// Auto-Hire: pro Filiale mit `autoHire=true` werden automatisch
-  /// Kandidaten eingestellt, bis der Mitarbeiter-Cap erreicht ist,
-  /// der Pool leer ist oder das Budget nicht ausreicht.
+  /// Auto-Hire: pro Filiale mit `autoHire=true` werden offene Stellen
+  /// schrittweise aufgefüllt, ohne die Balance zu sprengen.
   ///
-  /// Bis zu [_kMaxHiresPerShopPerDay] Hires pro Filiale pro Tag-Ende,
-  /// um Edge-Cases bei sehr kleinen Pools zu vermeiden.
-  ///
-  /// Recruiter-Pauschale: 3 Tages-Gehälter pro eingestelltem Kandidaten.
-  static const int _kMaxHiresPerShopPerDay = 5;
+  /// Regeln:
+  /// - Pro Tag maximal 2 Hires (ohne lokalen Manager) oder 3 (mit Manager)
+  /// - Kein automatisches unbegrenztes Nachfüllen des Kandidatenpools
+  /// - Cash-Reserve bleibt erhalten (mind. fixer Betrag ODER 15% Tageskosten)
+  /// - Kandidatenauswahl aus Top-Fenster statt immer blind der Beste
+  static const int _kMaxAutoHiresPerShopPerDay = 2;
+  static const int _kMaxAutoHiresPerShopPerDayWithManager = 3;
+  static const int _kTopCandidateWindow = 4;
+  static const double _kReserveShareOfDailyCosts = 0.15;
+  static const double _kMinCashReserve = 1500.0;
+  static const double _kBaseHireFeeMultiplier = 1.25;
+  static const double _kMinHireFeeMultiplier = 1.0;
+
+  static const Map<GameDifficulty, double> _kAutoHireDifficultyReserve = {
+    GameDifficulty.easy: 0.70,
+    GameDifficulty.normal: 1.00,
+    GameDifficulty.hard: 1.18,
+    GameDifficulty.impossible: 1.35,
+  };
 
   static GameState applyAutoHire(GameState state) {
-    if (state.employeePool.isEmpty) return state;
     var workingState = state;
+    final hrMods = HrEngine.recruitmentModifiers(state);
 
     for (final initialShop in state.shops) {
       if (!initialShop.autoHire) continue;
@@ -339,40 +356,51 @@ class CorporateEngine {
       final maxEmp = _maxEmployeesForCity(initialShop.cityId);
       int hiresThisShop = 0;
 
-      while (hiresThisShop < _kMaxHiresPerShopPerDay) {
+      while (true) {
         // Aktuellen Zustand dieser Filiale aus workingState holen
         final shop = workingState.shops.firstWhere(
           (s) => s.id == initialShop.id,
           orElse: () => initialShop,
         );
 
-        // Mitarbeiter-Cap erreicht?
-        if (shop.employees.length >= maxEmp) break;
+        final hasLocalManager = _shopHasActiveManager(shop, workingState);
+        final baseMaxHires = hasLocalManager
+            ? _kMaxAutoHiresPerShopPerDayWithManager
+            : _kMaxAutoHiresPerShopPerDay;
+        final maxHiresToday = (baseMaxHires * hrMods.autoHireAggressivenessMultiplier)
+            .round()
+            .clamp(1, 6);
+        final neededByCapacity = GameEngine.recommendedExtraEmployees(
+          shop,
+          day: workingState.currentDay,
+          state: workingState,
+        );
+        final mustFill = shop.employees.isEmpty;
+        if (!mustFill && neededByCapacity <= 0) break;
+        final targetHires = mustFill
+            ? maxHiresToday
+            : neededByCapacity.clamp(1, maxHiresToday).toInt();
+        if (hiresThisShop >= targetHires) break;
 
-        // Echter Engpass-Check via GameEngine (Kapazität vs. Nachfrage)
-        final needsHelp =
-            GameEngine.isCapacityLimited(shop, state: workingState);
-        if (!needsHelp) break;
+        final freeSlots = maxEmp - shop.employees.length;
+        if (freeSlots <= 0) break;
 
-        // Pool leer?
+        // Kein unendliches Auto-Nachfüllen: bei leerem Pool stoppt Auto-Hire.
         if (workingState.employeePool.isEmpty) break;
 
-        // Besten Kandidaten nach overallScore auswählen
-        final sorted = List.from(workingState.employeePool)
-          ..sort((a, b) => b.overallScore.compareTo(a.overallScore));
-        final best = sorted.first;
+        final pick = _pickCandidateForAutoHire(
+          workingState,
+          hasLocalManager: hasLocalManager,
+          preferredTypeId: _targetRoleTypeId(shop),
+        );
+        if (pick == null) break;
+        final (bestEmp, fee) = pick;
 
-        // Recruiter-Pauschale: 3 Tages-Gehälter
-        final fee = best.salaryPerDay * 3;
-        if (workingState.cash < fee) break;
-
-        // Einstellen
-        final newPool = workingState.employeePool
-            .where((e) => e.id != best.id)
-            .toList();
+        final newPool =
+            workingState.employeePool.where((e) => e.id != bestEmp.id).toList();
         final newShops = workingState.shops.map((s) {
           if (s.id != shop.id) return s;
-          return s.copyWith(employees: [...s.employees, best]);
+          return s.copyWith(employees: [...s.employees, bestEmp]);
         }).toList();
 
         workingState = workingState.copyWith(
@@ -384,6 +412,145 @@ class CorporateEngine {
       }
     }
     return workingState;
+  }
+
+  static (Employee, double)? _pickCandidateForAutoHire(
+    GameState state, {
+    required bool hasLocalManager,
+    required String? preferredTypeId,
+  }) {
+    final reserve = _autoHireCashReserve(state);
+    final sorted = List<Employee>.from(state.employeePool)
+      ..sort((a, b) {
+        final aScore = _autoHireCandidateScore(a, preferredTypeId);
+        final bScore = _autoHireCandidateScore(b, preferredTypeId);
+        return bScore.compareTo(aScore);
+      });
+
+    final topCount = sorted.length < _kTopCandidateWindow
+        ? sorted.length
+        : _kTopCandidateWindow;
+    final topCandidates = sorted.take(topCount).toList();
+
+    final affordableTop = <(Employee, double)>[];
+    for (final cand in topCandidates) {
+      final fee = cand.salaryPerDay * _hireFeeMultiplier(
+            state,
+            hasLocalManager: hasLocalManager,
+            candidate: cand,
+          );
+      if ((state.cash - fee) >= reserve) {
+        affordableTop.add((cand, fee));
+      }
+    }
+
+    if (affordableTop.isNotEmpty) {
+      return affordableTop[_rng.nextInt(affordableTop.length)];
+    }
+
+    for (final cand in sorted) {
+      final fee = cand.salaryPerDay * _hireFeeMultiplier(
+            state,
+            hasLocalManager: hasLocalManager,
+            candidate: cand,
+          );
+      if ((state.cash - fee) >= reserve) {
+        return (cand, fee);
+      }
+    }
+    return null;
+  }
+
+  static double _autoHireCashReserve(GameState state) {
+    final hrMods = HrEngine.recruitmentModifiers(state);
+    final dailyCosts = state.shops.fold<double>(
+      0,
+      (sum, shop) =>
+          sum +
+          GameEngine.calculateDailyCosts(shop,
+              day: state.currentDay, state: state),
+    );
+    final percentReserve = dailyCosts * _kReserveShareOfDailyCosts;
+    final reserve =
+        percentReserve > _kMinCashReserve ? percentReserve : _kMinCashReserve;
+    final difficultyMult =
+        _kAutoHireDifficultyReserve[state.difficulty] ?? 1.0;
+    return reserve *
+        state.difficulty.modifiers.economicPressureMultiplier *
+        difficultyMult *
+        hrMods.autoHireReserveMultiplier;
+  }
+
+  static double _hireFeeMultiplier(
+    GameState state, {
+    required bool hasLocalManager,
+    required Employee candidate,
+  }) {
+    final hrMods = HrEngine.recruitmentModifiers(state);
+    final activeManagers = _activeManagerCount(state);
+    final globalReduction = (activeManagers * 0.03).clamp(0.0, 0.25);
+    final localReduction = hasLocalManager ? 0.15 : 0.0;
+    final hrRecruitingEffect =
+        (1 / hrMods.refreshSpeedMultiplier).clamp(0.70, 1.90);
+    final salaryEffect = hrMods.candidateSalaryMultiplier;
+    final candidatePremium = switch (candidate.origin) {
+      CandidateOrigin.topTalent => 1.10,
+      CandidateOrigin.exCompetitor => 1.08,
+      CandidateOrigin.hiddenGem => 0.94,
+      CandidateOrigin.juniorPotential => 0.90,
+      CandidateOrigin.teamContact => 0.97,
+      CandidateOrigin.regular => 1.00,
+    };
+    final base =
+        _kBaseHireFeeMultiplier * hrRecruitingEffect * salaryEffect * candidatePremium;
+
+    return (base - globalReduction - localReduction)
+        .clamp(_kMinHireFeeMultiplier, 2.10);
+  }
+
+  static double _autoHireCandidateScore(Employee candidate, String? preferredTypeId) {
+    final typeFit = preferredTypeId == null || candidate.typeId == preferredTypeId
+        ? 1.0
+        : 0.88;
+    final growthBonus = 1.0 + candidate.growthPotential * 0.25;
+    final originBonus = switch (candidate.origin) {
+      CandidateOrigin.topTalent => 1.10,
+      CandidateOrigin.hiddenGem => 1.08,
+      CandidateOrigin.exCompetitor => 1.06,
+      CandidateOrigin.teamContact => 1.03,
+      CandidateOrigin.juniorPotential => 0.96,
+      CandidateOrigin.regular => 1.00,
+    };
+    return candidate.overallScore * typeFit * growthBonus * originBonus;
+  }
+
+  static String? _targetRoleTypeId(Shop shop) {
+    if (shop.employees.isEmpty) return null;
+    final counts = <String, int>{};
+    for (final type in kEmployeeTypes) {
+      counts[type.id] = 0;
+    }
+    for (final emp in shop.employees) {
+      counts[emp.typeId] = (counts[emp.typeId] ?? 0) + 1;
+    }
+    counts.removeWhere((_, value) => value < 0);
+    final entries = counts.entries.toList()
+      ..sort((a, b) => a.value.compareTo(b.value));
+    return entries.isEmpty ? null : entries.first.key;
+  }
+
+  static int _activeManagerCount(GameState state) {
+    final activeEmployeeIds = <String>{};
+    for (final shop in state.shops) {
+      for (final emp in shop.employees) {
+        activeEmployeeIds.add(emp.id);
+      }
+    }
+    return state.managerEmployeeIds.where(activeEmployeeIds.contains).length;
+  }
+
+  static bool _shopHasActiveManager(Shop shop, GameState state) {
+    return shop.employees.any((e) => state.managerEmployeeIds.contains(e.id));
   }
 
   static int _maxEmployeesForCity(String cityId) {
@@ -408,8 +575,8 @@ class CorporateEngine {
   /// Auslastung erhöhen.
   static GameState applyManagerAutoPricing(GameState state) {
     final updatedShops = state.shops.map((shop) {
-      final hasManager = shop.employees
-          .any((e) => state.managerEmployeeIds.contains(e.id));
+      final hasManager =
+          shop.employees.any((e) => state.managerEmployeeIds.contains(e.id));
       if (!hasManager) return shop;
 
       // Strategie: Preise mit ±2% jiggle in Richtung der Reputation

@@ -92,7 +92,8 @@ List<Mission> buildMissionsTemplate() => [
       Mission(
         id: 'first_product_unlock',
         title: 'Sortiment erweitern',
-        description: 'Schalte ein neues Produkt durch Equipment frei (z.B. Pommes).',
+        description:
+            'Schalte ein neues Produkt durch Equipment frei (z.B. Pommes).',
         emoji: '🍟',
         cashReward: 1500,
         type: MissionType.unlockProduct,

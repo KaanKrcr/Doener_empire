@@ -1,7 +1,7 @@
 ﻿# Phase 3: Schwierigkeitsstufen (Difficulty)
 
 ## Übersicht
-In Phase 3 wurde ein zentrales Difficulty-System eingefuehrt und mit den Kernmechaniken des Spiels verbunden.
+In Phase 3 wurde ein zentrales Difficulty-System eingeführt und mit den Kernmechaniken des Spiels verbunden.
 
 ## Enthaltene Stufen
 - `easy`
@@ -67,31 +67,31 @@ Enthaltene Modifier:
 
 ## Implementierte Wirkungen
 
-### Neue Spielstaende
-- Schwierigkeit ist im New-Game-Screen auswaehlbar.
+### Neue Spielstände
+- Schwierigkeit ist im New-Game-Screen auswählbar.
 - Auswahl wird in `GameState` gespeichert.
 
-### Save-Kompatibilitaet
+### Save-Kompatibilität
 - Alte Savegames ohne Difficulty-Feld werden automatisch auf `normal` gesetzt.
 
 ### HR / Recruitment
-- Poolgroesse, Refresh-Intervall, Refresh-Kosten und Auto-Hire-Tempo haengen von Difficulty ab.
-- Kandidatenqualitaet und Kandidatengehaelter skalieren ueber Difficulty.
-- Gilt auch fuer manuelle Kandidatenvorschlaege im Shop-Detail.
+- Poolgröße, Refresh-Intervall, Refresh-Kosten und Auto-Hire-Tempo hängen von Difficulty ab.
+- Kandidatenqualität und Kandidatengehälter skalieren über Difficulty.
+- Gilt auch fuer manuelle Kandidatenvorschläge im Shop-Detail.
 
 ### KI-Gegner / Konkurrenz
-- Konkurrenz-Spawn, Aktionsfrequenz und Aggressivitaet sind difficulty-abhaengig.
-- Konkurrenzdruck in der Nachfrageberechnung steigt mit hoeherer Schwierigkeit.
+- Konkurrenz-Spawn, Aktionsfrequenz und Aggressivität sind difficulty-abhaengig.
+- Konkurrenzdruck in der Nachfrageberechnung steigt mit höherer Schwierigkeit.
 
 ### Preis / Nachfrage / Kunden
-- Preissensitivitaet der Kunden skaliert ueber `customerPriceSensitivityMultiplier`.
-- Reputationsstrafen bei Preisfehlern skalieren ueber `reputationPenaltyMultiplier`.
+- Preissensitivitaet der Kunden skaliert über `customerPriceSensitivityMultiplier`.
+- Reputationsstrafen bei Preisfehlern skalieren über `reputationPenaltyMultiplier`.
 
 ### Fortschritt
 - Progress-Tempo wirkt auf Umsatz-/Missionsfortschritt (interne Bewertung) und Brand-/City-Reputation-Wachstum.
 
 ### Wirtschaftlicher Druck
-- Operative Kosten werden ueber `economicPressureMultiplier` verstaerkt/entschaerft.
+- Operative Kosten werden über `economicPressureMultiplier` verstärkt/entschärft.
 
 ## Mobile-UI
 - Schwierigkeit als mobilfreundliche Auswahlkarten mit Kurzbeschreibung.
@@ -102,21 +102,22 @@ Enthaltene Modifier:
 3. Altes Savegame (ohne Difficulty) laden: muss als `normal` laufen.
 4. Recruiting vergleichen:
    - Anzahl Kandidaten
-   - Qualitaet
+   - Qualität
    - Gehalt
    - Auto-Hire-Verhalten
-5. Preisfehler vergleichen (z. B. 30-40 % ueber Basispreis):
-   - Nachfrageeinbruch auf `impossible` deutlich staerker als auf `easy`.
+5. Preisfehler vergleichen (z. B. 30-40 % über Basispreis):
+   - Nachfrageeinbruch auf `impossible` deutlich stärker als auf `easy`.
 6. Konkurrenzvergleich in derselben Stadt:
-   - Auf `hard/impossible` spuerbar aggressiver als `easy`.
+   - Auf `hard/impossible` spürbar aggressiver als `easy`.
 7. Progressvergleich (mehrere Tage):
    - Missionen/Unlocks auf `easy` schneller, auf `impossible` langsamer.
 
 ## Automatisierte Tests
-- Ausfuehrung: `flutter test`
-- Enthalten: Difficulty-Regressionen + bestehende Stabilitaets-/Feature-Tests.
+- Ausführung: `flutter test`
+- Enthalten: Difficulty-Regressionen + bestehende Stabilitäts-/Feature-Tests.
 
 ## Offene Follow-ups
 - Feintuning durch Playtest-Telemetrie (insb. `hard`/`impossible`).
 - Optional: Difficulty-Anzeige in Settings/Dashboard als read-only Status.
-- Optional: spaetere "Difficulty change"-Policy mit Warnhinweis.
+- Optional: spätere "Difficulty change"-Policy mit Warnhinweis.
+

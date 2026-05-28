@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:uuid/uuid.dart';
 import '../../core/theme.dart';
 import '../../core/constants.dart';
 import '../../models/shop_model.dart';
@@ -13,12 +12,10 @@ import '../../models/marketing_model.dart';
 import '../../models/upgrade_model.dart';
 import '../../providers/game_provider.dart';
 import '../../services/game_engine.dart';
-import 'dart:math';
+import '../../services/hr_engine.dart';
 
 final _fmt = NumberFormat('#,##0.00', 'de_DE');
 final _fmtInt = NumberFormat('#,##0', 'de_DE');
-const _uuid = Uuid();
-final _rng = Random();
 
 const _kWeekdays = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 String _weekdayLabel(int day) => _kWeekdays[day % 7];
@@ -60,7 +57,9 @@ class _ShopDetailScreenState extends ConsumerState<ShopDetailScreen>
   @override
   Widget build(BuildContext context) {
     final game = ref.watch(gameProvider);
-    if (game == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (game == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
     Shop? currentShop;
     try {
@@ -73,16 +72,18 @@ class _ShopDetailScreenState extends ConsumerState<ShopDetailScreen>
     }
 
     final today = game.currentDay;
-    final stats = GameEngine.calculateShopStats(currentShop, day: today, state: game);
+    final stats =
+        GameEngine.calculateShopStats(currentShop, day: today, state: game);
     final revenue = stats.actualRevenue;
-    final costs = GameEngine.calculateDailyCosts(currentShop, day: today, state: game);
+    final costs =
+        GameEngine.calculateDailyCosts(currentShop, day: today, state: game);
     final profit = revenue - costs;
     final customers = stats.actualCustomers;
 
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
-        title: Text(currentShop.name),
+        title: Text(currentShop.displayName),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new),
           onPressed: () {
@@ -103,6 +104,28 @@ class _ShopDetailScreenState extends ConsumerState<ShopDetailScreen>
             _CapacityBanner(
               stats: stats,
               shop: currentShop,
+            ),
+          if (currentShop.wasAcquired && currentShop.acquiredHint != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.secondary.withAlpha(30),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.secondary.withAlpha(70)),
+                ),
+                child: Text(
+                  'Übernommen · ${currentShop.acquiredHint}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.secondary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
             ),
           // ── Shop-Stats Header ─────────────────────────────────────────
           Container(
@@ -136,9 +159,8 @@ class _ShopDetailScreenState extends ConsumerState<ShopDetailScreen>
                         label: 'Profit/Tag',
                         value:
                             '${profit >= 0 ? "+" : ""}${_fmt.format(profit)} €',
-                        color: profit >= 0
-                            ? AppColors.success
-                            : AppColors.danger,
+                        color:
+                            profit >= 0 ? AppColors.success : AppColors.danger,
                       ),
                     ),
                   ],
@@ -206,7 +228,8 @@ class _ShopDetailScreenState extends ConsumerState<ShopDetailScreen>
                 _ProductsTab(shop: currentShop),
                 _EquipmentTab(shop: currentShop, cash: game.cash),
                 _EmployeesTab(shop: currentShop, cash: game.cash),
-                _MarketingTab(shop: currentShop, cash: game.cash, currentDay: today),
+                _MarketingTab(
+                    shop: currentShop, cash: game.cash, currentDay: today),
                 _UpgradesTab(shop: currentShop, cash: game.cash),
               ],
             ),
@@ -323,7 +346,8 @@ class _ProductTileState extends ConsumerState<_ProductTile> {
   }
 
   void _commitTextField() {
-    final raw = _textCtrl.text.trim().replaceAll(',', '.').replaceAll('€', '').trim();
+    final raw =
+        _textCtrl.text.trim().replaceAll(',', '.').replaceAll('€', '').trim();
     final parsed = double.tryParse(raw);
     if (parsed == null) {
       // Zurück auf gespeicherten Preis
@@ -333,9 +357,8 @@ class _ProductTileState extends ConsumerState<_ProductTile> {
     final clamped = parsed.clamp(_minPrice, _maxPrice);
     setState(() => _price = clamped);
     _resetTextField();
-    ref
-        .read(gameProvider.notifier)
-        .updateProductPrice(widget.shopId, widget.shopProduct.productId, clamped);
+    ref.read(gameProvider.notifier).updateProductPrice(
+        widget.shopId, widget.shopProduct.productId, clamped);
   }
 
   void _resetTextField() {
@@ -351,7 +374,8 @@ class _ProductTileState extends ConsumerState<_ProductTile> {
 
   @override
   Widget build(BuildContext context) {
-    final pd = kAllProducts.firstWhere((p) => p.id == widget.shopProduct.productId);
+    final pd =
+        kAllProducts.firstWhere((p) => p.id == widget.shopProduct.productId);
     final margin = _price - pd.ingredientCostPerUnit;
     final marginPct = pd.ingredientCostPerUnit > 0
         ? (margin / pd.ingredientCostPerUnit) * 100
@@ -554,7 +578,10 @@ class _EquipmentTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final categories = EquipmentCategory.values;
+    final visibleEquipment = kAllEquipment
+        .where((e) => e.category != EquipmentCategory.spiess)
+        .toList();
+    final categories = visibleEquipment.map((e) => e.category).toSet().toList();
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -562,7 +589,8 @@ class _EquipmentTab extends ConsumerWidget {
         for (final cat in categories) ...[
           _EquipCategoryHeader(cat),
           const SizedBox(height: 8),
-          for (final eq in kAllEquipment.where((e) => e.category == cat)) ...[
+          for (final eq
+              in visibleEquipment.where((e) => e.category == cat)) ...[
             _EquipmentCard(
               eq: eq,
               isOwned: shop.hasEquipment(eq.id),
@@ -570,8 +598,7 @@ class _EquipmentTab extends ConsumerWidget {
               onBuy: () {
                 if (cash < eq.price) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('Nicht genug Kapital')),
+                    const SnackBar(content: Text('Nicht genug Kapital')),
                   );
                   return;
                 }
@@ -724,9 +751,8 @@ class _EmployeesTab extends ConsumerWidget {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: shop.autoHire
-                ? AppColors.gold.withAlpha(25)
-                : AppColors.bgCard,
+            color:
+                shop.autoHire ? AppColors.gold.withAlpha(25) : AppColors.bgCard,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: shop.autoHire
@@ -752,8 +778,8 @@ class _EmployeesTab extends ConsumerWidget {
                     ),
                     Text(
                       shop.autoHire
-                          ? 'Stellt bei Engpass automatisch ein (Pauschale: 3 Tagesgehälter pro Hire)'
-                          : 'Off — du stellst alle Mitarbeiter selbst ein.',
+                          ? 'Stellt bei Engpass automatisch ein (skalierende Recruiter-Gebühr: 1.5x bis 3.0x Tagesgehalt).'
+                          : 'Off - du stellst alle Mitarbeiter selbst ein.',
                       style: const TextStyle(
                         fontSize: 11,
                         color: AppColors.textMuted,
@@ -781,9 +807,7 @@ class _EmployeesTab extends ConsumerWidget {
             color: AppColors.bgCard,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: atMax
-                  ? AppColors.warning.withAlpha(80)
-                  : AppColors.border,
+              color: atMax ? AppColors.warning.withAlpha(80) : AppColors.border,
             ),
           ),
           child: Row(
@@ -805,7 +829,8 @@ class _EmployeesTab extends ConsumerWidget {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
-                        color: atMax ? AppColors.warning : AppColors.textPrimary,
+                        color:
+                            atMax ? AppColors.warning : AppColors.textPrimary,
                       ),
                     ),
                     Text(
@@ -897,15 +922,18 @@ class _EmployeesTab extends ConsumerWidget {
 
   void _openCandidates(
       BuildContext context, WidgetRef ref, EmployeeTypeData type) {
-    // 3 Kandidaten generieren
-    final candidates = List.generate(3, (i) {
-      final name = _randomName();
-      return EmployeeFactory.createCandidate(
-        id: _uuid.v4(),
-        type: type,
-        name: name,
-      );
-    });
+    final game = ref.read(gameProvider);
+    if (game == null) return;
+    final hrMods = HrEngine.recruitmentModifiers(game);
+    final candidateCount =
+        (3 * hrMods.refreshSpeedMultiplier).round().clamp(2, 6);
+
+    // HR-/Schwierigkeits-basierte Kandidaten generieren
+    final candidates = HrEngine.generateCandidatesForRole(
+      game,
+      count: candidateCount,
+      forcedType: type,
+    );
 
     showModalBottomSheet(
       context: context,
@@ -930,11 +958,6 @@ class _EmployeesTab extends ConsumerWidget {
         },
       ),
     );
-  }
-
-  String _randomName() {
-    final all = [...kMaleNames, ...kFemaleNames];
-    return all[_rng.nextInt(all.length)];
   }
 }
 
@@ -989,8 +1012,8 @@ class _CandidatePicker extends StatelessWidget {
                           fontWeight: FontWeight.w800,
                           color: AppColors.textPrimary,
                         )),
-                    const Text('3 Kandidaten haben sich beworben',
-                        style: TextStyle(
+                    Text('${candidates.length} Kandidaten haben sich beworben',
+                        style: const TextStyle(
                           fontSize: 12,
                           color: AppColors.textMuted,
                         )),
@@ -1089,6 +1112,17 @@ class _CandidateCard extends StatelessWidget {
                         ),
                       ],
                     ),
+                    if (candidate.isSpecialCandidate) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        candidate.origin.label,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: AppColors.secondary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -1104,8 +1138,8 @@ class _CandidateCard extends StatelessWidget {
                     ),
                   ),
                   const Text('pro Tag',
-                      style: TextStyle(
-                          fontSize: 10, color: AppColors.textMuted)),
+                      style:
+                          TextStyle(fontSize: 10, color: AppColors.textMuted)),
                 ],
               ),
             ],
@@ -1145,6 +1179,17 @@ class _CandidateCard extends StatelessWidget {
               children: [
                 for (final t in candidate.traits) _PersonalityChip(trait: t),
               ],
+            ),
+          ],
+          if (candidate.isSpecialCandidate) ...[
+            const SizedBox(height: 8),
+            Text(
+              candidate.origin.description,
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.textMuted,
+                fontStyle: FontStyle.italic,
+              ),
             ),
           ],
           const SizedBox(height: 12),
@@ -1193,8 +1238,8 @@ class _TraitBar extends StatelessWidget {
           width: 100,
           child: Text(
             label,
-            style: const TextStyle(
-                fontSize: 11, color: AppColors.textSecondary),
+            style:
+                const TextStyle(fontSize: 11, color: AppColors.textSecondary),
           ),
         ),
         Expanded(
@@ -1321,13 +1366,25 @@ class _EmployeeCard extends StatelessWidget {
           const SizedBox(height: 10),
           Row(
             children: [
-              _MiniTrait(icon: Icons.bolt, value: employee.speed, color: AppColors.warning),
+              _MiniTrait(
+                  icon: Icons.bolt,
+                  value: employee.speed,
+                  color: AppColors.warning),
               const SizedBox(width: 8),
-              _MiniTrait(icon: Icons.sentiment_very_satisfied, value: employee.friendliness, color: AppColors.accent),
+              _MiniTrait(
+                  icon: Icons.sentiment_very_satisfied,
+                  value: employee.friendliness,
+                  color: AppColors.accent),
               const SizedBox(width: 8),
-              _MiniTrait(icon: Icons.verified_outlined, value: employee.reliability, color: AppColors.cream),
+              _MiniTrait(
+                  icon: Icons.verified_outlined,
+                  value: employee.reliability,
+                  color: AppColors.cream),
               const SizedBox(width: 8),
-              _MiniTrait(icon: Icons.workspace_premium_outlined, value: employee.experience, color: AppColors.gold),
+              _MiniTrait(
+                  icon: Icons.workspace_premium_outlined,
+                  value: employee.experience,
+                  color: AppColors.gold),
             ],
           ),
           // Persönlichkeits-Traits
@@ -1404,7 +1461,8 @@ class _MiniTrait extends StatelessWidget {
   final IconData icon;
   final int value;
   final Color color;
-  const _MiniTrait({required this.icon, required this.value, required this.color});
+  const _MiniTrait(
+      {required this.icon, required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -1488,10 +1546,8 @@ class _HireCard extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 textStyle: const TextStyle(fontSize: 13),
-                backgroundColor:
-                    disabled ? AppColors.bgSurface : null,
-                foregroundColor:
-                    disabled ? AppColors.textMuted : null,
+                backgroundColor: disabled ? AppColors.bgSurface : null,
+                foregroundColor: disabled ? AppColors.textMuted : null,
               ),
             ),
           ],
@@ -1538,9 +1594,8 @@ class _MarketingTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final active = shop.activeCampaigns
-        .where((c) => c.isActive(currentDay))
-        .toList();
+    final active =
+        shop.activeCampaigns.where((c) => c.isActive(currentDay)).toList();
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -1655,8 +1710,7 @@ class _ActiveCampaignCard extends StatelessWidget {
             child: LinearProgressIndicator(
               value: progress,
               backgroundColor: AppColors.bgSurface,
-              valueColor:
-                  const AlwaysStoppedAnimation(AppColors.accent),
+              valueColor: const AlwaysStoppedAnimation(AppColors.accent),
               minHeight: 5,
             ),
           ),
@@ -1770,8 +1824,8 @@ class _CampaignCard extends StatelessWidget {
               const Spacer(),
               if (alreadyActive)
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
                     color: AppColors.accent.withAlpha(35),
                     borderRadius: BorderRadius.circular(8),
@@ -1786,8 +1840,8 @@ class _CampaignCard extends StatelessWidget {
                 ElevatedButton(
                   onPressed: canAfford ? onBook : null,
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     textStyle: const TextStyle(fontSize: 12),
                   ),
                   child: Text('${_fmtInt.format(campaign.cost)} €'),
@@ -1822,8 +1876,7 @@ class _CampaignStat extends StatelessWidget {
               color: color,
             )),
         Text(sub,
-            style: const TextStyle(
-                fontSize: 9, color: AppColors.textMuted)),
+            style: const TextStyle(fontSize: 9, color: AppColors.textMuted)),
       ],
     );
   }
@@ -1849,8 +1902,10 @@ class _UpgradesTab extends ConsumerWidget {
     }
 
     // Gekaufte Shop-Upgrades
-    final ownedShop =
-        shop.upgradeIds.map((id) => upgradeById(id)).whereType<UpgradeData>().toList();
+    final ownedShop = shop.upgradeIds
+        .map((id) => upgradeById(id))
+        .whereType<UpgradeData>()
+        .toList();
     // Aktive globale Upgrades die auch diese Filiale betreffen
     final activeGlobal = globalIds
         .map((id) => upgradeById(id))
@@ -1996,9 +2051,7 @@ class _UpgradeCard extends StatelessWidget {
         color: AppColors.bgCard,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: owned
-              ? AppColors.accent.withAlpha(120)
-              : AppColors.border,
+          color: owned ? AppColors.accent.withAlpha(120) : AppColors.border,
         ),
       ),
       child: Column(
@@ -2046,11 +2099,12 @@ class _UpgradeCard extends StatelessWidget {
                 ),
               if (upgrade.reputationPerDay > 0)
                 _UpgradeStatChip(
-                  label: '+${(upgrade.reputationPerDay * 100).toStringAsFixed(1)} Rep/Tag',
+                  label:
+                      '+${(upgrade.reputationPerDay * 100).toStringAsFixed(1)} Rep/Tag',
                   color: AppColors.gold,
                 ),
               if (upgrade.brandPerDay > 0)
-                _UpgradeStatChip(
+                const _UpgradeStatChip(
                   label: '+Marke',
                   color: AppColors.secondary,
                 ),
@@ -2107,13 +2161,12 @@ class _UpgradeCard extends StatelessWidget {
                 ElevatedButton(
                   onPressed: canAfford ? onBuy : null,
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     textStyle: const TextStyle(fontSize: 12),
                   ),
-                  child: Text(upgrade.installCost > 0
-                      ? 'Installieren'
-                      : 'Abonnieren'),
+                  child: Text(
+                      upgrade.installCost > 0 ? 'Installieren' : 'Abonnieren'),
                 ),
             ],
           ),

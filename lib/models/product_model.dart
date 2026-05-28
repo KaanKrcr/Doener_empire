@@ -1,4 +1,4 @@
-enum ProductCategory { doener, box, beilage, getraenk }
+﻿enum ProductCategory { doener, box, beilage, getraenk }
 
 extension ProductCategoryLabel on ProductCategory {
   String get label {

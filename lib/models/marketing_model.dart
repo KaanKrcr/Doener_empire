@@ -15,12 +15,13 @@ class MarketingCampaign {
   final String description;
   final String emoji;
   final double cost;
-  final int durationDays;        // 0 = einmalig / permanent
-  final double customerBoost;    // Multiplikator auf Kundenzahl (z.B. 0.20 = +20%)
+  final int durationDays; // 0 = einmalig / permanent
+  final double customerBoost; // Multiplikator auf Kundenzahl (z.B. 0.20 = +20%)
   final double reputationBoostPerDay; // täglich +X auf Reputation
-  final double reputationBoostOnce;   // einmalig beim Buchen
-  final double avgOrderValueMod;      // z.B. -0.30 = 2-für-1-Aktion → 30% weniger pro Verkauf
-  final double viralChance;      // 0..1 — Chance pro Tag auf Bonus-Event
+  final double reputationBoostOnce; // einmalig beim Buchen
+  final double
+      avgOrderValueMod; // z.B. -0.30 = 2-für-1-Aktion → 30% weniger pro Verkauf
+  final double viralChance; // 0..1 — Chance pro Tag auf Bonus-Event
   final MarketingScope scope;
   final MarketingRisk risk;
 
@@ -49,14 +50,13 @@ class MarketingCampaign {
   bool get hasDuration => durationDays > 0;
 
   /// Kosten pro Tag (informativ — Vollzahlung beim Buchen)
-  double get costPerDay =>
-      durationDays > 0 ? cost / durationDays : cost;
+  double get costPerDay => durationDays > 0 ? cost / durationDays : cost;
 }
 
 enum MarketingScope {
-  shop,    // wirkt auf eine Filiale
-  city,    // wirkt auf alle Filialen einer Stadt (zukünftig)
-  global,  // wirkt auf alle Filialen (zukünftig)
+  shop, // wirkt auf eine Filiale
+  city, // wirkt auf alle Filialen einer Stadt (zukünftig)
+  global, // wirkt auf alle Filialen (zukünftig)
 }
 
 enum MarketingRisk { low, medium, high }
@@ -76,8 +76,7 @@ class ActiveCampaign {
   bool isActive(int currentDay) =>
       currentDay >= startDay && currentDay < endDay;
 
-  int remainingDays(int currentDay) =>
-      (endDay - currentDay).clamp(0, 999);
+  int remainingDays(int currentDay) => (endDay - currentDay).clamp(0, 999);
 
   double progress(int currentDay) {
     final total = endDay - startDay;

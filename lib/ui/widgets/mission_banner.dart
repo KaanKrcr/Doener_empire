@@ -26,11 +26,9 @@ class MissionBanner extends ConsumerWidget {
     }
 
     final cur = MissionEngine.currentValueFor(mission, game);
-    final isCash = mission.id.startsWith('cash_') ||
-        mission.id == 'first_1000';
-    final currentLabel = isCash
-        ? '${_fmtInt.format(cur)} €'
-        : _fmtInt.format(cur);
+    final isCash = mission.id.startsWith('cash_') || mission.id == 'first_1000';
+    final currentLabel =
+        isCash ? '${_fmtInt.format(cur)} €' : _fmtInt.format(cur);
     final targetLabel = isCash
         ? '${_fmtInt.format(mission.target)} €'
         : _fmtInt.format(mission.target);
@@ -62,8 +60,8 @@ class MissionBanner extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
-                  child: Text(mission.emoji,
-                      style: const TextStyle(fontSize: 22)),
+                  child:
+                      Text(mission.emoji, style: const TextStyle(fontSize: 22)),
                 ),
               ),
               const SizedBox(width: 12),
@@ -219,8 +217,7 @@ class MissionCompletedDialog extends StatelessWidget {
       barrierLabel: 'Mission',
       barrierColor: Colors.black.withAlpha(180),
       transitionDuration: const Duration(milliseconds: 300),
-      pageBuilder: (_, __, ___) =>
-          MissionCompletedDialog(mission: mission),
+      pageBuilder: (_, __, ___) => MissionCompletedDialog(mission: mission),
       transitionBuilder: (_, anim, __, child) {
         return ScaleTransition(
           scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
@@ -237,7 +234,7 @@ class MissionCompletedDialog extends StatelessWidget {
         margin: const EdgeInsets.all(32),
         padding: const EdgeInsets.all(28),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
+          gradient: const LinearGradient(
             colors: [
               AppColors.gold,
               AppColors.primary,

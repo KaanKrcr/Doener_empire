@@ -1,4 +1,4 @@
-/// Aktien-System für den Börsengang.
+﻿/// Aktien-System für den Börsengang.
 ///
 /// Nach IPO (Initial Public Offering) wird das Unternehmen handelbar.
 /// Der Aktienkurs schwankt basierend auf:
@@ -98,21 +98,50 @@ class StockState {
         'lastQuarterDay': lastQuarterDay,
       };
 
-  factory StockState.fromJson(Map<String, dynamic> j) => StockState(
-        isPublic: j['isPublic'] as bool? ?? false,
-        ipoDay: (j['ipoDay'] as num?)?.toInt() ?? 0,
-        sharePrice: (j['sharePrice'] as num?)?.toDouble() ?? 0,
-        totalShares: (j['totalShares'] as num?)?.toInt() ?? 0,
-        playerShares: (j['playerShares'] as num?)?.toInt() ?? 0,
-        priceHistory: ((j['priceHistory'] as List?) ?? const [])
-            .map((e) => (e as num).toDouble())
-            .toList(),
-        lastQuarterProfit:
-            (j['lastQuarterProfit'] as num?)?.toDouble() ?? 0,
-        analystExpectation:
-            (j['analystExpectation'] as num?)?.toDouble() ?? 0,
-        lastQuarterDay: (j['lastQuarterDay'] as num?)?.toInt() ?? 0,
-      );
+  factory StockState.fromJson(Map<String, dynamic> j) {
+    double toDouble(dynamic v, [double fallback = 0.0]) {
+      if (v is num) return v.toDouble();
+      if (v is String) {
+        final parsed = double.tryParse(v.replaceAll(',', '.'));
+        if (parsed != null) return parsed;
+      }
+      return fallback;
+    }
+
+    int toInt(dynamic v, [int fallback = 0]) {
+      if (v is num) return v.toInt();
+      if (v is String) return int.tryParse(v) ?? fallback;
+      return fallback;
+    }
+
+    bool toBool(dynamic v, [bool fallback = false]) {
+      if (v is bool) return v;
+      if (v is num) return v != 0;
+      if (v is String) {
+        final s = v.toLowerCase();
+        if (s == 'true' || s == '1') return true;
+        if (s == 'false' || s == '0') return false;
+      }
+      return fallback;
+    }
+
+    final rawHistory = j['priceHistory'];
+    final history = rawHistory is List
+        ? rawHistory.map((e) => toDouble(e)).toList()
+        : <double>[];
+
+    return StockState(
+      isPublic: toBool(j['isPublic']),
+      ipoDay: toInt(j['ipoDay']),
+      sharePrice: toDouble(j['sharePrice']),
+      totalShares: toInt(j['totalShares']),
+      playerShares: toInt(j['playerShares']),
+      priceHistory: history,
+      lastQuarterProfit: toDouble(j['lastQuarterProfit']),
+      analystExpectation: toDouble(j['analystExpectation']),
+      lastQuarterDay: toInt(j['lastQuarterDay']),
+    );
+  }
 }
 
 /// Quartalsbericht — Zusammenfassung der letzten 90 Tage.
@@ -124,9 +153,9 @@ class QuarterlyReport {
   final int shopsAtStart;
   final int shopsAtEnd;
   final double brandAwarenessChange;
-  final double expectation;       // Analysten-Prognose
-  final double priceMovePercent;  // Aktienkurs-Bewegung in %
-  final String headline;          // Marketing-Schlagzeile
+  final double expectation; // Analysten-Prognose
+  final double priceMovePercent; // Aktienkurs-Bewegung in %
+  final String headline; // Marketing-Schlagzeile
 
   const QuarterlyReport({
     required this.day,

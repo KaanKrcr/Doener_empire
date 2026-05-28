@@ -5,6 +5,7 @@ import '../ui/screens/menu_screen.dart';
 import '../ui/screens/new_game_screen.dart';
 import '../ui/screens/open_shop_screen.dart';
 import '../ui/screens/shop_detail_screen.dart';
+import '../ui/screens/settings_screen.dart';
 import '../ui/main_scaffold.dart';
 
 final appRouter = GoRouter(
@@ -13,6 +14,7 @@ final appRouter = GoRouter(
     GoRoute(path: '/', builder: (_, __) => const SplashScreen()),
     GoRoute(path: '/menu', builder: (_, __) => const MenuScreen()),
     GoRoute(path: '/new-game', builder: (_, __) => const NewGameScreen()),
+    GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
 
     // Haupt-App mit Bottom Navigation
     GoRoute(

@@ -59,7 +59,7 @@ class _MoneyPulseState extends State<MoneyPulse>
         // Glow-Intensität fällt ab
         final glow = (1.0 - _pulse.value) * 0.6;
         final color = _wasIncrease
-            ? const Color(0xFF7BC950)  // success-grün
+            ? const Color(0xFF7BC950) // success-grün
             : const Color(0xFFE74C3C); // danger-rot
         return Container(
           decoration: BoxDecoration(

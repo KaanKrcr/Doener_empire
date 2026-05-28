@@ -233,8 +233,7 @@ class BankScreen extends ConsumerWidget {
               ref.read(gameProvider.notifier).takeLoan(loan);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                    content: Text(
-                        '${_fmt.format(amount)} € Kredit erhalten!')),
+                    content: Text('${_fmt.format(amount)} € Kredit erhalten!')),
               );
             },
             child: const Text('Kredit aufnehmen'),
@@ -322,8 +321,8 @@ class _ActiveLoanCard extends StatelessWidget {
                     ),
                   ),
                   const Text('Restschuld',
-                      style: TextStyle(
-                          fontSize: 10, color: AppColors.textMuted)),
+                      style:
+                          TextStyle(fontSize: 10, color: AppColors.textMuted)),
                 ],
               ),
             ],
@@ -472,8 +471,8 @@ class _ActiveLoanCard extends StatelessWidget {
               Text(
                 'Verfügbar: ${_fmt.format(cash)} €  ·  '
                 'Restschuld: ${_fmt.format(loan.remainingDebt)} €',
-                style: const TextStyle(
-                    fontSize: 12, color: AppColors.textMuted),
+                style:
+                    const TextStyle(fontSize: 12, color: AppColors.textMuted),
               ),
               const SizedBox(height: 24),
               Center(
@@ -504,16 +503,14 @@ class _ActiveLoanCard extends StatelessWidget {
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 4),
                         child: OutlinedButton(
-                          onPressed: () =>
-                              setSt(() => selected = (maxAmount * q).clamp(100, maxAmount)),
+                          onPressed: () => setSt(() =>
+                              selected = (maxAmount * q).clamp(100, maxAmount)),
                           style: OutlinedButton.styleFrom(
-                            padding:
-                                const EdgeInsets.symmetric(vertical: 10),
+                            padding: const EdgeInsets.symmetric(vertical: 10),
                             textStyle: const TextStyle(fontSize: 12),
                           ),
-                          child: Text(q == 1.0
-                              ? 'Max'
-                              : '${(q * 100).round()}%'),
+                          child:
+                              Text(q == 1.0 ? 'Max' : '${(q * 100).round()}%'),
                         ),
                       ),
                     ),
@@ -527,8 +524,7 @@ class _ActiveLoanCard extends StatelessWidget {
                     Navigator.pop(ctx);
                     onExtraPayment(selected);
                   },
-                  child: Text(
-                      '${_fmt.format(selected)} € zurückzahlen'),
+                  child: Text('${_fmt.format(selected)} € zurückzahlen'),
                 ),
               ),
             ],
@@ -552,8 +548,7 @@ class _LoanInfoRow extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label,
-            style: const TextStyle(
-                fontSize: 10, color: AppColors.textMuted)),
+            style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
         Text(value,
             style: TextStyle(
               fontSize: 12,

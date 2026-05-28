@@ -28,6 +28,15 @@ class _OpenShopScreenState extends ConsumerState<OpenShopScreen> {
   bool _loading = false;
 
   @override
+  void initState() {
+    super.initState();
+    final game = ref.read(gameProvider);
+    if (game != null) {
+      _nameCtrl.text = game.companyName;
+    }
+  }
+
+  @override
   void dispose() {
     _nameCtrl.dispose();
     super.dispose();
@@ -45,13 +54,11 @@ class _OpenShopScreenState extends ConsumerState<OpenShopScreen> {
   double get kaution => weeklyRent * 2;
 
   void _open() {
-    if (_nameCtrl.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Bitte einen Filial-Namen eingeben')),
-      );
-      return;
-    }
     final game = ref.read(gameProvider)!;
+    final typedName = _nameCtrl.text.trim();
+    final resolvedBranchName = typedName.isEmpty ? game.companyName : typedName;
+    final customName =
+        resolvedBranchName == game.companyName ? null : resolvedBranchName;
     if (game.cash < kaution) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -65,7 +72,8 @@ class _OpenShopScreenState extends ConsumerState<OpenShopScreen> {
     setState(() => _loading = true);
     final shop = Shop(
       id: _uuid.v4(),
-      name: _nameCtrl.text.trim(),
+      name: game.companyName,
+      customName: customName,
       cityId: widget.cityId,
       locationName: locations[_selectedLocation].name,
       footTraffic: footTraffic,
@@ -94,144 +102,145 @@ class _OpenShopScreenState extends ConsumerState<OpenShopScreen> {
         _goBackToCities();
       },
       child: Scaffold(
-      backgroundColor: AppColors.bg,
-      appBar: AppBar(
-        title: Text('Filiale in ${city.name}'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new),
-          onPressed: _goBackToCities,
+        backgroundColor: AppColors.bg,
+        appBar: AppBar(
+          title: Text('Filiale in ${city.name}'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new),
+            onPressed: _goBackToCities,
+          ),
         ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Stadt-Info
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.bgCard,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Row(
-                children: [
-                  Text(city.emoji, style: const TextStyle(fontSize: 36)),
-                  const SizedBox(width: 14),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(city.name,
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Stadt-Info
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.bgCard,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Row(
+                  children: [
+                    Text(city.emoji, style: const TextStyle(fontSize: 36)),
+                    const SizedBox(width: 14),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(city.name,
+                            style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimary)),
+                        Text(
+                          '${city.state}  ·  ${_fmt.format(city.population)} Einwohner',
                           style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary)),
-                      Text(
-                        '${city.state}  ·  ${_fmt.format(city.population)} Einwohner',
-                        style: const TextStyle(
-                            fontSize: 12, color: AppColors.textMuted),
-                      ),
-                      Text(
-                        city.tier.label,
-                        style: const TextStyle(
-                            fontSize: 12, color: AppColors.secondary),
-                      ),
-                    ],
-                  ),
-                ],
+                              fontSize: 12, color: AppColors.textMuted),
+                        ),
+                        Text(
+                          city.tier.label,
+                          style: const TextStyle(
+                              fontSize: 12, color: AppColors.secondary),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
-            // Filial-Name
-            const _Label('Filial-Name'),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _nameCtrl,
-              decoration: const InputDecoration(
-                hintText: 'z.B. Sultan Döner Fulda',
-                prefixIcon:
-                    Icon(Icons.storefront_outlined, color: AppColors.textMuted),
+              // Filial-Name
+              const _Label('Optionaler Filialname'),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _nameCtrl,
+                decoration: const InputDecoration(
+                  hintText: 'Leer lassen = Konzernname',
+                  prefixIcon: Icon(Icons.storefront_outlined,
+                      color: AppColors.textMuted),
+                ),
+                textCapitalization: TextCapitalization.words,
               ),
-              textCapitalization: TextCapitalization.words,
-            ),
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
-            // Standort wählen
-            const _Label('Standort wählen'),
-            const SizedBox(height: 8),
-            for (int i = 0; i < locations.length; i++)
-              _LocationTile(
-                template: locations[i],
-                cityData: city,
-                isSelected: _selectedLocation == i,
-                onTap: () => setState(() => _selectedLocation = i),
-              ),
-            const SizedBox(height: 24),
+              // Standort wählen
+              const _Label('Standort wählen'),
+              const SizedBox(height: 8),
+              for (int i = 0; i < locations.length; i++)
+                _LocationTile(
+                  template: locations[i],
+                  cityData: city,
+                  isSelected: _selectedLocation == i,
+                  onTap: () => setState(() => _selectedLocation = i),
+                ),
+              const SizedBox(height: 24),
 
-            // Zusammenfassung
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.bgCard,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.primary.withAlpha((0.3 * 255).round())),
+              // Zusammenfassung
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.bgCard,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                      color: AppColors.primary.withAlpha((0.3 * 255).round())),
+                ),
+                child: Column(
+                  children: [
+                    _SummaryRow(
+                      label: 'Laufkundschaft/Tag',
+                      value: '${_fmt.format(footTraffic)} Personen',
+                      icon: Icons.people_outline,
+                      color: AppColors.accent,
+                    ),
+                    const Divider(height: 20, color: AppColors.border),
+                    _SummaryRow(
+                      label: 'Wochenmiete',
+                      value: '${_fmt.format(weeklyRent)} €',
+                      icon: Icons.home_outlined,
+                      color: AppColors.warning,
+                    ),
+                    const Divider(height: 20, color: AppColors.border),
+                    _SummaryRow(
+                      label: 'Kaution (2 Wochen)',
+                      value: '${_fmt.format(kaution)} €',
+                      icon: Icons.lock_outlined,
+                      color: AppColors.danger,
+                    ),
+                    const Divider(height: 20, color: AppColors.border),
+                    _SummaryRow(
+                      label: 'Dein Kapital danach',
+                      value: '${_fmt.format(game.cash - kaution)} €',
+                      icon: Icons.account_balance_wallet_outlined,
+                      color: game.cash - kaution >= 0
+                          ? AppColors.success
+                          : AppColors.danger,
+                    ),
+                  ],
+                ),
               ),
-              child: Column(
-                children: [
-                  _SummaryRow(
-                    label: 'Laufkundschaft/Tag',
-                    value: '${_fmt.format(footTraffic)} Personen',
-                    icon: Icons.people_outline,
-                    color: AppColors.accent,
-                  ),
-                  const Divider(height: 20, color: AppColors.border),
-                  _SummaryRow(
-                    label: 'Wochenmiete',
-                    value: '${_fmt.format(weeklyRent)} €',
-                    icon: Icons.home_outlined,
-                    color: AppColors.warning,
-                  ),
-                  const Divider(height: 20, color: AppColors.border),
-                  _SummaryRow(
-                    label: 'Kaution (2 Wochen)',
-                    value: '${_fmt.format(kaution)} €',
-                    icon: Icons.lock_outlined,
-                    color: AppColors.danger,
-                  ),
-                  const Divider(height: 20, color: AppColors.border),
-                  _SummaryRow(
-                    label: 'Dein Kapital danach',
-                    value: '${_fmt.format(game.cash - kaution)} €',
-                    icon: Icons.account_balance_wallet_outlined,
-                    color: game.cash - kaution >= 0
-                        ? AppColors.success
-                        : AppColors.danger,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 32),
+              const SizedBox(height: 32),
 
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _loading ? null : _open,
-                child: _loading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2))
-                    : const Text('Filiale eröffnen  🥙'),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _loading ? null : _open,
+                  child: _loading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2))
+                      : const Text('Filiale eröffnen  🥙'),
+                ),
               ),
-            ),
-            const SizedBox(height: 32),
-          ],
+              const SizedBox(height: 32),
+            ],
+          ),
         ),
       ),
-    ),
     );
   }
 

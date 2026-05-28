@@ -120,40 +120,118 @@ const Map<LocationPersonality, TimeProfile> kTimeProfiles = {
   LocationPersonality.business: TimeProfile(
     //         10   11   12   13   14   15   16   17   18   19   20   21   22   23
     hourlyFactors: [
-      0.4, 0.7, 1.6, 1.9, 1.4, 0.9, 0.8, 0.9, 1.0, 0.8, 0.5, 0.3, 0.2, 0.1
+      0.4,
+      0.7,
+      1.6,
+      1.9,
+      1.4,
+      0.9,
+      0.8,
+      0.9,
+      1.0,
+      0.8,
+      0.5,
+      0.3,
+      0.2,
+      0.1
     ],
     // Wochenende stark schwach (Büros zu)
     weekdayFactors: [1.10, 1.10, 1.10, 1.10, 1.20, 0.40, 0.30],
   ),
   LocationPersonality.university: TimeProfile(
     hourlyFactors: [
-      0.3, 0.5, 1.4, 1.5, 1.2, 0.9, 0.8, 0.9, 1.1, 1.3, 1.4, 1.5, 1.4, 1.0
+      0.3,
+      0.5,
+      1.4,
+      1.5,
+      1.2,
+      0.9,
+      0.8,
+      0.9,
+      1.1,
+      1.3,
+      1.4,
+      1.5,
+      1.4,
+      1.0
     ],
     // Donnerstag (Studi-Party!) + Freitag stark
     weekdayFactors: [0.85, 0.95, 1.00, 1.30, 1.25, 1.00, 0.70],
   ),
   LocationPersonality.touristic: TimeProfile(
     hourlyFactors: [
-      0.7, 1.0, 1.2, 1.3, 1.2, 1.0, 1.0, 1.1, 1.3, 1.4, 1.3, 1.0, 0.8, 0.6
+      0.7,
+      1.0,
+      1.2,
+      1.3,
+      1.2,
+      1.0,
+      1.0,
+      1.1,
+      1.3,
+      1.4,
+      1.3,
+      1.0,
+      0.8,
+      0.6
     ],
     weekdayFactors: [0.90, 0.90, 0.95, 1.00, 1.15, 1.30, 1.25],
   ),
   LocationPersonality.residential: TimeProfile(
     hourlyFactors: [
-      0.3, 0.4, 0.8, 0.9, 0.7, 0.6, 0.8, 1.1, 1.5, 1.6, 1.3, 0.9, 0.6, 0.3
+      0.3,
+      0.4,
+      0.8,
+      0.9,
+      0.7,
+      0.6,
+      0.8,
+      1.1,
+      1.5,
+      1.6,
+      1.3,
+      0.9,
+      0.6,
+      0.3
     ],
     weekdayFactors: [0.85, 0.85, 0.90, 0.95, 1.10, 1.30, 1.30],
   ),
   LocationPersonality.nightlife: TimeProfile(
     hourlyFactors: [
-      0.2, 0.3, 0.8, 0.9, 0.7, 0.6, 0.7, 0.8, 0.9, 1.0, 1.2, 1.5, 1.9, 2.0
+      0.2,
+      0.3,
+      0.8,
+      0.9,
+      0.7,
+      0.6,
+      0.7,
+      0.8,
+      0.9,
+      1.0,
+      1.2,
+      1.5,
+      1.9,
+      2.0
     ],
     // Fr+Sa explodieren, Wochenmitte schwach
     weekdayFactors: [0.50, 0.60, 0.65, 0.80, 1.50, 1.80, 1.10],
   ),
   LocationPersonality.transit: TimeProfile(
     hourlyFactors: [
-      0.8, 1.0, 1.2, 1.1, 1.0, 1.0, 1.1, 1.3, 1.2, 1.0, 0.9, 0.9, 0.8, 0.6
+      0.8,
+      1.0,
+      1.2,
+      1.1,
+      1.0,
+      1.0,
+      1.1,
+      1.3,
+      1.2,
+      1.0,
+      0.9,
+      0.9,
+      0.8,
+      0.6
     ],
     weekdayFactors: [1.05, 1.05, 1.05, 1.05, 1.10, 0.90, 0.75],
   ),

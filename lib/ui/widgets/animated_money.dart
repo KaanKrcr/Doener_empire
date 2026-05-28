@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-final _fmt = NumberFormat.currency(locale: 'de_DE', symbol: '€', decimalDigits: 2);
-final _fmtShort = NumberFormat.currency(locale: 'de_DE', symbol: '€', decimalDigits: 0);
+final _fmt =
+    NumberFormat.currency(locale: 'de_DE', symbol: '€', decimalDigits: 2);
+final _fmtShort =
+    NumberFormat.currency(locale: 'de_DE', symbol: '€', decimalDigits: 0);
 
 class AnimatedMoney extends StatefulWidget {
   final double amount;
@@ -66,7 +68,8 @@ class _AnimatedMoneyState extends State<AnimatedMoney>
       builder: (_, __) {
         final v = _anim.value;
         final prefix = widget.showSign && v >= 0 ? '+' : '';
-        final text = prefix + (widget.compact ? _fmtShort.format(v) : _fmt.format(v));
+        final text =
+            prefix + (widget.compact ? _fmtShort.format(v) : _fmt.format(v));
         return Text(
           text,
           style: TextStyle(

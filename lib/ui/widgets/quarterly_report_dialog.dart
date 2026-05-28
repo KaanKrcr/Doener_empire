@@ -126,8 +126,7 @@ class _Row extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
-  const _Row(
-      {required this.label, required this.value, required this.color});
+  const _Row({required this.label, required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) {

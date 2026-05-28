@@ -16,7 +16,12 @@ class CitiesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final game = ref.watch(gameProvider)!;
 
-    final tierOrder = [CityTier.klein, CityTier.mittel, CityTier.gross, CityTier.metropole];
+    final tierOrder = [
+      CityTier.klein,
+      CityTier.mittel,
+      CityTier.gross,
+      CityTier.metropole
+    ];
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -102,9 +107,7 @@ class CitiesScreen extends ConsumerWidget {
               Navigator.pop(ctx);
               ref.read(gameProvider.notifier).unlockCity(city.id);
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                    content:
-                        Text('${city.name} freigeschaltet! 🎉')),
+                SnackBar(content: Text('${city.name} freigeschaltet! 🎉')),
               );
             },
             child: const Text('Freischalten'),
@@ -229,7 +232,8 @@ class _CityCard extends StatelessWidget {
               ElevatedButton(
                 onPressed: onOpen,
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   textStyle: const TextStyle(fontSize: 13),
                 ),
                 child: const Text('+ Filiale'),
@@ -243,7 +247,8 @@ class _CityCard extends StatelessWidget {
                   OutlinedButton(
                     onPressed: canUnlock ? onUnlock : null,
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
                       textStyle: const TextStyle(fontSize: 12),
                       side: BorderSide(
                         color: canUnlock

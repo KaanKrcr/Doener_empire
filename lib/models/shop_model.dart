@@ -6,7 +6,8 @@ import 'time_profile_model.dart';
 
 class Shop {
   final String id;
-  final String name;
+  final String name; // Konzern-/Kettenname
+  final String? customName; // optionaler individueller Filialname
   final String cityId;
   final String locationName;
   final int footTraffic;
@@ -21,10 +22,13 @@ class Shop {
   final LocationPersonality personality;
   final List<String> upgradeIds;
   final bool autoHire; // HR-Manager stellt automatisch bei Engpass ein
+  final String? originalCompetitorName; // ehemals welcher Konkurrent
+  final bool wasAcquired; // stammt aus einer Übernahme
 
   const Shop({
     required this.id,
     required this.name,
+    this.customName,
     required this.cityId,
     required this.locationName,
     required this.footTraffic,
@@ -39,21 +43,39 @@ class Shop {
     this.personality = LocationPersonality.touristic,
     this.upgradeIds = const [],
     this.autoHire = false,
+    this.originalCompetitorName,
+    this.wasAcquired = false,
   });
 
   bool hasUpgrade(String upgradeId) => upgradeIds.contains(upgradeId);
 
   double get dailyRent => weeklyRent / 7.0;
 
+  bool get hasCustomName => customName != null && customName!.trim().isNotEmpty;
+
+  /// Primäre Anzeige in Listen/Karten.
+  String get displayName =>
+      hasCustomName ? '$name - ${customName!.trim()}' : name;
+
+  /// Sekundäre Branding-Zeile.
+  String get brandingHint => hasCustomName ? name : locationName;
+
+  String? get acquiredHint => wasAcquired && originalCompetitorName != null
+      ? 'ehemals $originalCompetitorName'
+      : null;
+
   bool hasEquipment(String equipmentId) =>
       equipment.any((e) => e.equipmentId == equipmentId);
 
   /// Gibt das Zeitprofil dieses Standorts zurück.
   TimeProfile get timeProfile =>
-      kTimeProfiles[personality] ?? kTimeProfiles[LocationPersonality.touristic]!;
+      kTimeProfiles[personality] ??
+      kTimeProfiles[LocationPersonality.touristic]!;
 
   Shop copyWith({
     String? name,
+    String? customName,
+    bool clearCustomName = false,
     bool? isOpen,
     List<ShopProduct>? menu,
     List<ShopEquipment>? equipment,
@@ -63,10 +85,14 @@ class Shop {
     LocationPersonality? personality,
     List<String>? upgradeIds,
     bool? autoHire,
+    String? originalCompetitorName,
+    bool clearOriginalCompetitorName = false,
+    bool? wasAcquired,
   }) {
     return Shop(
       id: id,
       name: name ?? this.name,
+      customName: clearCustomName ? null : (customName ?? this.customName),
       cityId: cityId,
       locationName: locationName,
       footTraffic: footTraffic,
@@ -81,12 +107,17 @@ class Shop {
       personality: personality ?? this.personality,
       upgradeIds: upgradeIds ?? this.upgradeIds,
       autoHire: autoHire ?? this.autoHire,
+      originalCompetitorName: clearOriginalCompetitorName
+          ? null
+          : (originalCompetitorName ?? this.originalCompetitorName),
+      wasAcquired: wasAcquired ?? this.wasAcquired,
     );
   }
 
   Map<String, dynamic> toJson() => {
         'id': id,
         'name': name,
+        'customName': customName,
         'cityId': cityId,
         'locationName': locationName,
         'footTraffic': footTraffic,
@@ -97,16 +128,18 @@ class Shop {
         'employees': employees.map((e) => e.toJson()).toList(),
         'reputation': reputation,
         'dayOpened': dayOpened,
-        'activeCampaigns':
-            activeCampaigns.map((c) => c.toJson()).toList(),
+        'activeCampaigns': activeCampaigns.map((c) => c.toJson()).toList(),
         'personality': personality.name,
         'upgradeIds': upgradeIds,
         'autoHire': autoHire,
+        'originalCompetitorName': originalCompetitorName,
+        'wasAcquired': wasAcquired,
       };
 
   factory Shop.fromJson(Map<String, dynamic> j) => Shop(
         id: j['id'] as String,
         name: j['name'] as String,
+        customName: j['customName'] as String?,
         cityId: j['cityId'] as String,
         locationName: j['locationName'] as String,
         footTraffic: j['footTraffic'] as int,
@@ -124,16 +157,16 @@ class Shop {
         reputation: (j['reputation'] as num).toDouble(),
         dayOpened: j['dayOpened'] as int,
         activeCampaigns: (j['activeCampaigns'] as List?)
-                ?.map((e) =>
-                    ActiveCampaign.fromJson(e as Map<String, dynamic>))
+                ?.map((e) => ActiveCampaign.fromJson(e as Map<String, dynamic>))
                 .toList() ??
             const [],
         personality: LocationPersonality.values.firstWhere(
           (p) => p.name == (j['personality'] as String?),
           orElse: () => LocationPersonality.touristic,
         ),
-        upgradeIds:
-            List<String>.from(j['upgradeIds'] as List? ?? const []),
+        upgradeIds: List<String>.from(j['upgradeIds'] as List? ?? const []),
         autoHire: j['autoHire'] as bool? ?? false,
+        originalCompetitorName: j['originalCompetitorName'] as String?,
+        wasAcquired: j['wasAcquired'] as bool? ?? false,
       );
 }

@@ -33,8 +33,7 @@ class DayEndDialog extends ConsumerWidget {
 
     return Dialog(
       backgroundColor: AppColors.bgCard,
-      shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 420),
         child: Column(
@@ -52,8 +51,8 @@ class DayEndDialog extends ConsumerWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(24)),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(24)),
               ),
               child: Column(
                 children: [
@@ -143,13 +142,11 @@ class DayEndDialog extends ConsumerWidget {
                       decoration: BoxDecoration(
                         color: AppColors.gold.withAlpha(30),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color: AppColors.gold.withAlpha(80)),
+                        border: Border.all(color: AppColors.gold.withAlpha(80)),
                       ),
                       child: Row(
                         children: [
-                          const Text('🏆',
-                              style: TextStyle(fontSize: 24)),
+                          const Text('🏆', style: TextStyle(fontSize: 24)),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Column(
@@ -201,13 +198,11 @@ class DayEndDialog extends ConsumerWidget {
                         ),
                         child: Row(
                           children: [
-                            Text(a.emoji,
-                                style: const TextStyle(fontSize: 18)),
+                            Text(a.emoji, style: const TextStyle(fontSize: 18)),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const Text(
                                     'TROPHÄE!',
@@ -333,8 +328,8 @@ class EventDialog extends ConsumerWidget {
   /// Backwards-kompatible Signatur — `ref` wird ignoriert weil der Dialog
   /// jetzt selbst ein ConsumerWidget ist und ref über `WidgetRef` im build
   /// bekommt. Dadurch funktioniert der Pop-Context zuverlässig.
-  static Future<void> show(
-      BuildContext context, GameEvent event, [WidgetRef? ref]) {
+  static Future<void> show(BuildContext context, GameEvent event,
+      [WidgetRef? ref]) {
     return showDialog(
       context: context,
       barrierDismissible: false,
@@ -359,8 +354,7 @@ class EventDialog extends ConsumerWidget {
 
     return Dialog(
       backgroundColor: AppColors.bgCard,
-      shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 420),
         child: Column(
@@ -378,14 +372,14 @@ class EventDialog extends ConsumerWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(24)),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(24)),
               ),
               child: Column(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.black.withAlpha(40),
                       borderRadius: BorderRadius.circular(8),
@@ -401,8 +395,7 @@ class EventDialog extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Text(event.emoji,
-                      style: const TextStyle(fontSize: 48)),
+                  Text(event.emoji, style: const TextStyle(fontSize: 48)),
                   const SizedBox(height: 8),
                   Text(
                     event.title,
@@ -497,8 +490,8 @@ class _ChoiceButton extends StatelessWidget {
               if (choice.cost != null && choice.cost! > 0) ...[
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppColors.danger.withAlpha(30),
                     borderRadius: BorderRadius.circular(6),

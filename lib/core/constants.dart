@@ -716,7 +716,7 @@ const List<MarketingCampaign> kAllMarketingCampaigns = [
 
 // ─── Startkapital ─────────────────────────────────────────────────────────────
 
-const double kStartingCash = 15000.0; // Startkapital: 15.000 €
+const double kStartingCash = 50000000.0; // Startkapital: 50.000.000 €
 const double kTickIntervalSeconds = 3.0; // alle 3 Sek. ein Spieltick (= 1 Spielstunde)
 const int kHoursPerDay = 24;
 const double kDailyOpenHours = 14.0; // Laden offen von 10-24 Uhr

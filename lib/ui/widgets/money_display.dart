@@ -85,8 +85,8 @@ class StatCard extends StatelessWidget {
                   color: AppColors.textPrimary)),
           if (subtitle != null)
             Text(subtitle!,
-                style: const TextStyle(
-                    fontSize: 11, color: AppColors.textMuted)),
+                style:
+                    const TextStyle(fontSize: 11, color: AppColors.textMuted)),
         ],
       ),
     );

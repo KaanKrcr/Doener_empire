@@ -9,9 +9,9 @@
 /// - Generiert eigenen Umsatz aus B2B-Verkäufen
 /// - Hat tägliche Betriebskosten (Strom, Wartung, Personal)
 enum ProductionType {
-  fleisch,    // Eigene Döner-Fleisch-Produktion
-  brot,       // Eigene Bäckerei (Fladen, Dürüm)
-  gemuese,    // Eigener Gemüse-Großhandel
+  fleisch, // Eigene Döner-Fleisch-Produktion
+  brot, // Eigene Bäckerei (Fladen, Dürüm)
+  gemuese, // Eigener Gemüse-Großhandel
 }
 
 extension ProductionTypeLabel on ProductionType {
@@ -64,10 +64,10 @@ extension ProductionTypeLabel on ProductionType {
 
 /// Tier-Stufen — größere Anlagen versorgen mehr Filialen
 enum FacilityTier {
-  klein,    // bis 5 Filialen, Anschaffung günstig
-  mittel,   // bis 15 Filialen
-  gross,    // bis 30 Filialen
-  industrie,// unbegrenzt
+  klein, // bis 5 Filialen, Anschaffung günstig
+  mittel, // bis 15 Filialen
+  gross, // bis 30 Filialen
+  industrie, // unbegrenzt
 }
 
 extension FacilityTierLabel on FacilityTier {

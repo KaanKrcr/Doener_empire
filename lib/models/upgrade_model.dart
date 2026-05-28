@@ -1,21 +1,13 @@
-// Permanente Upgrades — Shop-Level und Konzern-Level.
-///
-/// • [UpgradeScope.shop]   — pro Filiale kaufbar, wirkt nur dort.
-/// • [UpgradeScope.global] — einmalig im Konzern-Tab kaufbar,
-///                           wirkt automatisch in ALLEN Filialen.
-///
-/// Delivery-Upgrades (z.B. Lieferando) haben eigene Felder:
-/// [deliveryRevenueFraction] und [deliveryCommissionRate].
-/// Der Plattform-Anteil wird als separate Kostenposition verbucht,
-/// damit Umsatz niemals negativ wird.
+﻿// Permanente Upgrades auf Filial- und Konzern-Ebene.
+library;
 
 enum UpgradeScope { shop, global }
 
 enum UpgradeCategory {
-  komfort,   // WLAN, Klimaanlage, Heizung → Komfort
-  ambiente,  // Musik, Deko, Beleuchtung  → Atmosphäre
-  service,   // Stammkunden-App, Lieferdienst → Service
-  hygiene,   // Premium-Reinigung, Bio-Zutaten → Image
+  komfort,
+  ambiente,
+  service,
+  hygiene,
 }
 
 extension UpgradeCategoryLabel on UpgradeCategory {
@@ -33,41 +25,30 @@ extension UpgradeCategoryLabel on UpgradeCategory {
   }
 }
 
+const String kGlobalSpiessBasicId = 'doener_spiess_global_basic';
+const String kGlobalSpiessStandardId = 'doener_spiess_global_standard';
+const String kGlobalSpiessProfiId = 'doener_spiess_global_profi';
+
+const List<String> kGlobalSpiessUpgradeOrder = [
+  kGlobalSpiessBasicId,
+  kGlobalSpiessStandardId,
+  kGlobalSpiessProfiId,
+];
+
 class UpgradeData {
   final String id;
   final String name;
   final String description;
   final String emoji;
   final UpgradeCategory category;
-
-  /// shop = pro Filiale; global = einmalig für alle Filialen
   final UpgradeScope scope;
-
-  /// Einmalige Anschaffungskosten
   final double installCost;
-
-  /// Monatliche laufende Kosten (Lizenz, Wartung, Strom etc.)
-  /// Wird auf täglich umgerechnet: monthlyCost / 30
   final double monthlyCost;
-
-  /// Multiplikator auf die Kundenanzahl (0.05 = +5%)
   final double customerBoost;
-
-  /// Reputations-Boost pro Tag
   final double reputationPerDay;
-
-  /// Boost für den durchschnittlichen Bestellwert
   final double avgOrderValueBoost;
-
-  /// Boost für Markenbekanntheit (kleiner stetiger Effekt)
   final double brandPerDay;
-
-  /// Anteil des Tagesumsatzes, der über eine Liefer-Plattform läuft.
-  /// 0.0 = kein Lieferdienst. Z.B. 0.18 = 18 % des Umsatzes via Plattform.
   final double deliveryRevenueFraction;
-
-  /// Provision der Liefer-Plattform (z.B. 0.28 = 28 %).
-  /// Gilt nur wenn [deliveryRevenueFraction] > 0.
   final double deliveryCommissionRate;
 
   const UpgradeData({
@@ -87,20 +68,12 @@ class UpgradeData {
     this.deliveryCommissionRate = 0,
   });
 
-  /// Tageskosten = monatlich / 30
   double get dailyCost => monthlyCost / 30.0;
-
-  /// Hat dieses Upgrade ein Delivery-Kosten-Modell?
   bool get isDelivery => deliveryRevenueFraction > 0;
-
-  /// Ist es ein globales Konzern-Upgrade?
   bool get isGlobal => scope == UpgradeScope.global;
 }
 
-// ─── Shop-Level-Upgrades ───────────────────────────────────────────────────
-
 const List<UpgradeData> kShopUpgrades = [
-  // ── KOMFORT ──────────────────────────────────────────────────────────────
   UpgradeData(
     id: 'wifi',
     name: 'Gratis-WLAN',
@@ -115,7 +88,7 @@ const List<UpgradeData> kShopUpgrades = [
   UpgradeData(
     id: 'klima',
     name: 'Klimaanlage',
-    description: 'Im Sommer ein Magnet — frische Kühle macht den Unterschied.',
+    description: 'Im Sommer ein Magnet - frische Kühle macht den Unterschied.',
     emoji: '❄️',
     category: UpgradeCategory.komfort,
     installCost: 2500,
@@ -126,7 +99,7 @@ const List<UpgradeData> kShopUpgrades = [
   UpgradeData(
     id: 'heizpilz',
     name: 'Außenbereich + Heizpilze',
-    description: 'Sitzplätze draußen das ganze Jahr — gemütliche Atmosphäre.',
+    description: 'Sitzplätze draußen das ganze Jahr - gemütliche Atmosphäre.',
     emoji: '🔥',
     category: UpgradeCategory.komfort,
     installCost: 1800,
@@ -134,8 +107,6 @@ const List<UpgradeData> kShopUpgrades = [
     customerBoost: 0.10,
     avgOrderValueBoost: 0.05,
   ),
-
-  // ── AMBIENTE ─────────────────────────────────────────────────────────────
   UpgradeData(
     id: 'musik',
     name: 'Lizenzierte Musik (GEMA)',
@@ -150,7 +121,7 @@ const List<UpgradeData> kShopUpgrades = [
   UpgradeData(
     id: 'deko_premium',
     name: 'Premium-Inneneinrichtung',
-    description: 'Türkische Lampen, Mosaike — instagrammable.',
+    description: 'Türkische Lampen, Mosaike - instagrammable.',
     emoji: '🪔',
     category: UpgradeCategory.ambiente,
     installCost: 3500,
@@ -162,7 +133,7 @@ const List<UpgradeData> kShopUpgrades = [
   UpgradeData(
     id: 'tv_sport',
     name: 'TV mit Sportübertragung',
-    description: 'Fußball läuft → Männer-Gruppen kommen, bestellen mehr.',
+    description: 'Fußball läuft - Gruppen kommen und bestellen mehr.',
     emoji: '📺',
     category: UpgradeCategory.ambiente,
     installCost: 1200,
@@ -170,27 +141,10 @@ const List<UpgradeData> kShopUpgrades = [
     customerBoost: 0.07,
     avgOrderValueBoost: 0.08,
   ),
-
-  // ── SERVICE ──────────────────────────────────────────────────────────────
-  UpgradeData(
-    id: 'lieferdienst',
-    name: 'Lieferdienst (Lieferando)',
-    description:
-        'Bestellungen auch von zu Hause — neue Zielgruppe erschlossen. '
-        'Die Plattform behält 28 % Provision auf Lieferumsätze.',
-    emoji: '🛵',
-    category: UpgradeCategory.service,
-    installCost: 600,
-    monthlyCost: 500,
-    customerBoost: 0.18,           // +18 % Kunden durch Delivery
-    deliveryRevenueFraction: 0.18, // 18 % des Umsatzes laufen über Plattform
-    deliveryCommissionRate: 0.28,  // Plattform nimmt 28 % davon
-    // avgOrderValueBoost bewusst 0 — Provision wird separat abgezogen
-  ),
   UpgradeData(
     id: 'kartenzahlung',
     name: 'Kartenzahlung (alle Karten)',
-    description: 'Apple Pay, Visa, EC — niemand geht mehr ohne zu zahlen.',
+    description: 'Apple Pay, Visa, EC - niemand geht mehr ohne zu zahlen.',
     emoji: '💳',
     category: UpgradeCategory.service,
     installCost: 500,
@@ -198,8 +152,6 @@ const List<UpgradeData> kShopUpgrades = [
     customerBoost: 0.04,
     avgOrderValueBoost: 0.06,
   ),
-
-  // ── HYGIENE ──────────────────────────────────────────────────────────────
   UpgradeData(
     id: 'bio_zutaten',
     name: 'Bio-Zutaten',
@@ -226,20 +178,64 @@ const List<UpgradeData> kShopUpgrades = [
   ),
 ];
 
-// ─── Konzern-Level-Upgrades (global, einmalig für alle Filialen) ───────────
-
 const List<UpgradeData> kGlobalUpgrades = [
+  UpgradeData(
+    id: kGlobalSpiessBasicId,
+    name: 'Döner-Spieß-Netzwerk Basis',
+    description:
+        'Konzernweiter Spieß-Standard für alle Filialen mit monatlichen Fixkosten.',
+    emoji: '🔥',
+    category: UpgradeCategory.service,
+    scope: UpgradeScope.global,
+    installCost: 1800,
+    monthlyCost: 220,
+  ),
+  UpgradeData(
+    id: kGlobalSpiessStandardId,
+    name: 'Döner-Spieß-Netzwerk Standard',
+    description:
+        'Mehr Kapazität und Qualität konzernweit. Ersetzt die Basisstufe.',
+    emoji: '🔥',
+    category: UpgradeCategory.service,
+    scope: UpgradeScope.global,
+    installCost: 4200,
+    monthlyCost: 520,
+  ),
+  UpgradeData(
+    id: kGlobalSpiessProfiId,
+    name: 'Döner-Spieß-Netzwerk Profi',
+    description:
+        'Maximale zentrale Spießversorgung für alle Filialen. Ersetzt niedrigere Stufen.',
+    emoji: '🔥',
+    category: UpgradeCategory.service,
+    scope: UpgradeScope.global,
+    installCost: 9800,
+    monthlyCost: 980,
+  ),
+  UpgradeData(
+    id: 'lieferdienst',
+    name: 'Lieferdienst (Lieferando)',
+    description:
+        'Zentraler Lieferkanal für alle Filialen. Die Plattform behält 28 % Provision auf Lieferumsätze.',
+    emoji: '🛵',
+    category: UpgradeCategory.service,
+    scope: UpgradeScope.global,
+    installCost: 600,
+    monthlyCost: 500,
+    customerBoost: 0.18,
+    deliveryRevenueFraction: 0.18,
+    deliveryCommissionRate: 0.28,
+  ),
   UpgradeData(
     id: 'loyalty_app',
     name: 'Stammkunden-App',
     description:
-        'Eigene App mit Stempelkarten und Gutscheinen. '
-        'Einmalig kaufen — gilt für alle Filialen.',
+        'Eigene App mit Stempelkarten und Gutscheinen. Einmalig kaufen - gilt für alle Filialen.',
     emoji: '💳',
     category: UpgradeCategory.service,
     scope: UpgradeScope.global,
-    installCost: 8000,   // teurer als Shop-Variante, aber deckt alle ab
-    monthlyCost: 350,    // monatliche Server/Lizenzkosten
+    installCost: 8000,
+    monthlyCost: 350,
     customerBoost: 0.10,
     reputationPerDay: 0.008,
     brandPerDay: 0.05,
@@ -248,8 +244,7 @@ const List<UpgradeData> kGlobalUpgrades = [
     id: 'kassensystem_zentral',
     name: 'Zentrales Kassensystem',
     description:
-        'Einheitliches POS in allen Filialen — Echtzeitdaten, weniger Fehler. '
-        'Reduziert Zutatenverschwendung konzernweit.',
+        'Einheitliches POS in allen Filialen - Echtzeitdaten, weniger Fehler. Reduziert Zutatenverschwendung konzernweit.',
     emoji: '🖥️',
     category: UpgradeCategory.service,
     scope: UpgradeScope.global,
@@ -262,8 +257,7 @@ const List<UpgradeData> kGlobalUpgrades = [
     id: 'schulung_online',
     name: 'Online-Schulungsplattform',
     description:
-        'Alle Mitarbeiter lernen schneller. '
-        'Effektiv +10 % Speed & Freundlichkeit in jeder Filiale.',
+        'Alle Mitarbeiter lernen schneller. Effektiv +10 % Speed und Freundlichkeit in jeder Filiale.',
     emoji: '🎓',
     category: UpgradeCategory.service,
     scope: UpgradeScope.global,
@@ -276,8 +270,7 @@ const List<UpgradeData> kGlobalUpgrades = [
     id: 'eigen_lieferdienst',
     name: 'Eigene Liefer-App',
     description:
-        'Eigene Logistik ohne Provision. Benötigt bereits Lieferando-Einstieg '
-        'in mind. 3 Filialen. Provision fällt auf 8 %.',
+        'Eigene Logistik ohne Provision. Benötigt Lieferdienst in mindestens 3 Filialen. Provision fällt auf 8 %.',
     emoji: '🚀',
     category: UpgradeCategory.service,
     scope: UpgradeScope.global,
@@ -285,15 +278,11 @@ const List<UpgradeData> kGlobalUpgrades = [
     monthlyCost: 1200,
     customerBoost: 0.08,
     brandPerDay: 0.04,
-    // deliveryCommissionRate: 0.08 wird in der Engine gesondert gehandhabt
-    // (überschreibt Lieferando-Rate für Shops mit lieferdienst-Upgrade)
   ),
 ];
 
-/// Alle Upgrades zusammen (für Legacy-Kompatibilität + Lookup)
 const List<UpgradeData> kAllUpgrades = [...kShopUpgrades, ...kGlobalUpgrades];
 
-/// Lookup nach ID — null-safe
 UpgradeData? upgradeById(String id) {
   try {
     return kAllUpgrades.firstWhere((u) => u.id == id);

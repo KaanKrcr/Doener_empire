@@ -42,7 +42,7 @@ class BrandStats {
   /// Brand-Awareness wirkt schwächer (überall), City-Rep stärker (lokal).
   double customerMultiplier(String cityId) {
     final brandPart = 0.05 * (brandAwareness / 100); // max +5%
-    final cityPart = 0.40 * (inCity(cityId) / 100);  // max +40%
+    final cityPart = 0.40 * (inCity(cityId) / 100); // max +40%
     return (1.0 + brandPart + cityPart).clamp(0.85, 1.45);
   }
 

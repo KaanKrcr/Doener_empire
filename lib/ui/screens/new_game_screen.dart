@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../models/difficulty_model.dart';
 import '../../core/theme.dart';
 import '../../providers/game_provider.dart';
 
@@ -15,6 +16,8 @@ class _NewGameScreenState extends ConsumerState<NewGameScreen> {
   final _formKey = GlobalKey<FormState>();
   final _founderCtrl = TextEditingController();
   final _companyCtrl = TextEditingController();
+  GameDifficulty _selectedDifficulty = GameDifficulty.normal;
+  bool _tutorialEnabled = true;
   bool _loading = false;
 
   @override
@@ -30,6 +33,8 @@ class _NewGameScreenState extends ConsumerState<NewGameScreen> {
     await ref.read(gameProvider.notifier).startNewGame(
           _companyCtrl.text.trim(),
           _founderCtrl.text.trim(),
+          difficulty: _selectedDifficulty,
+          tutorialEnabled: _tutorialEnabled,
         );
     if (mounted) context.go('/game');
   }
@@ -53,12 +58,12 @@ class _NewGameScreenState extends ConsumerState<NewGameScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 16),
-              Center(
+              const Center(
                 child: Column(
                   children: [
-                    const Text('🥙', style: TextStyle(fontSize: 72)),
-                    const SizedBox(height: 12),
-                    const Text(
+                    Text('🥙', style: TextStyle(fontSize: 72)),
+                    SizedBox(height: 12),
+                    Text(
                       'Dein Döner-Imperium beginnt\nmit einem einzigen Laden.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
@@ -72,33 +77,108 @@ class _NewGameScreenState extends ConsumerState<NewGameScreen> {
               ),
               const SizedBox(height: 40),
 
-              _SectionLabel('Dein Name'),
+              const _SectionLabel('Dein Name'),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _founderCtrl,
                 decoration: const InputDecoration(
                   hintText: 'z.B. Mustafa Yilmaz',
-                  prefixIcon: Icon(Icons.person_outline, color: AppColors.textMuted),
+                  prefixIcon:
+                      Icon(Icons.person_outline, color: AppColors.textMuted),
                 ),
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Bitte deinen Namen eingeben' : null,
+                validator: (v) => v == null || v.trim().isEmpty
+                    ? 'Bitte deinen Namen eingeben'
+                    : null,
                 textCapitalization: TextCapitalization.words,
               ),
               const SizedBox(height: 20),
 
-              _SectionLabel('Firmenname'),
+              const _SectionLabel('Firmenname'),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _companyCtrl,
                 decoration: const InputDecoration(
                   hintText: 'z.B. Sultan Döner GmbH',
-                  prefixIcon: Icon(Icons.storefront_outlined, color: AppColors.textMuted),
+                  prefixIcon: Icon(Icons.storefront_outlined,
+                      color: AppColors.textMuted),
                 ),
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Bitte einen Firmennamen eingeben' : null,
+                validator: (v) => v == null || v.trim().isEmpty
+                    ? 'Bitte einen Firmennamen eingeben'
+                    : null,
                 textCapitalization: TextCapitalization.words,
               ),
               const SizedBox(height: 40),
+
+              const _SectionLabel('Schwierigkeit'),
+              const SizedBox(height: 8),
+              const Text(
+                'Wähle die passende Herausforderung. Die Stufe beeinflusst HR, Konkurrenz, Kunden und Progress.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textMuted,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 12),
+              for (final difficulty in GameDifficulty.values) ...[
+                _DifficultyTile(
+                  difficulty: difficulty,
+                  selected: _selectedDifficulty == difficulty,
+                  onTap: () => setState(() => _selectedDifficulty = difficulty),
+                ),
+                const SizedBox(height: 10),
+              ],
+              const SizedBox(height: 30),
+
+              const _SectionLabel('Tutorial / Onboarding'),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.bgCard,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SwitchListTile.adaptive(
+                      value: _tutorialEnabled,
+                      onChanged: (value) =>
+                          setState(() => _tutorialEnabled = value),
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text(
+                        'Geführtes Tutorial aktivieren',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        'Schritt-für-Schritt-Missionen für den Spielstart.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textMuted,
+                          height: 1.35,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _tutorialEnabled
+                          ? 'Empfohlen für neue Spielstände. Du kannst es später jederzeit pausieren.'
+                          : 'Tutorial wird übersprungen. Du kannst es später in den Einstellungen fortsetzen.',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
 
               // Startkapital Info
               Container(
@@ -126,7 +206,7 @@ class _NewGameScreenState extends ConsumerState<NewGameScreen> {
                         Text('Startkapital',
                             style: TextStyle(
                                 fontSize: 12, color: AppColors.textMuted)),
-                        Text('15.000 €',
+                        Text('50.000.000 €',
                             style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w800,
@@ -148,20 +228,26 @@ class _NewGameScreenState extends ConsumerState<NewGameScreen> {
                 child: const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Du startest in', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                    Text('Du startest in',
+                        style: TextStyle(
+                            fontSize: 12, color: AppColors.textMuted)),
                     SizedBox(height: 6),
                     Row(
                       children: [
-                        Text('🌿  Fulda', style: TextStyle(color: AppColors.textPrimary)),
+                        Text('🌿  Fulda',
+                            style: TextStyle(color: AppColors.textPrimary)),
                         SizedBox(width: 16),
-                        Text('🎭  Bayreuth', style: TextStyle(color: AppColors.textPrimary)),
+                        Text('🎭  Bayreuth',
+                            style: TextStyle(color: AppColors.textPrimary)),
                         SizedBox(width: 16),
-                        Text('🎓  Göttingen', style: TextStyle(color: AppColors.textPrimary)),
+                        Text('🎓  Göttingen',
+                            style: TextStyle(color: AppColors.textPrimary)),
                       ],
                     ),
                     SizedBox(height: 4),
                     Text('Größere Städte werden durch Wachstum freigeschaltet.',
-                        style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                        style: TextStyle(
+                            fontSize: 11, color: AppColors.textMuted)),
                   ],
                 ),
               ),
@@ -202,6 +288,78 @@ class _SectionLabel extends StatelessWidget {
         fontWeight: FontWeight.w700,
         color: AppColors.textSecondary,
         letterSpacing: 0.5,
+      ),
+    );
+  }
+}
+
+class _DifficultyTile extends StatelessWidget {
+  final GameDifficulty difficulty;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _DifficultyTile({
+    required this.difficulty,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppColors.primary.withAlpha((0.12 * 255).round())
+              : AppColors.bgCard,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected ? AppColors.primary : AppColors.border,
+            width: selected ? 1.4 : 1.0,
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              selected
+                  ? Icons.radio_button_checked
+                  : Icons.radio_button_unchecked,
+              color: selected ? AppColors.primary : AppColors.textMuted,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    difficulty.label,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: selected
+                          ? AppColors.textPrimary
+                          : AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    difficulty.shortDescription,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textMuted,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme.dart';
@@ -8,19 +8,23 @@ import '../../models/marketing_model.dart';
 import '../../models/product_model.dart';
 import '../../models/production_model.dart';
 import '../../models/stock_model.dart';
+import '../../models/game_state.dart';
+import '../../models/hr_manager_model.dart';
 import '../../providers/game_provider.dart';
 import '../../services/corporate_engine.dart';
+import '../../services/game_engine.dart';
+import '../../services/hr_engine.dart';
 import '../../models/upgrade_model.dart';
 
 final _fmt = NumberFormat('#,##0', 'de_DE');
 final _fmtPrice = NumberFormat('#,##0.00', 'de_DE');
 
-/// Corporate-/Konzern-Ebene â€” Phase 4 des Spiels.
+/// Corporate-/Konzern-Ebene — Phase 4 des Spiels.
 ///
 /// Tabs:
-/// 1. BÃ¶rse â€” IPO oder Aktienkurs-Chart
-/// 2. Produktion â€” eigene Fabriken bauen
-/// 3. M&A â€” Konkurrenten aufkaufen
+/// 1. Börse — IPO oder Aktienkurs-Chart
+/// 2. Produktion — eigene Fabriken bauen
+/// 3. M&A — Konkurrenten aufkaufen
 class CorporateScreen extends ConsumerStatefulWidget {
   const CorporateScreen({super.key});
 
@@ -81,7 +85,7 @@ class _CorporateScreenState extends ConsumerState<CorporateScreen>
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
-                        '${_fmtPrice.format(game.stocks.sharePrice)} â‚¬',
+                        '${_fmtPrice.format(game.stocks.sharePrice)} €',
                         style: const TextStyle(
                           fontSize: 14,
                           color: AppColors.bg,
@@ -106,7 +110,7 @@ class _CorporateScreenState extends ConsumerState<CorporateScreen>
                 labelColor: AppColors.primary,
                 unselectedLabelColor: AppColors.textMuted,
                 tabs: const [
-                  Tab(text: 'BÃ¶rse'),
+                  Tab(text: 'Börse'),
                   Tab(text: 'Produktion'),
                   Tab(text: 'M&A'),
                   Tab(text: 'Upgrades'),
@@ -133,25 +137,24 @@ class _CorporateScreenState extends ConsumerState<CorporateScreen>
   }
 }
 
-// â”€â”€ BÃ–RSE-TAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── BÖRSE-TAB ──────────────────────────────────────────────────────────
 
 class _StockTab extends ConsumerWidget {
-  final dynamic game;
+  final GameState game;
   const _StockTab({required this.game});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final canIPO = CorporateEngine.canDoIPO(game);
-    final isPublic = game.stocks.isPublic as bool;
+    final isPublic = game.stocks.isPublic;
 
     if (!isPublic) {
       // Exakt dieselben Werte wie in CorporateEngine.canDoIPO verwenden,
-      // damit UI-grÃ¼n und Button-aktiv Ã¼bereinstimmen (kein Rundungs-Drift).
+      // damit UI-grün und Button-aktiv übereinstimmen (kein Rundungs-Drift).
       final shopsOk = game.shops.length >= IPORequirements.minShops;
       final brandOk =
           game.brand.brandAwareness >= IPORequirements.minBrandAwareness;
-      final revenueOk =
-          game.totalRevenue >= IPORequirements.minTotalRevenue;
+      final revenueOk = game.totalRevenue >= IPORequirements.minTotalRevenue;
 
       return ListView(
         padding: const EdgeInsets.all(20),
@@ -173,7 +176,7 @@ class _StockTab extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'BÃ–RSENGANG (IPO)',
+                  'BÖRSENGANG (IPO)',
                   style: TextStyle(
                     fontSize: 11,
                     color: AppColors.gold,
@@ -183,7 +186,7 @@ class _StockTab extends ConsumerWidget {
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'Lass dein Imperium Ã¶ffentlich handeln und sichere dir massive Cash-ZuflÃ¼sse.',
+                  'Lass dein Imperium öffentlich handeln und sichere dir massive Cash-Zuflüsse.',
                   style: TextStyle(
                     fontSize: 13,
                     color: AppColors.textSecondary,
@@ -200,17 +203,15 @@ class _StockTab extends ConsumerWidget {
                 _RequirementRow(
                   label: 'Markenbekanntheit',
                   met: brandOk,
-                  currentLabel:
-                      game.brand.brandAwareness.toStringAsFixed(1),
+                  currentLabel: game.brand.brandAwareness.toStringAsFixed(1),
                   requiredLabel: '${IPORequirements.minBrandAwareness}',
                 ),
                 _RequirementRow(
                   label: 'Gesamtumsatz',
                   met: revenueOk,
-                  currentLabel:
-                      '${_fmt.format(game.totalRevenue)} â‚¬',
+                  currentLabel: '${_fmt.format(game.totalRevenue)} €',
                   requiredLabel:
-                      '${_fmt.format(IPORequirements.minTotalRevenue)} â‚¬',
+                      '${_fmt.format(IPORequirements.minTotalRevenue)} €',
                 ),
                 const SizedBox(height: 16),
                 if (canIPO) ...[
@@ -219,7 +220,7 @@ class _StockTab extends ConsumerWidget {
                     child: ElevatedButton.icon(
                       onPressed: () => _showIPODialog(context, ref, game),
                       icon: const Icon(Icons.rocket_launch, size: 18),
-                      label: const Text('BÃ¶rsengang einleiten'),
+                      label: const Text('Börsengang einleiten'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.gold,
                         foregroundColor: AppColors.bg,
@@ -230,7 +231,7 @@ class _StockTab extends ConsumerWidget {
                   const Padding(
                     padding: EdgeInsets.all(8),
                     child: Text(
-                      'Voraussetzungen noch nicht erfÃ¼llt.',
+                      'Voraussetzungen noch nicht erfüllt.',
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textMuted,
@@ -245,9 +246,11 @@ class _StockTab extends ConsumerWidget {
     }
 
     // Public: Aktienkurs-Chart + Bewertung
-    final history = (game.stocks.priceHistory as List<double>);
-    final maxP = history.isEmpty ? 1.0 : history.reduce((a, b) => a > b ? a : b);
-    final minP = history.isEmpty ? 0.0 : history.reduce((a, b) => a < b ? a : b);
+    final history = game.stocks.priceHistory;
+    final maxP =
+        history.isEmpty ? 1.0 : history.reduce((a, b) => a > b ? a : b);
+    final minP =
+        history.isEmpty ? 0.0 : history.reduce((a, b) => a < b ? a : b);
 
     return ListView(
       padding: const EdgeInsets.all(20),
@@ -274,7 +277,7 @@ class _StockTab extends ConsumerWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                '${_fmtPrice.format(game.stocks.sharePrice)} â‚¬',
+                '${_fmtPrice.format(game.stocks.sharePrice)} €',
                 style: const TextStyle(
                   fontSize: 36,
                   fontWeight: FontWeight.w900,
@@ -314,30 +317,29 @@ class _StockTab extends ConsumerWidget {
         const SizedBox(height: 16),
         _MetricRow(
           label: 'Marktkapitalisierung',
-          value: '${_fmt.format(game.stocks.marketCap)} â‚¬',
+          value: '${_fmt.format(game.stocks.marketCap)} €',
         ),
         _MetricRow(
           label: 'Dein Anteil',
-          value:
-              '${(game.stocks.playerShareRatio * 100).toStringAsFixed(1)}%',
+          value: '${(game.stocks.playerShareRatio * 100).toStringAsFixed(1)}%',
         ),
         _MetricRow(
           label: 'Dein Aktienwert',
-          value: '${_fmt.format(game.stocks.playerStockValue)} â‚¬',
+          value: '${_fmt.format(game.stocks.playerStockValue)} €',
         ),
         _MetricRow(
           label: 'Letztes Quartal',
-          value: '${_fmt.format(game.stocks.lastQuarterProfit)} â‚¬ Gewinn',
+          value: '${_fmt.format(game.stocks.lastQuarterProfit)} € Gewinn',
         ),
         _MetricRow(
           label: 'Analysten-Erwartung',
-          value: '${_fmt.format(game.stocks.analystExpectation)} â‚¬',
+          value: '${_fmt.format(game.stocks.analystExpectation)} €',
         ),
       ],
     );
   }
 
-  void _showIPODialog(BuildContext context, WidgetRef ref, dynamic game) {
+  void _showIPODialog(BuildContext context, WidgetRef ref, GameState game) {
     final valuation = CorporateEngine.estimateValuation(game);
     double floatPercent = 0.20;
 
@@ -346,12 +348,12 @@ class _StockTab extends ConsumerWidget {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setState) => AlertDialog(
           backgroundColor: AppColors.bgCard,
-          title: const Text('BÃ¶rsengang vorbereiten'),
+          title: const Text('Börsengang vorbereiten'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Bewertung: ${_fmt.format(valuation)} â‚¬',
+                'Bewertung: ${_fmt.format(valuation)} €',
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
@@ -373,7 +375,7 @@ class _StockTab extends ConsumerWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                'Cash-ErlÃ¶s: â‰ˆ ${_fmt.format(valuation * floatPercent * 0.95)} â‚¬',
+                'Cash-Erlös: ≈ ${_fmt.format(valuation * floatPercent * 0.95)} €',
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
@@ -383,7 +385,8 @@ class _StockTab extends ConsumerWidget {
               const SizedBox(height: 4),
               Text(
                 'Dein Anteil danach: ${((1 - floatPercent) * 100).toStringAsFixed(0)}%',
-                style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                style:
+                    const TextStyle(fontSize: 12, color: AppColors.textMuted),
               ),
             ],
           ),
@@ -397,7 +400,7 @@ class _StockTab extends ConsumerWidget {
                 ref.read(gameProvider.notifier).performIPO(floatPercent);
                 Navigator.pop(ctx);
               },
-              child: const Text('IPO durchfÃ¼hren'),
+              child: const Text('IPO durchführen'),
             ),
           ],
         ),
@@ -433,8 +436,8 @@ class _RequirementRow extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(
-                  fontSize: 13, color: AppColors.textPrimary),
+              style:
+                  const TextStyle(fontSize: 13, color: AppColors.textPrimary),
             ),
           ),
           Text(
@@ -485,15 +488,15 @@ class _MetricRow extends StatelessWidget {
   }
 }
 
-// â”€â”€ PRODUKTIONS-TAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── PRODUKTIONS-TAB ────────────────────────────────────────────────────
 
 class _ProductionTab extends ConsumerWidget {
-  final dynamic game;
+  final GameState game;
   const _ProductionTab({required this.game});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final facilities = game.facilities as List<ProductionFacility>;
+    final facilities = game.facilities;
     final groupedTemplates = <ProductionType, List<FacilityTemplate>>{};
     for (final t in kAllFacilityTemplates) {
       groupedTemplates.putIfAbsent(t.type, () => []).add(t);
@@ -545,7 +548,7 @@ class _ProductionTab extends ConsumerWidget {
             ),
           ),
           for (final t in groupedTemplates[type] ?? <FacilityTemplate>[])
-            _FacilityTemplateCard(template: t, cash: game.cash as double),
+            _FacilityTemplateCard(template: t, cash: game.cash),
           const SizedBox(height: 12),
         ],
       ],
@@ -588,7 +591,7 @@ class _ActiveFacilityCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'Versorgt bis ${facility.tier.maxShops} Filialen  Â·  -${(facility.tier.ingredientSaving * 100).round()}% Zutaten',
+                  'Versorgt bis ${facility.tier.maxShops} Filialen · -${(facility.tier.ingredientSaving * 100).round()}% Zutaten',
                   style: const TextStyle(
                     fontSize: 11,
                     color: AppColors.accent,
@@ -596,7 +599,7 @@ class _ActiveFacilityCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${_fmt.format(t.b2bRevenuePerDay)} â‚¬/Tag B2B  Â·  ${_fmt.format(t.dailyOperatingCost)} â‚¬/Tag Betrieb',
+                  '${_fmt.format(t.b2bRevenuePerDay)} €/Tag B2B · ${_fmt.format(t.dailyOperatingCost)} €/Tag Betrieb',
                   style: const TextStyle(
                     fontSize: 10,
                     color: AppColors.textMuted,
@@ -642,14 +645,14 @@ class _FacilityTemplateCard extends ConsumerWidget {
                   ),
                 ),
                 Text(
-                  '-${(template.tier.ingredientSaving * 100).round()}% Zutaten Â· ${_fmt.format(template.b2bRevenuePerDay)}â‚¬/Tag B2B',
+                  '-${(template.tier.ingredientSaving * 100).round()}% Zutaten · ${_fmt.format(template.b2bRevenuePerDay)}€/Tag B2B',
                   style: const TextStyle(
                     fontSize: 10,
                     color: AppColors.textMuted,
                   ),
                 ),
                 Text(
-                  'Betrieb: ${_fmt.format(template.dailyOperatingCost)} â‚¬/Tag',
+                  'Betrieb: ${_fmt.format(template.dailyOperatingCost)} €/Tag',
                   style: const TextStyle(
                     fontSize: 10,
                     color: AppColors.warning,
@@ -660,15 +663,13 @@ class _FacilityTemplateCard extends ConsumerWidget {
           ),
           ElevatedButton(
             onPressed: canAfford
-                ? () => ref
-                    .read(gameProvider.notifier)
-                    .buildFacility(template)
+                ? () => ref.read(gameProvider.notifier).buildFacility(template)
                 : null,
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               textStyle: const TextStyle(fontSize: 12),
             ),
-            child: Text('${_fmt.format(template.buildCost)} â‚¬'),
+            child: Text('${_fmt.format(template.buildCost)} €'),
           ),
         ],
       ),
@@ -676,21 +677,21 @@ class _FacilityTemplateCard extends ConsumerWidget {
   }
 }
 
-// â”€â”€ M&A-TAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── M&A-TAB ────────────────────────────────────────────────────────────
 
 class _MATab extends ConsumerWidget {
-  final dynamic game;
+  final GameState game;
   const _MATab({required this.game});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final competitors = (game.competitors as List<Competitor>);
+    final competitors = game.competitors;
     if (competitors.isEmpty) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(40),
           child: Text(
-            'Keine Konkurrenten erkundet.\nErÃ¶ffne Filialen in mehr StÃ¤dten.',
+            'Keine Konkurrenten erkundet.\nEröffne Filialen in mehr Städten.',
             textAlign: TextAlign.center,
             style: TextStyle(color: AppColors.textMuted),
           ),
@@ -707,7 +708,7 @@ class _MATab extends ConsumerWidget {
       padding: const EdgeInsets.all(20),
       children: [
         const Text(
-          'Konkurrenten aufkaufen â€” Ã¼bernimm Marktanteile und Filialen.',
+          'Konkurrenten aufkaufen - übernimm Marktanteile und Filialen.',
           style: TextStyle(
             fontSize: 12,
             color: AppColors.textMuted,
@@ -718,7 +719,7 @@ class _MATab extends ConsumerWidget {
         for (final entry in byCity.entries) ...[
           _CityHeader(cityId: entry.key),
           for (final c in entry.value)
-            _AcquisitionCard(competitor: c, cash: game.cash as double),
+            _AcquisitionCard(competitor: c, cash: game.cash),
           const SizedBox(height: 12),
         ],
       ],
@@ -795,7 +796,7 @@ class _AcquisitionCard extends ConsumerWidget {
                       ),
                     ),
                     Text(
-                      '${competitor.shopCount} Filialen  Â·  ${competitor.reputation.toStringAsFixed(1)}â­  Â·  ${(competitor.marketShare * 100).toStringAsFixed(0)}% Markt',
+                      '${competitor.shopCount} Filialen · ${competitor.reputation.toStringAsFixed(1)}★ · ${(competitor.marketShare * 100).toStringAsFixed(0)}% Markt',
                       style: const TextStyle(
                         fontSize: 11,
                         color: AppColors.textMuted,
@@ -811,7 +812,7 @@ class _AcquisitionCard extends ConsumerWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Akquisitionspreis: ${_fmt.format(price)} â‚¬',
+                  'Akquisitionspreis: ${_fmt.format(price)} €',
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
@@ -824,7 +825,7 @@ class _AcquisitionCard extends ConsumerWidget {
                     ? () => _confirmAcquisition(context, ref, competitor)
                     : null,
                 icon: const Icon(Icons.handshake, size: 14),
-                label: const Text('Ãœbernehmen'),
+                label: const Text('Übernehmen'),
                 style: ElevatedButton.styleFrom(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -838,15 +839,14 @@ class _AcquisitionCard extends ConsumerWidget {
     );
   }
 
-  void _confirmAcquisition(
-      BuildContext context, WidgetRef ref, Competitor c) {
+  void _confirmAcquisition(BuildContext context, WidgetRef ref, Competitor c) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.bgCard,
-        title: Text('${c.name} Ã¼bernehmen?'),
+        title: Text('${c.name} übernehmen?'),
         content: Text(
-          '${c.shopCount} Filialen werden Teil deines Imperiums.\n\nKaufpreis: ${_fmt.format(CorporateEngine.acquisitionPrice(c))} â‚¬',
+          '${c.shopCount} Filialen werden Teil deines Imperiums.\n\nKaufpreis: ${_fmt.format(CorporateEngine.acquisitionPrice(c))} €',
           style: const TextStyle(color: AppColors.textSecondary),
         ),
         actions: [
@@ -859,10 +859,10 @@ class _AcquisitionCard extends ConsumerWidget {
               ref.read(gameProvider.notifier).acquireCompetitor(c);
               Navigator.pop(ctx);
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('${c.name} Ã¼bernommen! ðŸ¤')),
+                SnackBar(content: Text('${c.name} übernommen!')),
               );
             },
-            child: const Text('Ãœbernehmen'),
+            child: const Text('Übernehmen'),
           ),
         ],
       ),
@@ -870,18 +870,18 @@ class _AcquisitionCard extends ConsumerWidget {
   }
 }
 
-
 // ── KONZERN-UPGRADES-TAB ─────────────────────────────────────────────────────
 
 class _GlobalUpgradesTab extends ConsumerWidget {
-  final dynamic game;
+  final GameState game;
   const _GlobalUpgradesTab({required this.game});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final globalIds = (game.globalUpgradeIds as List).cast<String>();
-    final cash = game.cash as double;
-    final shopCount = (game.shops as List).length;
+    final globalIds = List<String>.from(game.globalUpgradeIds);
+    final cash = game.cash;
+    final shopCount = game.shops.length;
+    final ownDeliveryReady = GameEngine.canUnlockOwnDeliveryApp(game);
 
     // Monatliche Laufkosten aller aktiven globalen Upgrades
     final monthlyRunning = globalIds
@@ -910,7 +910,8 @@ class _GlobalUpgradesTab extends ConsumerWidget {
             children: [
               const Row(
                 children: [
-                  Text('🏢', style: TextStyle(fontSize: 24)),
+                  Icon(Icons.apartment_rounded,
+                      size: 24, color: AppColors.textPrimary),
                   SizedBox(width: 10),
                   Text(
                     'Konzern-Upgrades',
@@ -924,7 +925,7 @@ class _GlobalUpgradesTab extends ConsumerWidget {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Einmalig kaufen — gilt automatisch für alle bestehenden '
+                'Einmalig kaufen - gilt automatisch für alle bestehenden '
                 'und neuen Filialen. Im Gegensatz zu Shop-Upgrades skalieren '
                 'Konzern-Upgrades kostenlos mit der Filialzahl.',
                 style: TextStyle(fontSize: 12, color: AppColors.textMuted),
@@ -954,8 +955,12 @@ class _GlobalUpgradesTab extends ConsumerWidget {
           _GlobalUpgradeCard(
             upgrade: u,
             owned: globalIds.contains(u.id),
-            canAfford: cash >= u.installCost,
+            canAfford: (cash >= u.installCost) &&
+                (u.id != 'eigen_lieferdienst' || ownDeliveryReady),
             shopCount: shopCount,
+            lockReason: u.id == 'eigen_lieferdienst' && !ownDeliveryReady
+                ? 'Benötigt aktiven Lieferdienst in mindestens 3 Filialen.'
+                : null,
             onBuy: () {
               if (cash < u.installCost) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -966,12 +971,23 @@ class _GlobalUpgradesTab extends ConsumerWidget {
                 );
                 return;
               }
+              if (u.id == 'eigen_lieferdienst' &&
+                  !GameEngine.canUnlockOwnDeliveryApp(game)) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                        'Eigene Liefer-App erst ab 3 Filialen mit aktivem Lieferdienst.'),
+                    duration: Duration(milliseconds: 1700),
+                  ),
+                );
+                return;
+              }
               // Globale Upgrades brauchen keine shopId —
               // leere String wird in buyUpgrade für scope=global ignoriert.
               ref.read(gameProvider.notifier).buyUpgrade('', u);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('${u.name} konzernweit aktiviert ${u.emoji}'),
+                  content: Text('${u.name} konzernweit aktiviert'),
                   duration: const Duration(milliseconds: 1500),
                 ),
               );
@@ -989,6 +1005,7 @@ class _GlobalUpgradeCard extends StatelessWidget {
   final bool owned;
   final bool canAfford;
   final int shopCount;
+  final String? lockReason;
   final VoidCallback onBuy;
 
   const _GlobalUpgradeCard({
@@ -996,6 +1013,7 @@ class _GlobalUpgradeCard extends StatelessWidget {
     required this.owned,
     required this.canAfford,
     required this.shopCount,
+    this.lockReason,
     required this.onBuy,
   });
 
@@ -1007,9 +1025,7 @@ class _GlobalUpgradeCard extends StatelessWidget {
         color: AppColors.bgCard,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: owned
-              ? AppColors.secondary.withAlpha(140)
-              : AppColors.border,
+          color: owned ? AppColors.secondary.withAlpha(140) : AppColors.border,
           width: owned ? 1.5 : 1.0,
         ),
       ),
@@ -1018,7 +1034,8 @@ class _GlobalUpgradeCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text(upgrade.emoji, style: const TextStyle(fontSize: 28)),
+              Icon(_globalUpgradeIcon(upgrade.id),
+                  size: 28, color: AppColors.secondary),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -1088,6 +1105,7 @@ class _GlobalUpgradeCard extends StatelessWidget {
               if (shopCount > 0)
                 _Chip('Wirkt in $shopCount Filiale${shopCount == 1 ? "" : "n"}',
                     AppColors.textMuted),
+              if (lockReason != null) _Chip(lockReason!, AppColors.warning),
             ],
           ),
 
@@ -1125,7 +1143,7 @@ class _GlobalUpgradeCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Text(
-                    '✓ Konzernweit aktiv',
+                    'Konzernweit aktiv',
                     style: TextStyle(
                       fontSize: 11,
                       color: AppColors.secondary,
@@ -1137,8 +1155,8 @@ class _GlobalUpgradeCard extends StatelessWidget {
                 ElevatedButton(
                   onPressed: canAfford ? onBuy : null,
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     textStyle: const TextStyle(fontSize: 12),
                   ),
                   child: const Text('Kaufen'),
@@ -1148,6 +1166,26 @@ class _GlobalUpgradeCard extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+IconData _globalUpgradeIcon(String id) {
+  if (kGlobalSpiessUpgradeOrder.contains(id)) {
+    return Icons.local_fire_department_rounded;
+  }
+  switch (id) {
+    case 'lieferdienst':
+      return Icons.delivery_dining_rounded;
+    case 'loyalty_app':
+      return Icons.loyalty_rounded;
+    case 'kassensystem_zentral':
+      return Icons.point_of_sale_rounded;
+    case 'schulung_online':
+      return Icons.school_rounded;
+    case 'eigen_lieferdienst':
+      return Icons.rocket_launch_rounded;
+    default:
+      return Icons.business_center_rounded;
   }
 }
 
@@ -1177,37 +1215,62 @@ class _Chip extends StatelessWidget {
   }
 }
 
+IconData _marketingCampaignIcon(String id) {
+  switch (id) {
+    case 'city_plakat':
+      return Icons.campaign_rounded;
+    case 'city_social':
+      return Icons.phone_iphone_rounded;
+    case 'city_event':
+      return Icons.festival_rounded;
+    case 'city_radio':
+      return Icons.radio_rounded;
+    case 'tv_werbung':
+      return Icons.tv_rounded;
+    case 'influencer_national':
+      return Icons.auto_awesome_rounded;
+    case 'brand_launch':
+      return Icons.label_important_rounded;
+    case 'treue_programm':
+      return Icons.card_membership_rounded;
+    default:
+      return Icons.campaign_outlined;
+  }
+}
+
 // ── STRATEGIE-TAB ─────────────────────────────────────────────────────────────
 
 class _StrategieTab extends ConsumerWidget {
-  final dynamic game;
+  final GameState game;
   const _StrategieTab({required this.game});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final cash = game.cash as double;
-    final currentDay = game.currentDay as int;
-    final globalPrices = (game.globalPrices as Map).cast<String, double>();
-    final shops = (game.shops as List);
-    final activeCityCampaigns =
-        game.activeCityCampaigns as Map<String, List<ActiveCampaign>>;
-    final activeGlobalCampaigns =
-        game.activeGlobalCampaigns as List<ActiveCampaign>;
+    final cash = game.cash;
+    final currentDay = game.currentDay;
+    final globalPrices = Map<String, double>.from(game.globalPrices);
+    final shops = game.shops;
+    final activeCityCampaigns = game.activeCityCampaigns;
+    final activeGlobalCampaigns = game.activeGlobalCampaigns;
 
-    final citiesWithShops =
-        shops.map((s) => (s as dynamic).cityId as String).toSet().toList();
+    final citiesWithShops = shops.map((s) => s.cityId).toSet().toList();
 
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
         // ── Preisstrategie ────────────────────────────────────────────────
-        _buildSectionHeader('💰', 'PREISSTRATEGIE'),
+        _buildSectionHeader(Icons.groups_rounded, 'HR-ABTEILUNG'),
+        const SizedBox(height: 10),
+        _HrDepartmentCard(game: game),
+        const SizedBox(height: 28),
+        _buildSectionHeader(Icons.payments_outlined, 'PREISSTRATEGIE'),
         const SizedBox(height: 10),
         _PriceStrategySection(globalPrices: globalPrices),
         const SizedBox(height: 28),
 
         // ── Stadtweite Marketing ──────────────────────────────────────────
-        _buildSectionHeader('🏙️', 'STADTWEITE MARKETING'),
+        _buildSectionHeader(
+            Icons.location_city_rounded, 'STADTWEITE MARKETING'),
         const SizedBox(height: 10),
         if (citiesWithShops.isEmpty)
           const Padding(
@@ -1230,7 +1293,7 @@ class _StrategieTab extends ConsumerWidget {
         const SizedBox(height: 16),
 
         // ── Konzernweites Marketing ────────────────────────────────────────
-        _buildSectionHeader('🌐', 'KONZERNWEITES MARKETING'),
+        _buildSectionHeader(Icons.public_rounded, 'KONZERNWEITES MARKETING'),
         const SizedBox(height: 10),
         for (final campaign in kGlobalMarketingCampaigns)
           Padding(
@@ -1250,8 +1313,7 @@ class _StrategieTab extends ConsumerWidget {
     );
   }
 
-  ActiveCampaign? _findActive(
-      List<ActiveCampaign> list, String id, int day) {
+  ActiveCampaign? _findActive(List<ActiveCampaign> list, String id, int day) {
     try {
       return list.firstWhere((c) => c.campaignId == id && c.isActive(day));
     } catch (_) {
@@ -1259,10 +1321,10 @@ class _StrategieTab extends ConsumerWidget {
     }
   }
 
-  Widget _buildSectionHeader(String emoji, String label) {
+  Widget _buildSectionHeader(IconData icon, String label) {
     return Row(
       children: [
-        Text(emoji, style: const TextStyle(fontSize: 16)),
+        Icon(icon, size: 16, color: AppColors.textMuted),
         const SizedBox(width: 8),
         Text(
           label,
@@ -1274,6 +1336,360 @@ class _StrategieTab extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _HrDepartmentCard extends ConsumerWidget {
+  final GameState game;
+  const _HrDepartmentCard({required this.game});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hrManager = game.hrManager;
+    if (hrManager == null) {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.bgCard,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Noch kein Personalchef eingestellt.',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Ein guter HR-Manager verbessert Kandidatenqualität, Besetzungstempo und Training konzernweit.',
+              style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+            ),
+            const SizedBox(height: 12),
+            if (game.hrCandidates.isEmpty)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: ElevatedButton.icon(
+                  onPressed: () =>
+                      ref.read(gameProvider.notifier).refreshHrCandidates(),
+                  icon: const Icon(Icons.refresh_rounded, size: 16),
+                  label: const Text('3 Kandidaten laden'),
+                ),
+              )
+            else ...[
+              for (final candidate in game.hrCandidates) ...[
+                _HrCandidateTile(manager: candidate),
+                const SizedBox(height: 8),
+              ],
+            ],
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      hrManager.name,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      hrManager.archetype.label,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.secondary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      hrManager.archetype.shortDescription,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                '${_fmt.format(hrManager.salaryPerDay)} € / Tag',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.gold,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Level ${hrManager.level} • XP ${hrManager.xp}',
+            style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 10),
+          _HrStatRow(label: 'Talentblick', value: hrManager.talentSense),
+          _HrStatRow(label: 'Netzwerk', value: hrManager.network),
+          _HrStatRow(label: 'Verhandlung', value: hrManager.negotiation),
+          _HrStatRow(label: 'Tempo', value: hrManager.speed),
+          _HrStatRow(label: 'Training', value: hrManager.training),
+          const SizedBox(height: 10),
+          Text(
+            'Aktive Strategie: ${game.hrStrategy.label}',
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final strategy in HrStrategy.values)
+                ChoiceChip(
+                  label: Text(
+                    strategy.label,
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                  selected: game.hrStrategy == strategy,
+                  onSelected: (_) =>
+                      ref.read(gameProvider.notifier).setHrStrategy(strategy),
+                  selectedColor: AppColors.primary.withAlpha(35),
+                  labelStyle: TextStyle(
+                    color: game.hrStrategy == strategy
+                        ? AppColors.primary
+                        : AppColors.textSecondary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  side: BorderSide(
+                    color: game.hrStrategy == strategy
+                        ? AppColors.primary
+                        : AppColors.border,
+                  ),
+                  backgroundColor: AppColors.bgSurface,
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            HrEngine.currentEffectSummary(game),
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppColors.textMuted,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () =>
+                      ref.read(gameProvider.notifier).fireHrManager(),
+                  icon: const Icon(Icons.person_remove_alt_1_rounded, size: 16),
+                  label: const Text('Entlassen'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    final notifier = ref.read(gameProvider.notifier);
+                    notifier.fireHrManager();
+                    notifier.refreshHrCandidates();
+                  },
+                  icon: const Icon(Icons.swap_horiz_rounded, size: 16),
+                  label: const Text('Ersetzen'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HrCandidateTile extends ConsumerWidget {
+  final HrManager manager;
+  const _HrCandidateTile({required this.manager});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.bgSurface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      manager.name,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      manager.archetype.label,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.secondary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                '${_fmt.format(manager.salaryPerDay)} € / Tag',
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.gold,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            manager.archetype.shortDescription,
+            style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              _HrMiniStat('Talent', manager.talentSense),
+              _HrMiniStat('Netz', manager.network),
+              _HrMiniStat('Verh', manager.negotiation),
+              _HrMiniStat('Tempo', manager.speed),
+              _HrMiniStat('Train', manager.training),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () =>
+                  ref.read(gameProvider.notifier).hireHrManager(manager.id),
+              child: const Text('Einstellen'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HrMiniStat extends StatelessWidget {
+  final String label;
+  final int value;
+  const _HrMiniStat(this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Text(
+        '$label $value',
+        style: const TextStyle(
+          fontSize: 10,
+          color: AppColors.textSecondary,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _HrStatRow extends StatelessWidget {
+  final String label;
+  final int value;
+  const _HrStatRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 88,
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+            ),
+          ),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: (value / 10).clamp(0.0, 1.0),
+                minHeight: 7,
+                backgroundColor: AppColors.border,
+                valueColor: const AlwaysStoppedAnimation(AppColors.secondary),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 20,
+            child: Text(
+              '$value',
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1292,27 +1708,24 @@ class _PriceStrategySection extends ConsumerWidget {
         Row(
           children: [
             _StrategyButton(
-              label: '💚 Günstig',
-              subtitle: '−15 %',
-              onTap: () => ref
-                  .read(gameProvider.notifier)
-                  .applyPriceStrategy('cheap'),
+              label: 'Günstig',
+              subtitle: '-15 %',
+              onTap: () =>
+                  ref.read(gameProvider.notifier).applyPriceStrategy('cheap'),
             ),
             const SizedBox(width: 8),
             _StrategyButton(
-              label: '⚖️ Normal',
+              label: 'Normal',
               subtitle: 'Basispreis',
-              onTap: () => ref
-                  .read(gameProvider.notifier)
-                  .applyPriceStrategy('normal'),
+              onTap: () =>
+                  ref.read(gameProvider.notifier).applyPriceStrategy('normal'),
             ),
             const SizedBox(width: 8),
             _StrategyButton(
-              label: '💎 Premium',
+              label: 'Premium',
               subtitle: '+20 %',
-              onTap: () => ref
-                  .read(gameProvider.notifier)
-                  .applyPriceStrategy('premium'),
+              onTap: () =>
+                  ref.read(gameProvider.notifier).applyPriceStrategy('premium'),
             ),
           ],
         ),
@@ -1362,8 +1775,7 @@ class _StrategyButton extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding:
-              const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
           decoration: BoxDecoration(
             color: AppColors.bgCard,
             borderRadius: BorderRadius.circular(12),
@@ -1384,8 +1796,8 @@ class _StrategyButton extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 subtitle,
-                style: const TextStyle(
-                    fontSize: 10, color: AppColors.textMuted),
+                style:
+                    const TextStyle(fontSize: 10, color: AppColors.textMuted),
               ),
             ],
           ),
@@ -1419,16 +1831,15 @@ class _GlobalPriceRow extends StatelessWidget {
           Expanded(
             child: Text(
               product.name,
-              style: const TextStyle(
-                  fontSize: 12, color: AppColors.textSecondary),
+              style:
+                  const TextStyle(fontSize: 12, color: AppColors.textSecondary),
             ),
           ),
           IconButton(
             icon: const Icon(Icons.remove, size: 16),
             onPressed: currentPrice > 0.5 ? onMinus : null,
             padding: EdgeInsets.zero,
-            constraints:
-                const BoxConstraints(minWidth: 28, minHeight: 28),
+            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
             color: AppColors.textMuted,
           ),
           SizedBox(
@@ -1438,9 +1849,7 @@ class _GlobalPriceRow extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
-                color: isAtBase
-                    ? AppColors.textSecondary
-                    : AppColors.primary,
+                color: isAtBase ? AppColors.textSecondary : AppColors.primary,
               ),
               textAlign: TextAlign.center,
             ),
@@ -1449,8 +1858,7 @@ class _GlobalPriceRow extends StatelessWidget {
             icon: const Icon(Icons.add, size: 16),
             onPressed: currentPrice < 50.0 ? onPlus : null,
             padding: EdgeInsets.zero,
-            constraints:
-                const BoxConstraints(minWidth: 28, minHeight: 28),
+            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
             color: AppColors.primary,
           ),
         ],
@@ -1490,12 +1898,12 @@ class _CityMarketingSection extends ConsumerWidget {
       ),
       child: ExpansionTile(
         initiallyExpanded: activeCount > 0,
-        tilePadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+        tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
         childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
         title: Row(
           children: [
-            Text(city.emoji, style: const TextStyle(fontSize: 18)),
+            const Icon(Icons.location_city_rounded,
+                size: 18, color: AppColors.textPrimary),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -1509,8 +1917,7 @@ class _CityMarketingSection extends ConsumerWidget {
             ),
             if (activeCount > 0)
               Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withAlpha(30),
                   borderRadius: BorderRadius.circular(8),
@@ -1532,8 +1939,8 @@ class _CityMarketingSection extends ConsumerWidget {
               padding: const EdgeInsets.only(bottom: 8),
               child: _MarketingCampaignCard(
                 campaign: campaign,
-                activeCampaign: _findActive(
-                    activeCityCampaigns, campaign.id, currentDay),
+                activeCampaign:
+                    _findActive(activeCityCampaigns, campaign.id, currentDay),
                 cash: cash,
                 currentDay: currentDay,
                 onBook: () => ref
@@ -1546,8 +1953,7 @@ class _CityMarketingSection extends ConsumerWidget {
     );
   }
 
-  ActiveCampaign? _findActive(
-      List<ActiveCampaign> list, String id, int day) {
+  ActiveCampaign? _findActive(List<ActiveCampaign> list, String id, int day) {
     try {
       return list.firstWhere((c) => c.campaignId == id && c.isActive(day));
     } catch (_) {
@@ -1580,14 +1986,10 @@ class _MarketingCampaignCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isActive
-            ? AppColors.primary.withAlpha(15)
-            : AppColors.bgCard,
+        color: isActive ? AppColors.primary.withAlpha(15) : AppColors.bgCard,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isActive
-              ? AppColors.primary.withAlpha(100)
-              : AppColors.border,
+          color: isActive ? AppColors.primary.withAlpha(100) : AppColors.border,
           width: isActive ? 1.5 : 1.0,
         ),
       ),
@@ -1597,8 +1999,8 @@ class _MarketingCampaignCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(campaign.emoji,
-                  style: const TextStyle(fontSize: 22)),
+              Icon(_marketingCampaignIcon(campaign.id),
+                  size: 22, color: AppColors.textPrimary),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
@@ -1656,14 +2058,14 @@ class _MarketingCampaignCard extends StatelessWidget {
               const Spacer(),
               if (isActive)
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withAlpha(30),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    '⏱ noch ${activeCampaign!.remainingDays(currentDay)} Tage',
+                    'noch ${activeCampaign!.remainingDays(currentDay)} Tage',
                     style: const TextStyle(
                       fontSize: 11,
                       color: AppColors.primary,
@@ -1675,8 +2077,8 @@ class _MarketingCampaignCard extends StatelessWidget {
                 ElevatedButton(
                   onPressed: canAfford ? onBook : null,
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     textStyle: const TextStyle(fontSize: 12),
                   ),
                   child: const Text('Buchen'),

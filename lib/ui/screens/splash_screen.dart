@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme.dart';
@@ -124,7 +124,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   position: _textSlide,
                   child: FadeTransition(
                     opacity: _textOpacity,
-                    child: Column(
+                    child: const Column(
                       children: [
                         Text(
                           'DÖNER EMPIRE',
@@ -136,7 +136,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                             fontFamily: 'Inter',
                           ),
                         ),
-                        const SizedBox(height: 6),
+                        SizedBox(height: 6),
                         Text(
                           'Vom Imbiss zum Imperium',
                           style: TextStyle(

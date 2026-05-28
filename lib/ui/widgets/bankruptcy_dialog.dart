@@ -35,8 +35,7 @@ class BankruptcyDialog extends ConsumerWidget {
       canPop: false,
       child: Dialog(
         backgroundColor: AppColors.bgCard,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),
           child: Column(
@@ -46,14 +45,13 @@ class BankruptcyDialog extends ConsumerWidget {
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
                     colors: [AppColors.danger, AppColors.primaryDark],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(24)),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                 ),
                 child: Column(
                   children: [
@@ -163,8 +161,8 @@ class BankruptcyDialog extends ConsumerWidget {
   static dynamic _findWorstShop(GameState game) {
     if (game.shops.isEmpty) return null;
     final sorted = List.from(game.shops);
-    sorted.sort((a, b) =>
-        (a.reputation as double).compareTo(b.reputation as double));
+    sorted.sort(
+        (a, b) => (a.reputation as double).compareTo(b.reputation as double));
     return sorted.first;
   }
 }

@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import '../models/competitor_model.dart';
+import '../models/difficulty_model.dart';
 import '../models/game_state.dart';
 import '../core/constants.dart';
 import '../models/city_model.dart';
@@ -21,6 +22,7 @@ class CompetitorEngine {
   static List<Competitor> ensureCompetitorsForCity(
     List<Competitor> existing,
     String cityId,
+    GameDifficulty difficulty,
   ) {
     final existingInCity = existing.where((c) => c.cityId == cityId).toList();
     if (existingInCity.isNotEmpty) return existing;
@@ -46,6 +48,9 @@ class CompetitorEngine {
         count = 3 + _rng.nextInt(2);
         break;
     }
+    final spawnBonus = difficulty.modifiers.competitorAggressivenessMultiplier;
+    final extra = ((spawnBonus - 1.0) * 2).round().clamp(0, 2);
+    count += extra;
 
     final newCompetitors = <Competitor>[];
     for (var i = 0; i < count; i++) {
@@ -61,9 +66,11 @@ class CompetitorEngine {
   /// Tägliches Update aller Konkurrenten + Marktanteils-Berechnung.
   /// Wird in [GameEngine.processDay] aufgerufen.
   static List<Competitor> processDay(GameState state) {
+    final aggressiveness =
+        state.difficulty.modifiers.competitorAggressivenessMultiplier;
     final updated = state.competitors.map((c) {
       c.daysSinceLastAction += 1;
-      _maybeAct(c, state);
+      _maybeAct(c, state, aggressiveness);
       return c;
     }).toList();
 
@@ -81,9 +88,12 @@ class CompetitorEngine {
 
   /// Wie stark drückt die Konkurrenz auf eine Spieler-Filiale in dieser Stadt?
   /// Liefert 0.6..1.05 — kleiner = mehr Druck.
-  static double competitionPressure(GameState state, String cityId, double playerShopRep) {
+  static double competitionPressure(
+      GameState state, String cityId, double playerShopRep) {
     final inCity = state.competitorsIn(cityId);
     if (inCity.isEmpty) return 1.0;
+    final aggressiveness =
+        state.difficulty.modifiers.competitorAggressivenessMultiplier;
 
     // Wenn der Spieler im Vergleich schlechte Rep hat → Druck.
     double avgRivalRep =
@@ -94,37 +104,47 @@ class CompetitorEngine {
     final density = inCity.fold(0, (s, c) => s + c.shopCount) / 3.0;
 
     // Basis-Druck steigt mit Density
-    double pressure = 1.0 - (density * 0.05);
+    double pressure = 1.0 - (density * 0.05 * aggressiveness);
     // Reputations-Bonus / Malus
-    pressure += repDelta * 0.04;
+    final defenseFactor = (1 / aggressiveness).clamp(0.6, 1.4);
+    pressure += repDelta * 0.04 * defenseFactor;
 
-    return pressure.clamp(0.65, 1.10);
+    return pressure.clamp(0.55, 1.10);
   }
 
   // ── Private ──────────────────────────────────────────────────────────────
 
   /// Konkurrent macht ggf. eine Aktion (Preiskampf, Expansion, Rep-Update).
-  static void _maybeAct(Competitor c, GameState state) {
-    if (c.daysSinceLastAction < 5) return;
+  static void _maybeAct(
+    Competitor c,
+    GameState state,
+    double aggressiveness,
+  ) {
+    final minDays = (5 / aggressiveness).round().clamp(2, 9);
+    if (c.daysSinceLastAction < minDays) return;
 
-    final actionChance = switch (c.personality) {
+    final baseActionChance = switch (c.personality) {
       CompetitorPersonality.aggressive => 0.40,
       CompetitorPersonality.cheapMass => 0.25,
       CompetitorPersonality.balanced => 0.18,
       CompetitorPersonality.premium => 0.15,
       CompetitorPersonality.traditional => 0.10,
     };
+    final actionChance = (baseActionChance * aggressiveness).clamp(0.05, 0.90);
     if (_rng.nextDouble() > actionChance) return;
 
     c.daysSinceLastAction = 0;
 
     // Welche Aktion?
     final r = _rng.nextDouble();
-    if (r < 0.30 && c.shopCount < 5) {
+    final expansionChance = (0.30 * aggressiveness).clamp(0.15, 0.55);
+    final priceChance =
+        (0.30 + (aggressiveness - 1.0) * 0.10).clamp(0.20, 0.50);
+    if (r < expansionChance && c.shopCount < 5) {
       // Expansion
       c.shopCount = (c.shopCount + 1).clamp(1, 5);
       c.reputation = (c.reputation - 0.05).clamp(1.0, 5.0); // dilution
-    } else if (r < 0.60) {
+    } else if (r < expansionChance + priceChance) {
       // Preis-Anpassung
       final hasPlayer = state.hasShopIn(c.cityId);
       if (c.personality == CompetitorPersonality.aggressive && hasPlayer) {
@@ -154,12 +174,14 @@ class CompetitorEngine {
     String cityId,
   ) {
     if (competitors.isEmpty) return;
+    final aggressiveness =
+        state.difficulty.modifiers.competitorAggressivenessMultiplier;
 
     // Spieler-Power in dieser Stadt
     final playerShops = state.shops.where((s) => s.cityId == cityId).toList();
     final playerPower = playerShops.fold(0.0, (sum, s) {
-      final repScore = s.reputation / 5.0;       // 0..1
-      final priceScore = 1.0;                    // im einfachen Modell neutral
+      final repScore = s.reputation / 5.0; // 0..1
+      const priceScore = 1.0; // im einfachen Modell neutral
       return sum + repScore * priceScore;
     });
 
@@ -167,7 +189,8 @@ class CompetitorEngine {
     final compPower = competitors.fold(0.0, (sum, c) {
       // niedrigerer Preis = etwas mehr Power
       final priceScore = (2.0 - c.priceLevel).clamp(0.5, 1.5);
-      return sum + (c.reputation / 5.0) * priceScore * c.shopCount;
+      return sum +
+          (c.reputation / 5.0) * priceScore * c.shopCount * aggressiveness;
     });
 
     final totalPower = playerPower + compPower;
@@ -175,7 +198,8 @@ class CompetitorEngine {
 
     for (final c in competitors) {
       final priceScore = (2.0 - c.priceLevel).clamp(0.5, 1.5);
-      final p = (c.reputation / 5.0) * priceScore * c.shopCount;
+      final p =
+          (c.reputation / 5.0) * priceScore * c.shopCount * aggressiveness;
       c.marketShare = (p / totalPower).clamp(0.0, 1.0);
     }
   }

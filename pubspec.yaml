@@ -28,6 +28,9 @@ dependencies:
   # Charts für Finanzen
   fl_chart: ^0.68.0
 
+  # Externe Links (z.B. Feedback-Formular) im Browser öffnen
+  url_launcher: ^6.3.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

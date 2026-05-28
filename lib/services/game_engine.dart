@@ -9,13 +9,28 @@ import '../models/city_model.dart';
 import '../models/brand_model.dart';
 import '../models/marketing_model.dart';
 import '../models/upgrade_model.dart';
+import '../models/difficulty_model.dart';
+import '../models/hr_manager_model.dart';
 import '../core/constants.dart';
 import 'competitor_engine.dart';
 import 'corporate_engine.dart';
+import 'hr_engine.dart';
 
 /// Zentrale Spiellogik. Reine statische Methoden ohne Seiteneffekte —
 /// alles, was den Spielstand verändert, gibt ein neues [GameState] zurück.
 class GameEngine {
+  static const Map<String, double> _globalSpiessQualityBonus = {
+    kGlobalSpiessBasicId: 0.15,
+    kGlobalSpiessStandardId: 0.40,
+    kGlobalSpiessProfiId: 0.80,
+  };
+
+  static const Map<String, int> _globalSpiessCapacityBonus = {
+    kGlobalSpiessBasicId: 40,
+    kGlobalSpiessStandardId: 100,
+    kGlobalSpiessProfiId: 200,
+  };
+
   // ──────────────────────────────────────────────────────────────────────────
   // ── Tageseinnahmen für einen Shop berechnen ──────────────────────────────
   // ──────────────────────────────────────────────────────────────────────────
@@ -26,7 +41,8 @@ class GameEngine {
   }
 
   /// Vollständige Tages-Statistik in einem Rutsch: actual + potential + capacity.
-  static ShopDayStats calculateShopStats(Shop shop, {int? day, GameState? state}) {
+  static ShopDayStats calculateShopStats(Shop shop,
+      {int? day, GameState? state}) {
     if (!shop.isOpen || shop.menu.isEmpty) {
       return ShopDayStats.zero();
     }
@@ -37,9 +53,9 @@ class GameEngine {
 
     final reputationFactor = _reputationFactor(shop.reputation);
     final baseCustomers = shop.footTraffic * 0.06 * reputationFactor;
-    final eqQuality = _equipmentQualityScore(shop);
+    final eqQuality = _equipmentQualityScore(shop, state);
     final staffMult = _staffQualityScore(shop);
-    final capacity = _capacityLimit(shop);
+    final capacity = _capacityLimit(shop, state);
     final variation = _dailyVariation(shop, effectiveDay);
 
     // Tageszeit-Profil (Mittelwert über den Öffnungszeiten + Wochentag)
@@ -50,13 +66,15 @@ class GameEngine {
     // Brand & City-Reputation (wenn State verfügbar)
     final brandMult = state?.brand.customerMultiplier(shop.cityId) ?? 1.0;
     // Konkurrenz-Druck
-    final compPressure =
-        state == null ? 1.0 : CompetitorEngine.competitionPressure(state, shop.cityId, shop.reputation);
+    final compPressure = state == null
+        ? 1.0
+        : CompetitorEngine.competitionPressure(
+            state, shop.cityId, shop.reputation);
 
     // Aktive Marketing-Kampagnen (Shop + Stadt + Konzern)
-    final campaignBoost = _activeCampaignBoost(shop, effectiveDay)
-        + _activeCityCampaignBoost(shop, effectiveDay, state)
-        + _activeGlobalCampaignBoost(effectiveDay, state);
+    final campaignBoost = _activeCampaignBoost(shop, effectiveDay) +
+        _activeCityCampaignBoost(shop, effectiveDay, state) +
+        _activeGlobalCampaignBoost(effectiveDay, state);
     final campaignAOV = _activeCampaignAvgOrderMod(shop, effectiveDay);
 
     // Permanente Upgrades (WLAN, Musik, etc.) — inkl. aktiver globaler Upgrades
@@ -68,7 +86,11 @@ class GameEngine {
     for (final sp in activeMenu) {
       final pd = _productData(sp.productId);
       if (pd == null) continue;
-      final demand = priceDemandFactor(price: sp.price, basePrice: pd.basePrice);
+      final demand = priceDemandFactor(
+        price: sp.price,
+        basePrice: pd.basePrice,
+        difficulty: state?.difficulty ?? GameDifficulty.normal,
+      );
       totalDemand += demand;
       totalRevenue += demand * sp.price * (1.0 + campaignAOV + upgradeAOV);
     }
@@ -86,8 +108,10 @@ class GameEngine {
         (1.0 + campaignBoost + upgradeBoost);
     final actualCustomers = rawCustomers.clamp(0.0, capacity.toDouble());
 
-    final actualRevenue = (actualCustomers * avgOrderValue).clamp(0.0, double.infinity);
-    final potentialRevenue = (rawCustomers * avgOrderValue).clamp(0.0, double.infinity);
+    final actualRevenue =
+        (actualCustomers * avgOrderValue).clamp(0.0, double.infinity);
+    final potentialRevenue =
+        (rawCustomers * avgOrderValue).clamp(0.0, double.infinity);
 
     return ShopDayStats(
       actualRevenue: actualRevenue,
@@ -144,7 +168,8 @@ class GameEngine {
     return stats.potentialRevenue > stats.actualRevenue * 1.05;
   }
 
-  static int recommendedExtraEmployees(Shop shop, {int? day, GameState? state}) {
+  static int recommendedExtraEmployees(Shop shop,
+      {int? day, GameState? state}) {
     final stats = calculateShopStats(shop, day: day, state: state);
     if (!isCapacityLimited(shop, day: day, state: state)) return 0;
     final maxEmp = maxEmployeesForShop(shop);
@@ -162,7 +187,10 @@ class GameEngine {
 
   static int totalCustomersToday(GameState state) {
     return state.shops.fold(
-        0, (s, shop) => s + calculateDailyCustomers(shop, day: state.currentDay, state: state));
+        0,
+        (s, shop) =>
+            s +
+            calculateDailyCustomers(shop, day: state.currentDay, state: state));
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -172,15 +200,18 @@ class GameEngine {
   static double priceDemandFactor({
     required double price,
     required double basePrice,
+    GameDifficulty difficulty = GameDifficulty.normal,
   }) {
     if (price <= 0) return 0;
+    final sensitivity = difficulty.modifiers.customerPriceSensitivityMultiplier;
     final ratio = price / basePrice;
 
     if (ratio <= 1.0) {
-      return (1.0 + (1.0 - ratio) * 0.4).clamp(0.6, 1.25);
+      final discountBoost = 0.4 / sensitivity;
+      return (1.0 + (1.0 - ratio) * discountBoost).clamp(0.6, 1.25);
     } else {
       final overshoot = ratio - 1.0;
-      final demand = exp(-pow(overshoot * 1.6, 2));
+      final demand = exp(-pow(overshoot * 1.6 * sensitivity, 2));
       return demand.clamp(0.0, 1.0);
     }
   }
@@ -191,15 +222,19 @@ class GameEngine {
 
   static double calculateDailyCosts(Shop shop, {int? day, GameState? state}) {
     if (shop.menu.isEmpty) return shop.dailyRent + _upgradeDailyCost(shop);
-    final breakdown = calculateDailyCostsBreakdown(shop, day: day, state: state);
+    final breakdown =
+        calculateDailyCostsBreakdown(shop, day: day, state: state);
     return breakdown.total;
   }
 
   static ShopCostBreakdown calculateDailyCostsBreakdown(Shop shop,
       {int? day, GameState? state}) {
-    final rent = shop.dailyRent;
-    final salaries = shop.employees.fold(0.0, (s, e) => s + e.salaryPerDay);
-    final upgrades = _upgradeDailyCost(shop);
+    final pressure =
+        state?.difficulty.modifiers.economicPressureMultiplier ?? 1.0;
+    final rent = shop.dailyRent * pressure;
+    final salaries =
+        shop.employees.fold(0.0, (s, e) => s + e.salaryPerDay) * pressure;
+    final upgrades = _upgradeDailyCost(shop) * pressure;
 
     if (shop.menu.isEmpty) {
       return ShopCostBreakdown(
@@ -212,14 +247,16 @@ class GameEngine {
     final facilitySaving = state == null
         ? 0.0
         : CorporateEngine.facilitySavingForShop(state, shop);
-    final ingredientSaving = (equipmentSaving + facilitySaving).clamp(0.0, 0.85);
+    final ingredientSaving =
+        (equipmentSaving + facilitySaving).clamp(0.0, 0.85);
     final activeMenu = shop.menu.where((p) => p.isActive).toList();
     final ingredientRatio = _weightedIngredientRatio(activeMenu);
-    final ingredients = revenue * ingredientRatio * (1 - ingredientSaving);
+    final ingredients =
+        revenue * ingredientRatio * (1 - ingredientSaving) * pressure;
 
     // Liefer-Provision (Lieferando etc.) — nie negativ, immer <= Umsatz
-    final deliveryCommission =
-        _deliveryCommissionCost(shop, revenue, state).clamp(0.0, revenue);
+    final deliveryCommission = _deliveryCommissionCost(shop, revenue, state)
+        .clamp(0.0, revenue * pressure);
 
     return ShopCostBreakdown(
         rent: rent,
@@ -235,10 +272,12 @@ class GameEngine {
 
   static GameState processDay(GameState state) {
     final today = state.currentDay;
+    final difficultyMods = state.difficulty.modifiers;
     double totalRevenue = 0;
     double totalRent = 0;
     double totalSalaries = 0;
     double totalIngredients = 0;
+    double totalDeliveryCommission = 0;
     int totalCustomers = 0;
 
     // Konkurrenz updaten
@@ -246,31 +285,40 @@ class GameEngine {
     final stateWithComp = state.copyWith(competitors: updatedCompetitors);
 
     // Mitarbeiter altern + Erfahrung wachsen
+    final trainingGrowth = HrEngine.trainingGrowthMultiplier(stateWithComp);
     final updatedShops = stateWithComp.shops.map((shop) {
-      final revenue = calculateDailyRevenue(shop, day: today, state: stateWithComp);
-      final br = calculateDailyCostsBreakdown(shop, day: today, state: stateWithComp);
-      final customers = calculateDailyCustomers(shop, day: today, state: stateWithComp);
+      final revenue =
+          calculateDailyRevenue(shop, day: today, state: stateWithComp);
+      final br =
+          calculateDailyCostsBreakdown(shop, day: today, state: stateWithComp);
+      final customers =
+          calculateDailyCustomers(shop, day: today, state: stateWithComp);
 
       totalRevenue += revenue;
       totalRent += br.rent;
       totalSalaries += br.salaries;
       totalIngredients += br.ingredients;
+      totalDeliveryCommission += br.deliveryCommission;
       totalCustomers += customers;
 
       final newRep = _updateReputation(shop, stateWithComp);
       final updatedEmployees = shop.employees.map((emp) {
         final newDays = emp.daysEmployed + 1;
-        // Erfahrungs-Wachstum: Alle 30 Tage +1 Erfahrung (max 10)
-        final newExp = (newDays % 30 == 0 && emp.experience < 10)
+        // Erfahrungs-Wachstum: difficulty-basiertes Intervall.
+        final expInterval = HrEngine.xpIntervalDays(
+          difficulty: stateWithComp.difficulty,
+          trainingGrowthMultiplier: trainingGrowth,
+          growthPotential: emp.growthPotential,
+        );
+        final newExp = (newDays % expInterval == 0 && emp.experience < 10)
             ? emp.experience + 1
             : emp.experience;
         return emp.copyWith(daysEmployed: newDays, experience: newExp);
       }).toList();
 
       // Abgelaufene Marketing-Kampagnen entfernen
-      final activeNow = shop.activeCampaigns
-          .where((c) => c.isActive(today + 1))
-          .toList();
+      final activeNow =
+          shop.activeCampaigns.where((c) => c.isActive(today + 1)).toList();
 
       return shop.copyWith(
         reputation: newRep,
@@ -291,8 +339,17 @@ class GameEngine {
         .toList();
 
     // Laufende Kosten globaler Konzern-Upgrades (einmal pro Tag, nicht pro Shop)
-    final globalUpgradeCost = globalUpgradeDailyCost(stateWithComp);
-    final totalCosts = totalRent + totalSalaries + totalIngredients + globalUpgradeCost;
+    final economicPressure = difficultyMods.economicPressureMultiplier;
+    final hrDailySalary =
+        (stateWithComp.hrManager?.salaryPerDay ?? 0) * economicPressure;
+    final globalUpgradeCost =
+        globalUpgradeDailyCost(stateWithComp) * economicPressure;
+    final totalCosts = totalRent +
+        totalSalaries +
+        hrDailySalary +
+        totalIngredients +
+        totalDeliveryCommission +
+        globalUpgradeCost;
 
     // Kreditraten abziehen
     double loanPayments = 0;
@@ -315,31 +372,37 @@ class GameEngine {
       costs: totalCosts,
       customers: totalCustomers,
       rentCosts: totalRent,
-      salaryCosts: totalSalaries,
+      salaryCosts: totalSalaries + hrDailySalary,
       ingredientCosts: totalIngredients,
+      deliveryCommissionCosts: totalDeliveryCommission,
       loanPayments: loanPayments,
       investments: 0,
     );
     final history = [...stateWithComp.history, newRecord];
-    final trimmedHistory = history.length > 60
-        ? history.sublist(history.length - 60)
-        : history;
+    final trimmedHistory =
+        history.length > 60 ? history.sublist(history.length - 60) : history;
 
-    final newTotalRevenue = stateWithComp.totalRevenue + totalRevenue;
+    // Corporate: Facilities verursachen Kosten + B2B-Umsatz
+    final facilityCost = CorporateEngine.facilityDailyCosts(stateWithComp);
+    final facilityRevenue = CorporateEngine.facilityB2BRevenue(stateWithComp);
+    final facilityNet = facilityRevenue - facilityCost;
+
+    final progressRevenue = (totalRevenue + facilityRevenue) *
+        difficultyMods.progressSpeedMultiplier;
+    final newTotalRevenue = stateWithComp.totalRevenue + progressRevenue;
     final newUnlocked =
         _checkCityUnlocks(stateWithComp.unlockedCityIds, newTotalRevenue);
 
     // Brand & City-Reputation updaten
-    final newBrand = _updateBrand(stateWithComp, totalRevenue, totalCustomers, updatedShops);
-
-    // Corporate: Facilities verursachen Kosten + B2B-Umsatz
-    final facilityCost = CorporateEngine.facilityDailyCosts(stateWithComp);
-    final facilityRevenue =
-        CorporateEngine.facilityB2BRevenue(stateWithComp);
-    final facilityNet = facilityRevenue - facilityCost;
+    final newBrand =
+        _updateBrand(stateWithComp, totalRevenue, totalCustomers, updatedShops);
 
     // Stocks: Aktienkurs täglich updaten
     final updatedStocks = CorporateEngine.updateDailyPrice(stateWithComp);
+    final updatedHrManager = _updateHrManagerProgress(
+      stateWithComp,
+      totalCustomers: totalCustomers,
+    );
 
     // Manager: Auto-Pricing + Auto-Hire
     var managerState = stateWithComp.copyWith(
@@ -347,12 +410,13 @@ class GameEngine {
       currentDay: stateWithComp.currentDay + 1,
       shops: updatedShops,
       loans: activeLoans,
-      totalRevenue: newTotalRevenue + facilityRevenue,
+      totalRevenue: newTotalRevenue,
       totalProfit: stateWithComp.totalProfit + netCash + facilityNet,
       history: trimmedHistory,
       unlockedCityIds: newUnlocked,
       brand: newBrand,
       stocks: updatedStocks,
+      hrManager: updatedHrManager,
       activeCityCampaigns: cleanedCityCampaigns,
       activeGlobalCampaigns: cleanedGlobalCampaigns,
     );
@@ -371,11 +435,12 @@ class GameEngine {
     List<Shop> shops,
   ) {
     final brand = state.brand;
+    final progressSpeed = state.difficulty.modifiers.progressSpeedMultiplier;
 
     // Awareness: +0.02 pro 100 Kunden/Tag + 0.005 pro 1000€ Umsatz
     var newAwareness = brand.brandAwareness +
-        (dailyCustomers / 100) * 0.02 +
-        (dailyRevenue / 1000) * 0.005;
+        ((dailyCustomers / 100) * 0.02 + (dailyRevenue / 1000) * 0.005) *
+            progressSpeed;
     // Plus Upgrade-Boost (Premium-Inneneinrichtung, Loyalty-App, globale Upgrades)
     for (final shop in shops) {
       newAwareness += _upgradeBrandPerDay(shop, state);
@@ -384,7 +449,8 @@ class GameEngine {
     final processedCities = <String>{};
     for (final shop in shops) {
       if (!processedCities.add(shop.cityId)) continue; // bereits gezählt
-      for (final ac in (state.activeCityCampaigns[shop.cityId] ?? <ActiveCampaign>[])) {
+      for (final ac
+          in (state.activeCityCampaigns[shop.cityId] ?? <ActiveCampaign>[])) {
         if (!ac.isActive(state.currentDay)) continue;
         final campaign = kAllMarketingCampaigns.firstWhere(
           (c) => c.id == ac.campaignId,
@@ -421,6 +487,7 @@ class GameEngine {
       var delta = (avgRep - 2.5) * 0.5;
       // pro Filiale ein kleiner Bonus
       delta += list.length * 0.2;
+      delta *= progressSpeed;
       current = (current + delta).clamp(0.0, 100.0);
       newCityRep[cityId] = current;
     });
@@ -431,6 +498,18 @@ class GameEngine {
     );
   }
 
+  static HrManager? _updateHrManagerProgress(
+    GameState state, {
+    required int totalCustomers,
+  }) {
+    final manager = state.hrManager;
+    if (manager == null) return null;
+    final xpGain = (4 + (totalCustomers / 130)).round().clamp(4, 30);
+    final newXp = manager.xp + xpGain;
+    final newLevel = (1 + (newXp / 120).floor()).clamp(1, 50);
+    return manager.copyWith(level: newLevel, xp: newXp);
+  }
+
   // ──────────────────────────────────────────────────────────────────────────
   // ── Stündlicher Tick ─────────────────────────────────────────────────────
   // ──────────────────────────────────────────────────────────────────────────
@@ -438,7 +517,8 @@ class GameEngine {
   static double calculateHourlyRevenue(GameState state) {
     return state.shops.fold(0.0, (sum, shop) {
       return sum +
-          calculateDailyRevenue(shop, day: state.currentDay, state: state) / kDailyOpenHours;
+          calculateDailyRevenue(shop, day: state.currentDay, state: state) /
+              kDailyOpenHours;
     });
   }
 
@@ -448,10 +528,13 @@ class GameEngine {
   static double calculateHourlyCosts(GameState state) {
     final shopCosts = state.shops.fold(0.0, (sum, shop) {
       return sum +
-          calculateDailyCosts(shop, day: state.currentDay, state: state) / kDailyOpenHours;
+          calculateDailyCosts(shop, day: state.currentDay, state: state) /
+              kDailyOpenHours;
     });
     // Globale Upgrade-Kosten anteilig über den Tag verteilen
-    final globalCosts = globalUpgradeDailyCost(state) / kDailyOpenHours;
+    final globalCosts = globalUpgradeDailyCost(state) *
+        state.difficulty.modifiers.economicPressureMultiplier /
+        kDailyOpenHours;
     return shopCosts + globalCosts;
   }
 
@@ -463,26 +546,30 @@ class GameEngine {
     final cost = shop.weeklyRent * 2;
     assert(state.cash >= cost, 'Nicht genug Geld für Kaution');
 
-    final defaultProducts = kAllProducts
-        .where((p) => p.isDefault)
-        .map((p) {
-          final cityP = state.cityPrices[shop.cityId] ?? {};
-          final price = cityP[p.id] ?? state.globalPrices[p.id] ?? p.basePrice;
-          return ShopProduct(productId: p.id, price: price);
-        })
-        .toList();
+    final defaultProducts = kAllProducts.where((p) => p.isDefault).map((p) {
+      final cityP = state.cityPrices[shop.cityId] ?? {};
+      final price = cityP[p.id] ?? state.globalPrices[p.id] ?? p.basePrice;
+      return ShopProduct(productId: p.id, price: price);
+    }).toList();
 
     final newShop = shop.copyWith(menu: defaultProducts);
     // Konkurrenz für die Stadt sicherstellen
     final newCompetitors = CompetitorEngine.ensureCompetitorsForCity(
       state.competitors,
       shop.cityId,
+      state.difficulty,
     );
     return _trackInvestment(state, cost).copyWith(
       cash: state.cash - cost,
       shops: [...state.shops, newShop],
       competitors: newCompetitors,
     );
+  }
+
+  static bool canUnlockOwnDeliveryApp(GameState state) {
+    final shopsWithDelivery =
+        state.shops.where((s) => _hasDeliveryChannel(s, state)).length;
+    return shopsWithDelivery >= 3;
   }
 
   /// Permanenten Upgrade kaufen.
@@ -492,14 +579,35 @@ class GameEngine {
   ///   Konsistenz weiterhin akzeptiert.
   static GameState buyUpgrade(
       GameState state, String shopId, UpgradeData upgrade) {
+    // Legacy-Guard: frühe Versionen konnten `lieferdienst` pro Filiale kaufen.
+    // In neuen Ständen ist es global. Alte UI-/Call-Pfade werden hier abgefangen.
+    if (!upgrade.isGlobal && upgrade.id == 'lieferdienst') {
+      final globalDelivery = upgradeById('lieferdienst');
+      if (globalDelivery != null && globalDelivery.isGlobal) {
+        return buyUpgrade(state, '', globalDelivery);
+      }
+    }
+
     if (state.cash < upgrade.installCost) return state;
 
     if (upgrade.isGlobal) {
       // Bereits vorhanden?
       if (state.globalUpgradeIds.contains(upgrade.id)) return state;
+      if (upgrade.id == 'eigen_lieferdienst' &&
+          !canUnlockOwnDeliveryApp(state)) {
+        return state;
+      }
+      var newGlobalIds = [...state.globalUpgradeIds];
+      if (kGlobalSpiessUpgradeOrder.contains(upgrade.id)) {
+        newGlobalIds = newGlobalIds
+            .where((id) => !kGlobalSpiessUpgradeOrder.contains(id))
+            .toList();
+      }
+      newGlobalIds.add(upgrade.id);
+
       return _trackInvestment(state, upgrade.installCost).copyWith(
         cash: state.cash - upgrade.installCost,
-        globalUpgradeIds: [...state.globalUpgradeIds, upgrade.id],
+        globalUpgradeIds: newGlobalIds,
       );
     }
 
@@ -516,7 +624,8 @@ class GameEngine {
   }
 
   /// Marketing-Kampagne buchen
-  static GameState bookCampaign(GameState state, String shopId, MarketingCampaign campaign) {
+  static GameState bookCampaign(
+      GameState state, String shopId, MarketingCampaign campaign) {
     if (state.cash < campaign.cost) return state;
     final today = state.currentDay;
     final newShops = state.shops.map((shop) {
@@ -527,7 +636,8 @@ class GameEngine {
         endDay: today + campaign.durationDays,
       );
       // Reputations-Boost direkt anwenden
-      final newRep = (shop.reputation + campaign.reputationBoostOnce).clamp(0.5, 5.0);
+      final newRep =
+          (shop.reputation + campaign.reputationBoostOnce).clamp(0.5, 5.0);
       return shop.copyWith(
         activeCampaigns: [...shop.activeCampaigns, active],
         reputation: newRep,
@@ -552,7 +662,8 @@ class GameEngine {
     // Reputations-Boost einmalig auf alle Filialen der Stadt anwenden
     final newShops = state.shops.map((shop) {
       if (shop.cityId != cityId) return shop;
-      final newRep = (shop.reputation + campaign.reputationBoostOnce).clamp(0.5, 5.0);
+      final newRep =
+          (shop.reputation + campaign.reputationBoostOnce).clamp(0.5, 5.0);
       return shop.copyWith(reputation: newRep);
     }).toList();
     // Kampagne in cityId-Bucket eintragen
@@ -580,7 +691,8 @@ class GameEngine {
     );
     // Einmalige Reputation für alle Filialen
     final newShops = state.shops.map((shop) {
-      final newRep = (shop.reputation + campaign.reputationBoostOnce).clamp(0.5, 5.0);
+      final newRep =
+          (shop.reputation + campaign.reputationBoostOnce).clamp(0.5, 5.0);
       return shop.copyWith(reputation: newRep);
     }).toList();
     return _trackInvestment(state, campaign.cost).copyWith(
@@ -698,6 +810,9 @@ class GameEngine {
     String shopId,
     EquipmentData equipment,
   ) {
+    // Döner-Spieß wird zentral über Konzern-Upgrades gesteuert.
+    if (equipment.category == EquipmentCategory.spiess) return state;
+
     assert(state.cash >= equipment.price);
 
     final updatedShops = state.shops.map((shop) {
@@ -716,8 +831,7 @@ class GameEngine {
 
       List<ShopProduct> updatedMenu = List.from(shop.menu);
       for (final unlockId in equipment.allUnlockedProducts) {
-        final alreadyHas =
-            updatedMenu.any((p) => p.productId == unlockId);
+        final alreadyHas = updatedMenu.any((p) => p.productId == unlockId);
         if (alreadyHas) continue;
         final productData = kAllProducts.firstWhere(
           (p) => p.id == unlockId,
@@ -755,7 +869,8 @@ class GameEngine {
       );
     }).toList();
     // Aus Bewerber-Pool entfernen
-    final newPool = state.employeePool.where((e) => e.id != employee.id).toList();
+    final newPool =
+        state.employeePool.where((e) => e.id != employee.id).toList();
     return state.copyWith(shops: updatedShops, employeePool: newPool);
   }
 
@@ -810,6 +925,7 @@ class GameEngine {
         rentCosts: old.rentCosts,
         salaryCosts: old.salaryCosts,
         ingredientCosts: old.ingredientCosts,
+        deliveryCommissionCosts: old.deliveryCommissionCosts,
         loanPayments: old.loanPayments,
         investments: old.investments + amount,
       );
@@ -836,13 +952,13 @@ class GameEngine {
     }
   }
 
-  static double _equipmentQualityScore(Shop shop) {
-    if (shop.equipment.isEmpty) return 0.5;
-    double total = 1.0;
+  static double _equipmentQualityScore(Shop shop, [GameState? state]) {
+    double total = shop.equipment.isEmpty ? 0.5 : 1.0;
     for (final se in shop.equipment) {
       final eq = kAllEquipment.firstWhere((e) => e.id == se.equipmentId);
       total += eq.qualityBonus;
     }
+    total += _globalSpiessQualityFor(state);
     return total.clamp(0.5, 2.5);
   }
 
@@ -855,7 +971,8 @@ class GameEngine {
         shop.employees.any((e) => e.hasTrait(PersonalityTrait.mentor));
     final teamBonus = hasMentor ? 1.05 : 1.0;
     // Hothead reduziert team bonus
-    final hothead = shop.employees.any((e) => e.hasTrait(PersonalityTrait.hothead));
+    final hothead =
+        shop.employees.any((e) => e.hasTrait(PersonalityTrait.hothead));
     final adjustedTeam = hothead ? teamBonus * 0.95 : teamBonus;
 
     for (final emp in shop.employees) {
@@ -868,7 +985,7 @@ class GameEngine {
   /// Kapazität: Personal + Equipment.
   /// Owner-Base auf 20 reduziert (vorher 40), damit Personal echt nötig ist
   /// und ein Shop ohne Mitarbeiter wirklich Verlust macht.
-  static int _capacityLimit(Shop shop) {
+  static int _capacityLimit(Shop shop, [GameState? state]) {
     int cap = 20;
     for (final emp in shop.employees) {
       cap += (40 + 80 * emp.speedFactor).round();
@@ -878,7 +995,28 @@ class GameEngine {
       final eq = kAllEquipment.firstWhere((e) => e.id == se.equipmentId);
       cap += eq.capacityBonus;
     }
+    cap += _globalSpiessCapacityFor(state);
     return cap;
+  }
+
+  static String? _activeGlobalSpiessUpgradeId(GameState? state) {
+    if (state == null) return null;
+    for (final id in kGlobalSpiessUpgradeOrder.reversed) {
+      if (state.globalUpgradeIds.contains(id)) return id;
+    }
+    return null;
+  }
+
+  static double _globalSpiessQualityFor(GameState? state) {
+    final id = _activeGlobalSpiessUpgradeId(state);
+    if (id == null) return 0;
+    return _globalSpiessQualityBonus[id] ?? 0;
+  }
+
+  static int _globalSpiessCapacityFor(GameState? state) {
+    final id = _activeGlobalSpiessUpgradeId(state);
+    if (id == null) return 0;
+    return _globalSpiessCapacityBonus[id] ?? 0;
   }
 
   static double _ingredientSavingBonus(Shop shop) {
@@ -984,14 +1122,23 @@ class GameEngine {
   static double _deliveryCommissionCost(
       Shop shop, double revenue, GameState? state) {
     double cost = 0;
-    final hasOwnApp = state?.globalUpgradeIds.contains('eigen_lieferdienst') ?? false;
-    for (final id in shop.upgradeIds) {
+    final hasOwnApp =
+        state?.globalUpgradeIds.contains('eigen_lieferdienst') ?? false;
+    for (final id in _effectiveUpgradeIds(shop, state)) {
       final u = upgradeById(id);
       if (u == null || !u.isDelivery) continue;
       final rate = hasOwnApp ? 0.08 : u.deliveryCommissionRate;
       cost += revenue * u.deliveryRevenueFraction * rate;
     }
     return cost;
+  }
+
+  static bool _hasDeliveryChannel(Shop shop, GameState? state) {
+    for (final id in _effectiveUpgradeIds(shop, state)) {
+      final u = upgradeById(id);
+      if (u != null && u.isDelivery) return true;
+    }
+    return false;
   }
 
   /// Aktive Kampagnen-Boost auf Kundenzahl (additiv).
@@ -1071,6 +1218,8 @@ class GameEngine {
   static double _updateReputation(Shop shop, GameState state) {
     if (shop.menu.isEmpty) return shop.reputation;
 
+    final penaltyMultiplier =
+        state.difficulty.modifiers.reputationPenaltyMultiplier;
     double sumScore = 0;
     int n = 0;
     for (final sp in shop.menu.where((p) => p.isActive)) {
@@ -1089,6 +1238,11 @@ class GameEngine {
       } else {
         s = -0.25;
       }
+      if (s < 0) {
+        s *= penaltyMultiplier;
+      } else if (penaltyMultiplier > 1.0) {
+        s /= sqrt(penaltyMultiplier);
+      }
       sumScore += s;
       n++;
     }
@@ -1105,7 +1259,7 @@ class GameEngine {
           .length;
       sumScore += charmers * 0.03;
     } else {
-      sumScore -= 0.03;
+      sumScore -= 0.03 * penaltyMultiplier;
     }
 
     // Aktive Kampagnen-Reputations-Boost
@@ -1118,7 +1272,8 @@ class GameEngine {
       sumScore += campaign.reputationBoostPerDay;
     }
     // Aktive Stadt-Kampagnen-Reputations-Boost
-    for (final ac in (state.activeCityCampaigns[shop.cityId] ?? <ActiveCampaign>[])) {
+    for (final ac
+        in (state.activeCityCampaigns[shop.cityId] ?? <ActiveCampaign>[])) {
       if (!ac.isActive(state.currentDay)) continue;
       final campaign = kAllMarketingCampaigns.firstWhere(
         (c) => c.id == ac.campaignId,
@@ -1214,5 +1369,6 @@ class ShopCostBreakdown {
     this.deliveryCommission = 0,
   });
 
-  double get total => rent + salaries + ingredients + upgrades + deliveryCommission;
+  double get total =>
+      rent + salaries + ingredients + upgrades + deliveryCommission;
 }

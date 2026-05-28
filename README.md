@@ -1,17 +1,50 @@
-# doener_empire
+# Döner Empire
 
-A new Flutter project.
+Mobile-Wirtschaftssimulation in Flutter.
 
-## Getting Started
+## Voraussetzungen
 
-This project is a starting point for a Flutter application.
+- Flutter `3.44.0` (Stable) oder kompatibel
+- Dart `3.12.x`
+- Android Studio / Android SDK (für Android-Builds)
+- Java `17` (Gradle/Android Plugin nutzt Java 17)
 
-A few resources to get you started if this is your first Flutter project:
+## Setup
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+1. Abhängigkeiten installieren:
+   - `flutter pub get`
+2. Projekt analysieren:
+   - `flutter analyze`
+3. Tests ausführen:
+   - `flutter test`
+4. Lokaler Start:
+   - `flutter run`
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Android Build
+
+- Debug APK:
+  - `flutter build apk --debug`
+  - Output: `build/app/outputs/flutter-apk/app-debug.apk`
+- Release APK:
+  - `flutter build apk --release`
+  - Output: `build/app/outputs/flutter-apk/app-release.apk`
+
+Hinweis: Aktuell ist im Release-Build noch die Debug-Signing-Config aktiv
+(`android/app/build.gradle.kts`), damit interne Test-Builds direkt erstellt
+werden können.
+
+## Interner Test-Release (Kurzablauf)
+
+1. `flutter analyze`
+2. `flutter test`
+3. `flutter build apk --release`
+4. APK auf Testgerät installieren
+5. Manuellen Testplan ausführen:
+   - siehe [docs/MANUAL_TESTPLAN_INTERNAL.md](docs/MANUAL_TESTPLAN_INTERNAL.md)
+
+## Release-Dokumente
+
+- Changelog: [CHANGELOG.md](CHANGELOG.md)
+- Bekannte Risiken/Bugs: [KNOWN_ISSUES.md](KNOWN_ISSUES.md)
+- GitHub-Issue/Label/Milestone-Vorschläge:
+  [docs/GITHUB_RELEASE_PREP.md](docs/GITHUB_RELEASE_PREP.md)

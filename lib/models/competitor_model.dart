@@ -143,21 +143,21 @@ const List<String> kCompetitorNames = [
   'Berlin Kebap Haus',
   'Anatolia Express',
   'Bosporus Imbiss',
-  'King Doener',
+  'King Döner',
   'Istanbul Grillhaus',
   'Sultan\'s Pide',
   'Goldener Spieß',
   'Marmara Snack',
   'Yilmaz Family Kebap',
   'Topkapi Imbiss',
-  'Doener-Express 24',
+  'Döner-Express 24',
   'Pasha Grill',
   'Efes Imbiss',
-  'Kebap Kralı',
+  'Kebap KralÄ±',
   'Mama Mehmet',
   'Bistro Anadolu',
-  'Best Doener',
-  'Doener Time',
+  'Best Döner',
+  'Döner Time',
   'Star Kebap',
 ];
 
@@ -167,7 +167,8 @@ class CompetitorFactory {
   static final Set<String> _usedNames = {};
 
   static String _uniqueName() {
-    final available = kCompetitorNames.where((n) => !_usedNames.contains(n)).toList();
+    final available =
+        kCompetitorNames.where((n) => !_usedNames.contains(n)).toList();
     final pool = available.isEmpty ? kCompetitorNames : available;
     final pick = pool[_rng.nextInt(pool.length)];
     _usedNames.add(pick);
@@ -181,7 +182,8 @@ class CompetitorFactory {
     int? shopCount,
   }) {
     final pers = personality ??
-        CompetitorPersonality.values[_rng.nextInt(CompetitorPersonality.values.length)];
+        CompetitorPersonality
+            .values[_rng.nextInt(CompetitorPersonality.values.length)];
 
     double price, rep;
     switch (pers) {

@@ -1,4 +1,4 @@
-enum EquipmentCategory { spiess, kasse, sonstiges }
+﻿enum EquipmentCategory { spiess, kasse, sonstiges }
 
 class EquipmentData {
   final String id;

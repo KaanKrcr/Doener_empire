@@ -1,5 +1,6 @@
 import '../models/mission_model.dart';
 import '../models/game_state.dart';
+import '../models/difficulty_model.dart';
 import '../core/constants.dart';
 import '../models/city_model.dart';
 
@@ -25,7 +26,7 @@ class MissionEngine {
   static double activeProgress(GameState state, List<Mission> missions) {
     final m = activeMission(missions);
     if (m == null) return 1.0;
-    final cur = _currentValue(m, state);
+    final cur = _progressAdjustedValue(m, state);
     return (cur / m.target).clamp(0.0, 1.0);
   }
 
@@ -41,7 +42,7 @@ class MissionEngine {
     final m = activeMission(missions);
     if (m == null) return MissionCheckResult(state: state, justCompleted: null);
 
-    final cur = _currentValue(m, state);
+    final cur = _progressAdjustedValue(m, state);
     if (cur >= m.target) {
       m.isDone = true;
       final newState = state.copyWith(
@@ -53,6 +54,19 @@ class MissionEngine {
   }
 
   // ── Helper: aktuelles Mess-Ergebnis pro Mission-Typ ────────────────────
+
+  static double _progressAdjustedValue(Mission m, GameState state) {
+    final current = _currentValue(m, state);
+    final speed = state.difficulty.modifiers.progressSpeedMultiplier;
+    switch (m.type) {
+      case MissionType.totalRevenue:
+      case MissionType.reachCash:
+      case MissionType.unlockCity:
+        return current * speed;
+      default:
+        return current;
+    }
+  }
 
   static double _currentValue(Mission m, GameState state) {
     switch (m.type) {
@@ -81,10 +95,13 @@ class MissionEngine {
       case MissionType.shopCount:
         // Sonderfall metropole: nur Metropolen-Shops zählen
         if (m.id == 'metropole') {
-          return state.shops.where((s) {
-            final city = kAllCities.firstWhere((c) => c.id == s.cityId);
-            return city.tier == CityTier.metropole;
-          }).length.toDouble();
+          return state.shops
+              .where((s) {
+                final city = kAllCities.firstWhere((c) => c.id == s.cityId);
+                return city.tier == CityTier.metropole;
+              })
+              .length
+              .toDouble();
         }
         return state.shops.length.toDouble();
       case MissionType.unlockCity:
@@ -94,9 +111,8 @@ class MissionEngine {
         return state.currentDay.toDouble();
       case MissionType.reputationLevel:
         if (state.shops.isEmpty) return 0;
-        return state.shops
-            .fold<double>(
-                0, (max, s) => s.reputation > max ? s.reputation : max);
+        return state.shops.fold<double>(
+            0, (max, s) => s.reputation > max ? s.reputation : max);
     }
   }
 }

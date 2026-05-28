@@ -15,7 +15,11 @@ import '../models/upgrade_model.dart';
 import '../models/competitor_model.dart';
 import '../models/production_model.dart';
 import '../models/stock_model.dart';
+import '../models/difficulty_model.dart';
+import '../models/hr_manager_model.dart';
+import '../models/tutorial_model.dart';
 import '../services/game_engine.dart';
+import '../services/hr_engine.dart';
 import '../services/mission_engine.dart';
 import '../services/save_service.dart';
 import '../services/corporate_engine.dart';
@@ -47,6 +51,7 @@ class DayEndResult {
 }
 
 class GameNotifier extends Notifier<GameState?> {
+  static const double _tutorialCompletionReward = 25000;
   Timer? _tickTimer;
 
   /// Last day-end result für Dialog-Anzeige.
@@ -57,15 +62,24 @@ class GameNotifier extends Notifier<GameState?> {
 
   // ── Spiel starten / laden ────────────────────────────────────────────────
 
-  Future<void> startNewGame(String companyName, String founderName) async {
+  Future<void> startNewGame(
+    String companyName,
+    String founderName, {
+    GameDifficulty difficulty = GameDifficulty.normal,
+    bool tutorialEnabled = true,
+  }) async {
     state = GameState.initial(
       companyName: companyName,
       founderName: founderName,
       startCash: kStartingCash,
+      difficulty: difficulty,
+      tutorialEnabled: tutorialEnabled,
     );
+    final hrCandidates = HrEngine.generateHrCandidates(daySeed: 1);
     // Initial Bewerber-Pool
     state = state!.copyWith(
-      employeePool: _generateEmployeePool(),
+      hrCandidates: hrCandidates,
+      employeePool: _generateEmployeePool(state!),
       lastEmployeePoolDay: 1,
     );
     await SaveService.save(state!);
@@ -132,8 +146,7 @@ class GameNotifier extends Notifier<GameState?> {
     // Korrektur: den Tick-Anteil herausnehmen, damit nichts doppelt verbucht ist.
     final hoursElapsed = oldState.currentHour.clamp(0, kDailyOpenHours.toInt());
     final tickShare = hoursElapsed / kDailyOpenHours;
-    final liveNetAlreadyAdded =
-        (preview.revenue - preview.costs) * tickShare;
+    final liveNetAlreadyAdded = (preview.revenue - preview.costs) * tickShare;
     newState = newState.copyWith(
       cash: newState.cash - liveNetAlreadyAdded,
       currentHour: 0, // Neuer Tag → Hour-Counter zurücksetzen
@@ -143,10 +156,12 @@ class GameNotifier extends Notifier<GameState?> {
       customersServedTotal: oldState.customersServedTotal + preview.customers,
     );
 
-    // Mitarbeiter-Pool wöchentlich rotieren
-    if (newState.currentDay - newState.lastEmployeePoolDay >= 7) {
+    // Mitarbeiter-Pool difficulty-basiert rotieren
+    final refreshIntervalDays = _employeePoolRefreshIntervalDays(newState);
+    if (newState.currentDay - newState.lastEmployeePoolDay >=
+        refreshIntervalDays) {
       newState = newState.copyWith(
-        employeePool: _generateEmployeePool(),
+        employeePool: _generateEmployeePool(newState),
         lastEmployeePoolDay: newState.currentDay,
       );
     }
@@ -155,7 +170,8 @@ class GameNotifier extends Notifier<GameState?> {
     double luckyBonus = 0;
     for (final shop in newState.shops) {
       for (final emp in shop.employees) {
-        if (emp.hasTrait(PersonalityTrait.lucky) && Random().nextDouble() < 0.05) {
+        if (emp.hasTrait(PersonalityTrait.lucky) &&
+            Random().nextDouble() < 0.05) {
           luckyBonus += 50 + Random().nextInt(150).toDouble();
         }
       }
@@ -182,8 +198,7 @@ class GameNotifier extends Notifier<GameState?> {
 
     // Event ziehen (gewichtet)
     GameEvent? rolledEvent;
-    final eventChance =
-        (oldState.shops.length * 0.10).clamp(0.0, 0.45);
+    final eventChance = (oldState.shops.length * 0.10).clamp(0.0, 0.45);
     if (Random().nextDouble() < eventChance && oldState.shops.isNotEmpty) {
       rolledEvent = _rollEvent(oldState);
     }
@@ -209,6 +224,7 @@ class GameNotifier extends Notifier<GameState?> {
       newAchievements: newAchievs,
       quarterlyReport: quarterlyReport,
     );
+    _completeTutorialStep(TutorialStep.endFirstDay, saveAfterUpdate: false);
     _save();
   }
 
@@ -244,9 +260,12 @@ class GameNotifier extends Notifier<GameState?> {
     double costs = 0;
     int customers = 0;
     for (final shop in s.shops) {
-      revenue += GameEngine.calculateDailyRevenue(shop, day: s.currentDay, state: s);
-      costs += GameEngine.calculateDailyCosts(shop, day: s.currentDay, state: s);
-      customers += GameEngine.calculateDailyCustomers(shop, day: s.currentDay, state: s);
+      revenue +=
+          GameEngine.calculateDailyRevenue(shop, day: s.currentDay, state: s);
+      costs +=
+          GameEngine.calculateDailyCosts(shop, day: s.currentDay, state: s);
+      customers +=
+          GameEngine.calculateDailyCustomers(shop, day: s.currentDay, state: s);
     }
     final loanPayments = s.loans
         .where((l) => !l.isPaidOff)
@@ -281,7 +300,8 @@ class GameNotifier extends Notifier<GameState?> {
     if (eligible.isEmpty) return null;
 
     // Bevorzuge ungesehene
-    final unseen = eligible.where((e) => !state.seenEventIds.contains(e.id)).toList();
+    final unseen =
+        eligible.where((e) => !state.seenEventIds.contains(e.id)).toList();
     final pool = unseen.isNotEmpty ? unseen : eligible;
 
     // Gewichtung
@@ -319,7 +339,8 @@ class GameNotifier extends Notifier<GameState?> {
 
     for (final a in kAllAchievements) {
       if (state.achievementIds.contains(a.id)) continue;
-      if (a.check(shopCount, empCount, state.totalRevenue, cash, day, customers, maxRep, brand, 0)) {
+      if (a.check(shopCount, empCount, state.totalRevenue, cash, day, customers,
+          maxRep, brand, 0)) {
         newOnes.add(a);
       }
     }
@@ -327,33 +348,18 @@ class GameNotifier extends Notifier<GameState?> {
   }
 
   /// Mitarbeiter-Pool generieren (8-10 zufällige Kandidaten)
-  List<Employee> _generateEmployeePool() {
-    final rng = Random();
-    final pool = <Employee>[];
-    final count = 8 + rng.nextInt(3);
-    for (var i = 0; i < count; i++) {
-      final type = kEmployeeTypes[rng.nextInt(kEmployeeTypes.length)];
-      final useMale = rng.nextBool();
-      final name = useMale
-          ? kMaleNames[rng.nextInt(kMaleNames.length)]
-          : kFemaleNames[rng.nextInt(kFemaleNames.length)];
-      pool.add(EmployeeFactory.createCandidate(
-        id: 'cand_${DateTime.now().microsecondsSinceEpoch}_$i',
-        type: type,
-        name: name,
-      ));
-    }
-    return pool;
+  List<Employee> _generateEmployeePool(GameState sourceState) {
+    return HrEngine.generateCandidatePool(sourceState);
   }
 
   void markTutorialDone() {
     if (state == null) return;
-    state = state!.copyWith(tutorialDone: true);
-    _save();
+    _finishTutorial();
   }
 
   void clearLastDayResult() {
     lastDayResult = null;
+    _completeTutorialStep(TutorialStep.readDayReport);
   }
 
   // ── Spielaktionen ────────────────────────────────────────────────────────
@@ -361,6 +367,7 @@ class GameNotifier extends Notifier<GameState?> {
   void openShop(Shop shop) {
     if (state == null) return;
     state = GameEngine.openShop(state!, shop);
+    _completeTutorialStep(TutorialStep.openFirstShop, saveAfterUpdate: false);
     _checkMissions();
     _save();
   }
@@ -375,6 +382,8 @@ class GameNotifier extends Notifier<GameState?> {
   void hireEmployee(String shopId, Employee employee) {
     if (state == null) return;
     state = GameEngine.hireEmployee(state!, shopId, employee);
+    _completeTutorialStep(TutorialStep.hireFirstEmployee,
+        saveAfterUpdate: false);
     _checkMissions();
     _save();
   }
@@ -413,8 +422,71 @@ class GameNotifier extends Notifier<GameState?> {
   void updateProductPrice(String shopId, String productId, double newPrice) {
     if (state == null) return;
     state = GameEngine.updateProductPrice(state!, shopId, productId, newPrice);
+    _completeTutorialStep(TutorialStep.changeProductPrice,
+        saveAfterUpdate: false);
     _checkMissions();
     _save();
+  }
+
+  bool get hasActiveTutorial {
+    final s = state;
+    if (s == null) return false;
+    return s.tutorialEnabled && !s.tutorialDone;
+  }
+
+  TutorialStep? get currentTutorialStep {
+    final s = state;
+    if (s == null || !s.tutorialEnabled || s.tutorialDone) return null;
+    return tutorialStepFromIndex(s.tutorialStep);
+  }
+
+  void skipTutorial() {
+    if (state == null) return;
+    state = state!.copyWith(tutorialEnabled: false);
+    _save();
+  }
+
+  void resumeTutorial({bool restart = false}) {
+    if (state == null) return;
+    final s = state!;
+    final nextStep =
+        restart ? 0 : s.tutorialStep.clamp(0, kTutorialStepCount - 1);
+    state = s.copyWith(
+      tutorialEnabled: true,
+      tutorialDone: false,
+      tutorialStep: nextStep,
+    );
+    _save();
+  }
+
+  void acknowledgeTutorialStep() {
+    final current = currentTutorialStep;
+    if (current == null) return;
+    switch (current) {
+      case TutorialStep.understandLocationValues:
+      case TutorialStep.viewDashboardMetrics:
+      case TutorialStep.understandHrCompetitionGrowth:
+        _completeTutorialStep(current);
+        break;
+      case TutorialStep.finishTutorial:
+        _finishTutorial();
+        break;
+      default:
+        break;
+    }
+  }
+
+  void onTutorialTabOpened(int tabIndex) {
+    final current = currentTutorialStep;
+    if (current == null) return;
+    if (current == TutorialStep.openEmpireMenu && tabIndex == 2) {
+      _completeTutorialStep(TutorialStep.openEmpireMenu);
+      return;
+    }
+    if (current == TutorialStep.understandLocationValues && tabIndex == 1) {
+      _completeTutorialStep(TutorialStep.understandLocationValues);
+      return;
+    }
   }
 
   void takeLoan(Loan loan) {
@@ -542,11 +614,66 @@ class GameNotifier extends Notifier<GameState?> {
   /// Pool manuell refreshen — kostet 500 € (Anti-Spam)
   void refreshEmployeePool() {
     if (state == null) return;
-    if (state!.cash < 500) return;
+    final cost = employeePoolRefreshCostForCurrentDifficulty();
+    if (state!.cash < cost) return;
     state = state!.copyWith(
-      cash: state!.cash - 500,
-      employeePool: _generateEmployeePool(),
+      cash: state!.cash - cost,
+      employeePool: _generateEmployeePool(state!),
       lastEmployeePoolDay: state!.currentDay,
+    );
+    _save();
+  }
+
+  double employeePoolRefreshCostForCurrentDifficulty() {
+    final s = state;
+    if (s == null) return 500.0;
+    return _employeePoolRefreshCost(s);
+  }
+
+  static int _employeePoolRefreshIntervalDays(GameState state) {
+    return HrEngine.poolRefreshIntervalDays(state);
+  }
+
+  static double _employeePoolRefreshCost(GameState state) {
+    return HrEngine.poolRefreshCost(state);
+  }
+
+  void hireHrManager(String hrManagerId) {
+    if (state == null) return;
+    final s = state!;
+    HrManager? picked;
+    for (final candidate in s.hrCandidates) {
+      if (candidate.id == hrManagerId) {
+        picked = candidate;
+        break;
+      }
+    }
+    if (picked == null) return;
+    state = s.copyWith(
+      hrManager: picked,
+      hrCandidates: const [],
+    );
+    _save();
+  }
+
+  void fireHrManager() {
+    if (state == null) return;
+    final s = state!;
+    state = s.copyWith(clearHrManager: true);
+    _save();
+  }
+
+  void setHrStrategy(HrStrategy strategy) {
+    if (state == null) return;
+    state = state!.copyWith(hrStrategy: strategy);
+    _save();
+  }
+
+  void refreshHrCandidates() {
+    if (state == null) return;
+    final s = state!;
+    state = s.copyWith(
+      hrCandidates: HrEngine.generateHrCandidates(daySeed: s.currentDay),
     );
     _save();
   }
@@ -571,6 +698,41 @@ class GameNotifier extends Notifier<GameState?> {
   }
 
   void _save() => SaveService.save(state!);
+
+  void _completeTutorialStep(
+    TutorialStep expectedStep, {
+    bool saveAfterUpdate = true,
+  }) {
+    final s = state;
+    if (s == null || !s.tutorialEnabled || s.tutorialDone) return;
+    final current = tutorialStepFromIndex(s.tutorialStep);
+    if (current != expectedStep) return;
+    if (current == TutorialStep.finishTutorial) {
+      _finishTutorial(saveAfterUpdate: saveAfterUpdate);
+      return;
+    }
+
+    final nextStep = (s.tutorialStep + 1).clamp(0, kTutorialStepCount - 1);
+    state = s.copyWith(tutorialStep: nextStep);
+    if (saveAfterUpdate) {
+      _save();
+    }
+  }
+
+  void _finishTutorial({bool saveAfterUpdate = true}) {
+    final s = state;
+    if (s == null || s.tutorialDone) return;
+
+    state = s.copyWith(
+      tutorialDone: true,
+      tutorialEnabled: false,
+      tutorialStep: kTutorialStepCount - 1,
+      cash: s.cash + _tutorialCompletionReward,
+    );
+    if (saveAfterUpdate) {
+      _save();
+    }
+  }
 }
 
 class _DayPreview {
@@ -586,22 +748,30 @@ class _DayPreview {
   });
 }
 
-final gameProvider = NotifierProvider<GameNotifier, GameState?>(GameNotifier.new);
+final gameProvider =
+    NotifierProvider<GameNotifier, GameState?>(GameNotifier.new);
 
 // ── Berechnete Providers ──────────────────────────────────────────────────
 
 final dailyRevenueProvider = Provider<double>((ref) {
   final game = ref.watch(gameProvider);
   if (game == null) return 0;
-  return game.shops.fold(0.0,
-      (sum, s) => sum + GameEngine.calculateDailyRevenue(s, day: game.currentDay, state: game));
+  return game.shops.fold(
+      0.0,
+      (sum, s) =>
+          sum +
+          GameEngine.calculateDailyRevenue(s,
+              day: game.currentDay, state: game));
 });
 
 final dailyCostsProvider = Provider<double>((ref) {
   final game = ref.watch(gameProvider);
   if (game == null) return 0;
-  return game.shops.fold(0.0,
-      (sum, s) => sum + GameEngine.calculateDailyCosts(s, day: game.currentDay, state: game));
+  return game.shops.fold(
+      0.0,
+      (sum, s) =>
+          sum +
+          GameEngine.calculateDailyCosts(s, day: game.currentDay, state: game));
 });
 
 final dailyProfitProvider = Provider<double>((ref) {

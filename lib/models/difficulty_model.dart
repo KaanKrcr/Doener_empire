@@ -1,4 +1,4 @@
-enum GameDifficulty {
+﻿enum GameDifficulty {
   easy,
   normal,
   hard,
@@ -84,14 +84,14 @@ extension GameDifficultyX on GameDifficulty {
       case GameDifficulty.hard:
         return 'Schwer';
       case GameDifficulty.impossible:
-        return 'Unmoglich';
+        return 'Unmöglich';
     }
   }
 
   String get shortDescription {
     switch (this) {
       case GameDifficulty.easy:
-        return 'Aktive HR-Hilfe, guenstige Talente und tolerantere Kundschaft.';
+        return 'Aktive HR-Hilfe, günstige Talente und tolerantere Kundschaft.';
       case GameDifficulty.normal:
         return 'Ausgewogenes Standard-Balancing.';
       case GameDifficulty.hard:

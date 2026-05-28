@@ -20,7 +20,52 @@ class EmployeeTypeData {
   });
 }
 
-/// Persönlichkeits-Eigenschaften — verleihen jedem Mitarbeiter Charakter.
+enum CandidateOrigin {
+  regular,
+  hiddenGem,
+  topTalent,
+  juniorPotential,
+  exCompetitor,
+  teamContact,
+}
+
+extension CandidateOriginX on CandidateOrigin {
+  String get label {
+    switch (this) {
+      case CandidateOrigin.regular:
+        return 'Standard';
+      case CandidateOrigin.hiddenGem:
+        return 'Geheimtipp';
+      case CandidateOrigin.topTalent:
+        return 'Top-Talent';
+      case CandidateOrigin.juniorPotential:
+        return 'Azubi mit Potenzial';
+      case CandidateOrigin.exCompetitor:
+        return 'Ex-Konkurrenz';
+      case CandidateOrigin.teamContact:
+        return 'Stammteam-Kontakt';
+    }
+  }
+
+  String get description {
+    switch (this) {
+      case CandidateOrigin.regular:
+        return 'Normale Bewerbung ohne Sonderbonus.';
+      case CandidateOrigin.hiddenGem:
+        return 'Überraschend stark und oft günstiger als erwartet.';
+      case CandidateOrigin.topTalent:
+        return 'Sehr hohe Werte, aber entsprechend teuer.';
+      case CandidateOrigin.juniorPotential:
+        return 'Günstiger Einstieg mit starkem Lernpotenzial.';
+      case CandidateOrigin.exCompetitor:
+        return 'Erfahren, aber mit höherem Gehaltsanspruch.';
+      case CandidateOrigin.teamContact:
+        return 'Zuverlässig und solide über persönliche Kontakte.';
+    }
+  }
+}
+
+/// Persönlichkeitseigenschaften verleihen jedem Mitarbeiter Charakter.
 /// Maximal 2 Traits pro Person.
 enum PersonalityTrait {
   /// +20% Friendliness-Wirkung, +0.02 Rep/Tag Bonus.
@@ -41,7 +86,7 @@ enum PersonalityTrait {
   /// -10% Gehalt-Forderung (zufrieden mit weniger).
   modest,
 
-  /// Streitet sich oft → +10% Risiko anderer Trait-Effekte zu reduzieren.
+  /// Streitet sich oft -> +10% Risiko anderer Trait-Effekte zu reduzieren.
   hothead,
 
   /// 5% Chance täglich auf Bonus-Trinkgeld (Cash-Pop).
@@ -124,22 +169,24 @@ extension PersonalityTraitLabel on PersonalityTrait {
 
 /// Mitarbeiter mit individuellen Charakter-Traits.
 ///
-/// Werte 1–10, jeweils mit konkreten Effekten im Spiel:
-/// * [speed]        → erhöht Kapazitäts-Limit (mehr Kunden bedient)
-/// * [friendliness] → steigert Reputation langsam, mehr Stammkunden
-/// * [reliability]  → reduziert Tagesschwankung (Krankheits-/Pannen-Risiko)
-/// * [experience]   → Qualitäts-Multiplikator für Umsatz
+/// Werte 1-10, jeweils mit konkreten Effekten im Spiel:
+/// * [speed]        -> erhöht Kapazitäts-Limit (mehr Kunden bedient)
+/// * [friendliness] -> steigert Reputation langsam, mehr Stammkunden
+/// * [reliability]  -> reduziert Tagesschwankung (Krankheits-/Pannen-Risiko)
+/// * [experience]   -> Qualitäts-Multiplikator für Umsatz
 class Employee {
   final String id;
   final String typeId;
   final String name;
-  final int speed;          // 1..10
-  final int friendliness;   // 1..10
-  final int reliability;    // 1..10
-  final int experience;     // 1..10
+  final int speed; // 1..10
+  final int friendliness; // 1..10
+  final int reliability; // 1..10
+  final int experience; // 1..10
   final double salaryPerDay;
   final List<PersonalityTrait> traits;
-  final int daysEmployed;   // tracks Loyalität & Erfahrungs-Wachstum
+  final int daysEmployed; // Tracks loyalty & experience growth.
+  final CandidateOrigin origin;
+  final double growthPotential;
 
   const Employee({
     required this.id,
@@ -152,9 +199,11 @@ class Employee {
     required this.salaryPerDay,
     this.traits = const [],
     this.daysEmployed = 0,
+    this.origin = CandidateOrigin.regular,
+    this.growthPotential = 0.0,
   });
 
-  /// Durchschnitt aller Traits, 0.1..1.0
+  /// Durchschnitt aller Stats, 0.1..1.0
   double get overallScore =>
       ((speed + friendliness + reliability + experience) / 4.0) / 10.0;
 
@@ -164,21 +213,29 @@ class Employee {
 
   double get qualityFactor => experience / 10.0;
 
+  bool get isSpecialCandidate => origin != CandidateOrigin.regular;
+
   double get speedFactor {
     final base = speed / 10.0;
-    if (traits.contains(PersonalityTrait.workaholic)) return (base * 1.25).clamp(0.0, 1.5);
+    if (traits.contains(PersonalityTrait.workaholic)) {
+      return (base * 1.25).clamp(0.0, 1.5);
+    }
     return base;
   }
 
   double get friendlinessFactor {
     final base = friendliness / 10.0;
-    if (traits.contains(PersonalityTrait.charmer)) return (base * 1.20).clamp(0.0, 1.5);
+    if (traits.contains(PersonalityTrait.charmer)) {
+      return (base * 1.20).clamp(0.0, 1.5);
+    }
     return base;
   }
 
   double get reliabilityFactor {
     var base = reliability / 10.0;
-    if (traits.contains(PersonalityTrait.workaholic)) base = (base - 0.10).clamp(0.0, 1.0);
+    if (traits.contains(PersonalityTrait.workaholic)) {
+      base = (base - 0.10).clamp(0.0, 1.0);
+    }
     return base;
   }
 
@@ -192,6 +249,8 @@ class Employee {
     double? salaryPerDay,
     List<PersonalityTrait>? traits,
     int? daysEmployed,
+    CandidateOrigin? origin,
+    double? growthPotential,
   }) {
     return Employee(
       id: id,
@@ -204,6 +263,8 @@ class Employee {
       salaryPerDay: salaryPerDay ?? this.salaryPerDay,
       traits: traits ?? this.traits,
       daysEmployed: daysEmployed ?? this.daysEmployed,
+      origin: origin ?? this.origin,
+      growthPotential: growthPotential ?? this.growthPotential,
     );
   }
 
@@ -218,6 +279,8 @@ class Employee {
         'salaryPerDay': salaryPerDay,
         'traits': traits.map((t) => t.name).toList(),
         'daysEmployed': daysEmployed,
+        'origin': origin.name,
+        'growthPotential': growthPotential,
       };
 
   factory Employee.fromJson(Map<String, dynamic> j) {
@@ -258,6 +321,11 @@ class Employee {
       salaryPerDay: (j['salaryPerDay'] as num).toDouble(),
       traits: traits,
       daysEmployed: (j['daysEmployed'] as num?)?.toInt() ?? 0,
+      origin: CandidateOrigin.values.firstWhere(
+        (v) => v.name == (j['origin'] as String?),
+        orElse: () => CandidateOrigin.regular,
+      ),
+      growthPotential: (j['growthPotential'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }
@@ -271,8 +339,13 @@ class EmployeeFactory {
     required EmployeeTypeData type,
     required String name,
     String? archetype,
+    double qualityMultiplier = 1.0,
+    double salaryMultiplier = 1.0,
+    CandidateOrigin origin = CandidateOrigin.regular,
+    double growthPotential = 0.0,
   }) {
-    final pick = archetype ?? ['rookie', 'balanced', 'balanced', 'veteran'][_rng.nextInt(4)];
+    final pick = archetype ??
+        ['rookie', 'balanced', 'balanced', 'veteran'][_rng.nextInt(4)];
 
     int s, f, r, e;
     switch (pick) {
@@ -299,18 +372,35 @@ class EmployeeFactory {
     // Spezialisierung
     final spec = _rng.nextInt(4);
     switch (spec) {
-      case 0: s = (s + 2).clamp(1, 10); break;
-      case 1: f = (f + 2).clamp(1, 10); break;
-      case 2: r = (r + 2).clamp(1, 10); break;
-      case 3: e = (e + 2).clamp(1, 10); break;
+      case 0:
+        s = (s + 2).clamp(1, 10);
+        break;
+      case 1:
+        f = (f + 2).clamp(1, 10);
+        break;
+      case 2:
+        r = (r + 2).clamp(1, 10);
+        break;
+      case 3:
+        e = (e + 2).clamp(1, 10);
+        break;
     }
 
-    // Persönlichkeits-Traits: 40% Chance auf 1 Trait, 12% auf 2
+    int scaleStat(int stat) {
+      final scaled = 1 + ((stat - 1) * qualityMultiplier);
+      return scaled.round().clamp(1, 10);
+    }
+
+    s = scaleStat(s);
+    f = scaleStat(f);
+    r = scaleStat(r);
+    e = scaleStat(e);
+
+    // Persönlichkeitstraits: 40% Chance auf 1 Trait, 12% auf 2
     final traits = <PersonalityTrait>[];
     if (_rng.nextDouble() < 0.40) {
       traits.add(_rollTrait(null));
     }
-    // Zweiter Trait nur möglich wenn schon ein erster existiert.
     if (traits.isNotEmpty && _rng.nextDouble() < 0.12) {
       final second = _rollTrait(traits.first);
       if (!traits.contains(second)) traits.add(second);
@@ -321,6 +411,7 @@ class EmployeeFactory {
     if (traits.contains(PersonalityTrait.modest)) salary *= 0.9;
     if (traits.contains(PersonalityTrait.influencer)) salary *= 1.15;
     if (traits.contains(PersonalityTrait.workaholic)) salary *= 1.05;
+    salary *= salaryMultiplier;
 
     return Employee(
       id: id,
@@ -333,6 +424,8 @@ class EmployeeFactory {
       salaryPerDay: double.parse(salary.toStringAsFixed(2)),
       traits: traits,
       daysEmployed: 0,
+      origin: origin,
+      growthPotential: growthPotential.clamp(0.0, 1.0),
     );
   }
 
@@ -344,11 +437,32 @@ class EmployeeFactory {
 
 // Zufällige Mitarbeiter-Namen
 const List<String> kMaleNames = [
-  'Ali', 'Mehmet', 'Mustafa', 'Kemal', 'Ahmet', 'Yusuf', 'Hasan', 'Ibrahim',
-  'Lukas', 'Noah', 'Leon', 'Maximilian', 'Jonas', 'Elias',
+  'Ali',
+  'Mehmet',
+  'Mustafa',
+  'Kemal',
+  'Ahmet',
+  'Yusuf',
+  'Hasan',
+  'Ibrahim',
+  'Lukas',
+  'Noah',
+  'Leon',
+  'Maximilian',
+  'Jonas',
+  'Elias',
 ];
 
 const List<String> kFemaleNames = [
-  'Fatma', 'Ayşe', 'Emine', 'Hatice', 'Zeynep',
-  'Laura', 'Jana', 'Sarah', 'Emma', 'Lena', 'Anna',
+  'Fatma',
+  'Ayşe',
+  'Emine',
+  'Hatice',
+  'Zeynep',
+  'Laura',
+  'Jana',
+  'Sarah',
+  'Emma',
+  'Lena',
+  'Anna',
 ];
