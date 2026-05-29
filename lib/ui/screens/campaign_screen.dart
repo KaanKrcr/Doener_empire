@@ -241,7 +241,63 @@ class _ChapterCard extends StatelessWidget {
                 ),
               ],
             ),
+            if (chapter.perk != null) ...[
+              const SizedBox(height: 8),
+              _PerkChip(perk: chapter.perk!, unlocked: done),
+            ],
           ],
+        ],
+      ),
+    );
+  }
+}
+
+class _PerkChip extends StatelessWidget {
+  final CampaignPerk perk;
+  final bool unlocked;
+  const _PerkChip({required this.perk, required this.unlocked});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = unlocked ? AppColors.secondary : AppColors.textMuted;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.45)),
+      ),
+      child: Row(
+        children: [
+          Text(perk.emoji, style: const TextStyle(fontSize: 16)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'PERK: ${perk.title}',
+                      style: AppText.label(color: color, size: 9),
+                    ),
+                    if (unlocked) ...[
+                      const SizedBox(width: 5),
+                      Icon(Icons.check_circle_rounded, size: 11, color: color),
+                    ],
+                  ],
+                ),
+                Text(
+                  perk.effectLabel,
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -413,6 +469,43 @@ class CampaignChapterDialog extends StatelessWidget {
                               color: AppColors.gold),
                         ),
                       ),
+                      if (chapter.perk != null) ...[
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: AppColors.secondary.withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                                color:
+                                    AppColors.secondary.withValues(alpha: 0.5)),
+                          ),
+                          child: Column(
+                            children: [
+                              Text(
+                                '${chapter.perk!.emoji}  Perk freigeschaltet: ${chapter.perk!.title}',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.secondary,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                chapter.perk!.effectLabel,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 18),
                       SizedBox(
                         width: double.infinity,

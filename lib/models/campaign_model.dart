@@ -1,5 +1,70 @@
 import 'mission_model.dart';
 
+/// Permanenter Konzern-Perk, den ein Kapitel beim Abschluss freischaltet.
+/// Wirkt konzernweit und dauerhaft (abgeleitet aus den abgeschlossenen
+/// Kapiteln — kein eigenes Speicherfeld nötig).
+class CampaignPerk {
+  final String title;
+  final String emoji;
+
+  /// Additiver Kunden-Multiplikator (0.05 = +5 % Kunden).
+  final double customerBoost;
+
+  /// Additiver Bestellwert-Multiplikator (0.05 = +5 % Bestellwert).
+  final double avgOrderBoost;
+
+  /// Zusätzliche Zutaten-Ersparnis (0.05 = −5 % Zutatenkosten).
+  final double ingredientSaving;
+
+  /// Miet-Ersparnis (0.05 = −5 % Miete).
+  final double rentSaving;
+
+  const CampaignPerk({
+    required this.title,
+    required this.emoji,
+    this.customerBoost = 0,
+    this.avgOrderBoost = 0,
+    this.ingredientSaving = 0,
+    this.rentSaving = 0,
+  });
+
+  /// Kurzbeschreibung des Effekts für die UI.
+  String get effectLabel {
+    final parts = <String>[];
+    if (customerBoost > 0) parts.add('+${(customerBoost * 100).round()}% Kunden');
+    if (avgOrderBoost > 0) {
+      parts.add('+${(avgOrderBoost * 100).round()}% Bestellwert');
+    }
+    if (ingredientSaving > 0) {
+      parts.add('−${(ingredientSaving * 100).round()}% Zutaten');
+    }
+    if (rentSaving > 0) parts.add('−${(rentSaving * 100).round()}% Miete');
+    return parts.join(' · ');
+  }
+}
+
+/// Summiert alle Perks der bereits abgeschlossenen Kapitel zu einem
+/// konzernweiten Gesamt-Bonus. Pure Funktion — von der Engine genutzt.
+CampaignPerk aggregateCampaignPerks(Iterable<String> completedChapterIds) {
+  double cust = 0, aov = 0, ing = 0, rent = 0;
+  for (final id in completedChapterIds) {
+    final perk = campaignChapterById(id)?.perk;
+    if (perk == null) continue;
+    cust += perk.customerBoost;
+    aov += perk.avgOrderBoost;
+    ing += perk.ingredientSaving;
+    rent += perk.rentSaving;
+  }
+  return CampaignPerk(
+    title: 'Kampagnen-Boni',
+    emoji: '⭐',
+    customerBoost: cust,
+    avgOrderBoost: aov,
+    ingredientSaving: ing,
+    rentSaving: rent,
+  );
+}
+
 /// Story-Kampagne: kapitelbasierter Aufstieg vom kleinen Imbiss zum Imperium.
 ///
 /// Jedes Kapitel hat narrativen Text, mehrere Ziele (nutzen dieselben
@@ -34,6 +99,9 @@ class CampaignChapter {
   /// Kurzer Belohnungs-Flavortext (was der Aufstieg bedeutet).
   final String rewardLabel;
 
+  /// Permanenter Konzern-Perk, der mit dem Kapitel freigeschaltet wird.
+  final CampaignPerk? perk;
+
   const CampaignChapter({
     required this.id,
     required this.number,
@@ -43,6 +111,7 @@ class CampaignChapter {
     required this.objectives,
     required this.cashReward,
     required this.rewardLabel,
+    this.perk,
   });
 }
 
@@ -68,6 +137,11 @@ const List<CampaignChapter> kCampaignChapters = [
     ],
     cashReward: 1500,
     rewardLabel: 'Startkapital für die Zukunft',
+    perk: CampaignPerk(
+      title: 'Gründer-Instinkt',
+      emoji: '🔥',
+      customerBoost: 0.03,
+    ),
   ),
   CampaignChapter(
     id: 'ch2_stammkunden',
@@ -92,6 +166,11 @@ const List<CampaignChapter> kCampaignChapters = [
     ],
     cashReward: 3500,
     rewardLabel: 'Dein Name hat jetzt Gewicht',
+    perk: CampaignPerk(
+      title: 'Treue Stammkunden',
+      emoji: '❤️',
+      avgOrderBoost: 0.04,
+    ),
   ),
   CampaignChapter(
     id: 'ch3_expansion',
@@ -115,6 +194,11 @@ const List<CampaignChapter> kCampaignChapters = [
     ],
     cashReward: 7000,
     rewardLabel: 'Expansion in vollem Gange',
+    perk: CampaignPerk(
+      title: 'Mengenrabatt',
+      emoji: '📦',
+      ingredientSaving: 0.04,
+    ),
   ),
   CampaignChapter(
     id: 'ch4_marke',
@@ -138,6 +222,11 @@ const List<CampaignChapter> kCampaignChapters = [
     ],
     cashReward: 15000,
     rewardLabel: 'Eine echte Marke',
+    perk: CampaignPerk(
+      title: 'Markenzug',
+      emoji: '🧲',
+      customerBoost: 0.05,
+    ),
   ),
   CampaignChapter(
     id: 'ch5_grossstadt',
@@ -163,6 +252,11 @@ const List<CampaignChapter> kCampaignChapters = [
     ],
     cashReward: 30000,
     rewardLabel: 'Angekommen in der ersten Liga',
+    perk: CampaignPerk(
+      title: 'Premium-Lagen',
+      emoji: '💎',
+      avgOrderBoost: 0.05,
+    ),
   ),
   CampaignChapter(
     id: 'ch6_boerse',
@@ -187,6 +281,11 @@ const List<CampaignChapter> kCampaignChapters = [
     ],
     cashReward: 40000,
     rewardLabel: 'An der Börse notiert',
+    perk: CampaignPerk(
+      title: 'Verhandlungsmacht',
+      emoji: '🤵',
+      rentSaving: 0.05,
+    ),
   ),
   CampaignChapter(
     id: 'ch7_markt',
@@ -211,6 +310,11 @@ const List<CampaignChapter> kCampaignChapters = [
     ],
     cashReward: 50000,
     rewardLabel: 'Unangefochtener Marktführer',
+    perk: CampaignPerk(
+      title: 'Lieferantenmacht',
+      emoji: '🚚',
+      ingredientSaving: 0.06,
+    ),
   ),
   CampaignChapter(
     id: 'ch6_imperium',
@@ -239,6 +343,11 @@ const List<CampaignChapter> kCampaignChapters = [
     ],
     cashReward: 75000,
     rewardLabel: 'Döner-Legende 👑',
+    perk: CampaignPerk(
+      title: 'Legendäre Marke',
+      emoji: '👑',
+      customerBoost: 0.08,
+    ),
   ),
 ];
 

@@ -92,4 +92,21 @@ void main() {
     expect(CampaignEngine.objectiveDone(brandObj, advanced), isTrue);
     expect(CampaignEngine.objectiveDone(acqObj, advanced), isTrue);
   });
+
+  test('Perks summieren sich aus abgeschlossenen Kapiteln', () {
+    final none = aggregateCampaignPerks(const []);
+    expect(none.customerBoost, 0);
+    expect(none.ingredientSaving, 0);
+
+    // Kapitel 1 (+3% Kunden) + Kapitel 3 (−4% Zutaten)
+    final some = aggregateCampaignPerks(['ch1_traum', 'ch3_expansion']);
+    expect(some.customerBoost, closeTo(0.03, 1e-9));
+    expect(some.ingredientSaving, closeTo(0.04, 1e-9));
+
+    // Alle Kapitel: Boni sind kumulativ und positiv
+    final all = aggregateCampaignPerks(kCampaignChapters.map((c) => c.id));
+    expect(all.customerBoost, greaterThan(some.customerBoost));
+    expect(all.avgOrderBoost, greaterThan(0));
+    expect(all.rentSaving, greaterThan(0));
+  });
 }

@@ -11,6 +11,7 @@ import '../models/marketing_model.dart';
 import '../models/upgrade_model.dart';
 import '../models/difficulty_model.dart';
 import '../models/hr_manager_model.dart';
+import '../models/campaign_model.dart';
 import '../core/constants.dart';
 import 'competitor_engine.dart';
 import 'corporate_engine.dart';
@@ -81,6 +82,9 @@ class GameEngine {
     final upgradeBoost = _upgradeCustomerBoost(shop, state);
     final upgradeAOV = _upgradeAvgOrderBoost(shop, state);
 
+    // Dauerhafte Story-Kampagnen-Perks (konzernweit)
+    final perks = aggregateCampaignPerks(state?.completedChapterIds ?? const []);
+
     double totalDemand = 0;
     double totalRevenue = 0;
     for (final sp in activeMenu) {
@@ -92,7 +96,8 @@ class GameEngine {
         difficulty: state?.difficulty ?? GameDifficulty.normal,
       );
       totalDemand += demand;
-      totalRevenue += demand * sp.price * (1.0 + campaignAOV + upgradeAOV);
+      totalRevenue +=
+          demand * sp.price * (1.0 + campaignAOV + upgradeAOV + perks.avgOrderBoost);
     }
     final avgDemand = totalDemand / activeMenu.length;
     final avgOrderValue = totalDemand > 0 ? totalRevenue / totalDemand : 0;
@@ -105,7 +110,7 @@ class GameEngine {
         timeMult *
         brandMult *
         compPressure *
-        (1.0 + campaignBoost + upgradeBoost);
+        (1.0 + campaignBoost + upgradeBoost + perks.customerBoost);
     final actualCustomers = rawCustomers.clamp(0.0, capacity.toDouble());
 
     final actualRevenue =
@@ -231,7 +236,8 @@ class GameEngine {
       {int? day, GameState? state}) {
     final pressure =
         state?.difficulty.modifiers.economicPressureMultiplier ?? 1.0;
-    final rent = shop.dailyRent * pressure;
+    final perks = aggregateCampaignPerks(state?.completedChapterIds ?? const []);
+    final rent = shop.dailyRent * pressure * (1 - perks.rentSaving);
     final salaries =
         shop.employees.fold(0.0, (s, e) => s + e.salaryPerDay) * pressure;
     final upgrades = _upgradeDailyCost(shop) * pressure;
@@ -248,7 +254,8 @@ class GameEngine {
         ? 0.0
         : CorporateEngine.facilitySavingForShop(state, shop);
     final ingredientSaving =
-        (equipmentSaving + facilitySaving).clamp(0.0, 0.85);
+        (equipmentSaving + facilitySaving + perks.ingredientSaving)
+            .clamp(0.0, 0.85);
     final activeMenu = shop.menu.where((p) => p.isActive).toList();
     final ingredientRatio = _weightedIngredientRatio(activeMenu);
     final ingredients =
