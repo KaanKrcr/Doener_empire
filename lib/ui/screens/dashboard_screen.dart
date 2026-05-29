@@ -6,8 +6,10 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme.dart';
 import '../../models/game_state.dart';
+import '../../models/campaign_model.dart';
 import '../../providers/game_provider.dart';
 import '../../services/game_engine.dart';
+import 'campaign_screen.dart';
 import '../widgets/animated_money.dart';
 import '../widgets/mission_banner.dart';
 import '../widgets/day_end_dialog.dart';
@@ -45,6 +47,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       if (result.quarterlyReport != null && mounted) {
         await QuarterlyReportDialog.show(context, result.quarterlyReport!);
       }
+      if (result.chapterCompleted != null && mounted) {
+        await CampaignChapterDialog.show(context, result.chapterCompleted!);
+      }
       notifier.clearLastDayResult();
     }
     if (mounted) setState(() => _endingDay = false);
@@ -76,6 +81,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       }
     });
 
+    // ── Story-Kampagne: Kapitel live abgeschlossen ──────────────────────
+    ref.listen(instantChapterProvider, (prev, next) {
+      if (next != null && mounted) {
+        CampaignChapterDialog.show(context, next).then((_) {
+          ref.read(instantChapterProvider.notifier).state = null;
+        });
+      }
+    });
+
     // ── Insolvenz-Listener ─────────────────────────────────────────────
     // Cash unter 0 → Pleite-Dialog mit Kredit-/Schließungs-/Game-Over-Optionen.
     // Triggert beim ÜBERGANG von >=0 zu <0 (nicht jeden Tick wenn schon negativ).
@@ -103,6 +117,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final dailyCosts = ref.watch(dailyCostsProvider);
     final dailyProfit = ref.watch(dailyProfitProvider);
     final customersToday = GameEngine.totalCustomersToday(game);
+    final activeChapter = ref.watch(activeChapterProvider);
+    final chapterProgress = ref.watch(activeChapterProgressProvider);
 
     // Daten aus History für Trend-Vergleiche
     final history = game.history;
@@ -169,6 +185,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               child: Padding(
                 padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
                 child: MissionBanner(),
+              ),
+            ),
+
+            // ── Story-Kampagne-Banner ───────────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                child: _CampaignBanner(
+                  chapter: activeChapter,
+                  progress: chapterProgress,
+                  onTap: () => context.push('/campaign'),
+                ),
               ),
             ),
 
@@ -1071,6 +1099,79 @@ class _KpiCard extends StatelessWidget {
             style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CampaignBanner extends StatelessWidget {
+  final CampaignChapter? chapter;
+  final double progress;
+  final VoidCallback onTap;
+
+  const _CampaignBanner({
+    required this.chapter,
+    required this.progress,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final complete = chapter == null;
+    return Pressable(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              AppColors.primary.withAlpha(40),
+              AppColors.gold.withAlpha(26),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.gold.withAlpha(70)),
+        ),
+        child: Row(
+          children: [
+            Text(complete ? '👑' : (chapter!.emoji),
+                style: const TextStyle(fontSize: 26)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    complete ? 'KAMPAGNE' : 'KAPITEL ${chapter!.number}',
+                    style: AppText.label(color: AppColors.gold, size: 10),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    complete ? 'Imperium vollendet 👑' : chapter!.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppText.display(size: 15, weight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 6),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: LinearProgressIndicator(
+                      value: complete ? 1.0 : progress,
+                      minHeight: 5,
+                      backgroundColor: AppColors.bg.withAlpha(120),
+                      color: AppColors.gold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right_rounded,
+                color: AppColors.textMuted, size: 20),
+          ],
+        ),
       ),
     );
   }

@@ -7,6 +7,7 @@ import '../models/shop_model.dart';
 import '../models/employee_model.dart';
 import '../models/equipment_model.dart';
 import '../models/mission_model.dart';
+import '../models/campaign_model.dart';
 import '../models/event_model.dart';
 import '../models/marketing_model.dart';
 import '../models/achievement_model.dart';
@@ -21,6 +22,7 @@ import '../models/tutorial_model.dart';
 import '../services/game_engine.dart';
 import '../services/hr_engine.dart';
 import '../services/mission_engine.dart';
+import '../services/campaign_engine.dart';
 import '../services/save_service.dart';
 import '../services/corporate_engine.dart';
 import '../core/constants.dart';
@@ -36,6 +38,7 @@ class DayEndResult {
   final Mission? missionCompleted;
   final List<Achievement> newAchievements;
   final QuarterlyReport? quarterlyReport;
+  final CampaignChapter? chapterCompleted;
 
   DayEndResult({
     required this.day,
@@ -47,6 +50,7 @@ class DayEndResult {
     this.missionCompleted,
     this.newAchievements = const [],
     this.quarterlyReport,
+    this.chapterCompleted,
   });
 }
 
@@ -185,6 +189,15 @@ class GameNotifier extends Notifier<GameState?> {
         MissionEngine.checkAndApply(newState, newState.missions);
     newState = missionResult.state;
 
+    // Story-Kampagne: abgeschlossene Kapitel verbuchen (ggf. mehrere)
+    CampaignChapter? chapterCompleted;
+    for (int i = 0; i < kCampaignChapters.length; i++) {
+      final r = CampaignEngine.checkAndApply(newState);
+      if (r.justCompleted == null) break;
+      newState = r.state;
+      chapterCompleted ??= r.justCompleted;
+    }
+
     // Achievement-Check
     final newAchievs = _checkAchievements(newState);
     if (newAchievs.isNotEmpty) {
@@ -223,6 +236,7 @@ class GameNotifier extends Notifier<GameState?> {
       missionCompleted: missionResult.justCompleted,
       newAchievements: newAchievs,
       quarterlyReport: quarterlyReport,
+      chapterCompleted: chapterCompleted,
     );
     _completeTutorialStep(TutorialStep.endFirstDay, saveAfterUpdate: false);
     _save();
@@ -694,7 +708,19 @@ class GameNotifier extends Notifier<GameState?> {
       firstCompleted ??= r.justCompleted;
       ref.read(instantMissionProvider.notifier).state = r.justCompleted;
     }
+    _checkCampaign();
     return firstCompleted;
+  }
+
+  /// Live-Prüfung der Story-Kampagne (z.B. direkt nach Filial-Eröffnung).
+  void _checkCampaign() {
+    if (state == null) return;
+    for (int i = 0; i < kCampaignChapters.length; i++) {
+      final r = CampaignEngine.checkAndApply(state!);
+      if (r.justCompleted == null) break;
+      state = r.state;
+      ref.read(instantChapterProvider.notifier).state = r.justCompleted;
+    }
   }
 
   void _save() => SaveService.save(state!);
@@ -791,3 +817,24 @@ final activeMissionProgressProvider = Provider<double>((ref) {
 });
 
 final instantMissionProvider = StateProvider<Mission?>((_) => null);
+
+// ── Story-Kampagne ─────────────────────────────────────────────────────────
+
+/// Aktuelles Kampagnen-Kapitel (null, wenn durchgespielt).
+final activeChapterProvider = Provider<CampaignChapter?>((ref) {
+  final game = ref.watch(gameProvider);
+  if (game == null) return null;
+  return CampaignEngine.activeChapter(game);
+});
+
+/// Fortschritt (0..1) des aktuellen Kapitels.
+final activeChapterProgressProvider = Provider<double>((ref) {
+  final game = ref.watch(gameProvider);
+  if (game == null) return 0;
+  final chapter = CampaignEngine.activeChapter(game);
+  if (chapter == null) return 1.0;
+  return CampaignEngine.chapterProgress(chapter, game);
+});
+
+/// Für die Live-Feier eines frisch abgeschlossenen Kapitels.
+final instantChapterProvider = StateProvider<CampaignChapter?>((_) => null);

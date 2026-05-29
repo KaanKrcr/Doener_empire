@@ -193,6 +193,9 @@ class GameState {
   /// Konzernweit aktive Kampagnen (wirken auf alle Filialen + Brand).
   final List<ActiveCampaign> activeGlobalCampaigns;
 
+  /// Abgeschlossene Story-Kampagnen-Kapitel (Kapitel-IDs).
+  final List<String> completedChapterIds;
+
   const GameState({
     required this.companyName,
     required this.founderName,
@@ -228,6 +231,7 @@ class GameState {
     this.cityPrices = const {},
     this.activeCityCampaigns = const {},
     this.activeGlobalCampaigns = const [],
+    this.completedChapterIds = const [],
   });
 
   factory GameState.initial({
@@ -272,6 +276,7 @@ class GameState {
       cityPrices: const {},
       activeCityCampaigns: const {},
       activeGlobalCampaigns: const [],
+      completedChapterIds: const [],
     );
   }
 
@@ -323,6 +328,7 @@ class GameState {
     Map<String, Map<String, double>>? cityPrices,
     Map<String, List<ActiveCampaign>>? activeCityCampaigns,
     List<ActiveCampaign>? activeGlobalCampaigns,
+    List<String>? completedChapterIds,
   }) {
     return GameState(
       companyName: companyName ?? this.companyName,
@@ -360,6 +366,7 @@ class GameState {
       activeCityCampaigns: activeCityCampaigns ?? this.activeCityCampaigns,
       activeGlobalCampaigns:
           activeGlobalCampaigns ?? this.activeGlobalCampaigns,
+      completedChapterIds: completedChapterIds ?? this.completedChapterIds,
     );
   }
 
@@ -400,6 +407,7 @@ class GameState {
             .map((k, v) => MapEntry(k, v.map((c) => c.toJson()).toList())),
         'activeGlobalCampaigns':
             activeGlobalCampaigns.map((c) => c.toJson()).toList(),
+        'completedChapterIds': completedChapterIds,
       };
 
   factory GameState.fromJson(Map<String, dynamic> j) {
@@ -646,6 +654,8 @@ class GameState {
           .whereType<Map>()
           .map((e) => ActiveCampaign.fromJson(Map<String, dynamic>.from(e)))
           .toList(),
+      completedChapterIds:
+          List<String>.from(asList(j['completedChapterIds'])),
     );
   }
 }

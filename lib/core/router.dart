@@ -5,6 +5,7 @@ import '../ui/screens/menu_screen.dart';
 import '../ui/screens/new_game_screen.dart';
 import '../ui/screens/open_shop_screen.dart';
 import '../ui/screens/shop_detail_screen.dart';
+import '../ui/screens/campaign_screen.dart';
 import '../ui/screens/settings_screen.dart';
 import '../ui/main_scaffold.dart';
 
@@ -41,6 +42,10 @@ final appRouter = GoRouter(
       pageBuilder: (_, state) => _slideUpPage(
         ShopDetailScreen(shopId: state.pathParameters['shopId']!),
       ),
+    ),
+    GoRoute(
+      path: '/campaign',
+      pageBuilder: (_, __) => _slideUpPage(const CampaignScreen()),
     ),
   ],
 );
