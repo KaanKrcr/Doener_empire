@@ -38,10 +38,75 @@ class AppColors {
   static const borderLight = Color(0xFF3D2E22);  // Helleres Braun
 }
 
+/// Wiederkehrende Gradients (Cash-Card, Buttons, Glows) zentral definiert.
+class AppGradients {
+  static const flame = LinearGradient(
+    colors: [AppColors.primary, AppColors.primaryDark],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const gold = LinearGradient(
+    colors: [AppColors.gold, AppColors.secondary],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const ember = LinearGradient(
+    colors: [AppColors.secondary, AppColors.primary, AppColors.tomato],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const chart = LinearGradient(
+    colors: [AppColors.primary, AppColors.gold],
+    begin: Alignment.bottomCenter,
+    end: Alignment.topCenter,
+  );
+}
+
+/// Bequeme Text-Helfer für die verspielte Display-Schrift (Baloo2).
+class AppText {
+  AppText._();
+
+  /// Headline-/Zahlen-Style in Baloo2. Default kräftig & cremig.
+  static TextStyle display({
+    double size = 22,
+    FontWeight weight = FontWeight.w800,
+    Color color = AppColors.textPrimary,
+    double letterSpacing = -0.3,
+    double? height,
+  }) =>
+      TextStyle(
+        fontFamily: AppTheme.displayFont,
+        fontSize: size,
+        fontWeight: weight,
+        color: color,
+        letterSpacing: letterSpacing,
+        height: height,
+      );
+
+  /// Versalien-Label (Sektion-Überschriften), gesperrt & gedämpft.
+  static TextStyle label({
+    double size = 11,
+    Color color = AppColors.textMuted,
+    double letterSpacing = 2,
+  }) =>
+      TextStyle(
+        fontSize: size,
+        fontWeight: FontWeight.w700,
+        color: color,
+        letterSpacing: letterSpacing,
+      );
+}
+
 class AppTheme {
-  // System-Default Sans-Serif (Roboto auf Android, San Francisco auf iOS).
-  // Kein externer Download → läuft offline.
-  static const String _fontFamily = 'Roboto';
+  // Body-Schrift: Inter (gebündelt → offline). Headlines nutzen Baloo2.
+  static const String _fontFamily = 'Inter';
+
+  /// Verspielte, runde Display-Schrift für Headlines/Zahlen — passt zum
+  /// Food-/Tycoon-Thema. Über [AppText.display] bequem nutzbar.
+  static const String displayFont = 'Baloo2';
 
   static ThemeData get dark {
     const base = ColorScheme.dark(
@@ -59,22 +124,25 @@ class AppTheme {
       colorScheme: base,
       textTheme: const TextTheme(
         displayLarge: TextStyle(
+          fontFamily: displayFont,
           color: AppColors.textPrimary,
           fontSize: 34,
           fontWeight: FontWeight.w800,
-          letterSpacing: -1.0,
+          letterSpacing: -0.5,
         ),
         displayMedium: TextStyle(
+          fontFamily: displayFont,
           color: AppColors.textPrimary,
           fontSize: 26,
           fontWeight: FontWeight.w700,
-          letterSpacing: -0.5,
+          letterSpacing: -0.3,
         ),
         titleLarge: TextStyle(
+          fontFamily: displayFont,
           color: AppColors.textPrimary,
           fontSize: 20,
           fontWeight: FontWeight.w700,
-          letterSpacing: -0.3,
+          letterSpacing: -0.2,
         ),
         titleMedium: TextStyle(
           color: AppColors.textPrimary,

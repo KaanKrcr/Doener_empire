@@ -29,16 +29,44 @@ final appRouter = GoRouter(
       ),
     ),
 
-    // Shop-spezifische Routen (ohne Bottom Nav)
+    // Shop-spezifische Routen (ohne Bottom Nav) — mit Slide-Up-Übergang
     GoRoute(
       path: '/open-shop/:cityId',
-      builder: (_, state) =>
-          OpenShopScreen(cityId: state.pathParameters['cityId']!),
+      pageBuilder: (_, state) => _slideUpPage(
+        OpenShopScreen(cityId: state.pathParameters['cityId']!),
+      ),
     ),
     GoRoute(
       path: '/shop/:shopId',
-      builder: (_, state) =>
-          ShopDetailScreen(shopId: state.pathParameters['shopId']!),
+      pageBuilder: (_, state) => _slideUpPage(
+        ShopDetailScreen(shopId: state.pathParameters['shopId']!),
+      ),
     ),
   ],
 );
+
+/// Flüssiger Slide-Up + Fade-Übergang für Detail-Screens.
+CustomTransitionPage<void> _slideUpPage(Widget child) {
+  return CustomTransitionPage<void>(
+    child: child,
+    transitionDuration: const Duration(milliseconds: 320),
+    reverseTransitionDuration: const Duration(milliseconds: 240),
+    transitionsBuilder: (_, anim, __, child) {
+      final curved = CurvedAnimation(
+        parent: anim,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      );
+      return FadeTransition(
+        opacity: curved,
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 0.04),
+            end: Offset.zero,
+          ).animate(curved),
+          child: child,
+        ),
+      );
+    },
+  );
+}

@@ -12,6 +12,7 @@ class AnimatedMoney extends StatefulWidget {
   final Color color;
   final bool compact;
   final bool showSign;
+  final String? fontFamily;
 
   const AnimatedMoney({
     super.key,
@@ -20,6 +21,7 @@ class AnimatedMoney extends StatefulWidget {
     this.color = Colors.white,
     this.compact = false,
     this.showSign = false,
+    this.fontFamily,
   });
 
   @override
@@ -73,6 +75,7 @@ class _AnimatedMoneyState extends State<AnimatedMoney>
         return Text(
           text,
           style: TextStyle(
+            fontFamily: widget.fontFamily,
             fontSize: widget.fontSize,
             fontWeight: FontWeight.w800,
             color: widget.color,

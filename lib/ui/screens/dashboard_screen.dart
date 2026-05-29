@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -11,6 +12,7 @@ import '../widgets/animated_money.dart';
 import '../widgets/mission_banner.dart';
 import '../widgets/day_end_dialog.dart';
 import '../widgets/money_pulse.dart';
+import '../widgets/pressable.dart';
 import '../widgets/bankruptcy_dialog.dart';
 import '../widgets/quarterly_report_dialog.dart';
 
@@ -150,7 +152,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     dailyCosts: dailyCosts,
                     dailyProfit: dailyProfit,
                   ),
-                ),
+                )
+                    .animate()
+                    .fadeIn(duration: 420.ms, curve: Curves.easeOut)
+                    .slideY(begin: 0.12, end: 0, curve: Curves.easeOutCubic)
+                    .shimmer(
+                      delay: 600.ms,
+                      duration: 1600.ms,
+                      color: Colors.white.withAlpha(40),
+                    ),
               ),
             ),
 
@@ -194,7 +204,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     trend: _trendIcon(
                         customersToday.toDouble(), yCustomers.toDouble()),
                     accent: AppColors.accent,
-                  ),
+                  ).animate().fadeIn(delay: 60.ms, duration: 360.ms).slideY(
+                      begin: 0.15, end: 0, curve: Curves.easeOutCubic),
                   _MetricCard(
                     emoji: '💰',
                     label: 'Umsatz heute',
@@ -202,7 +213,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     sub: _trendLabel(dailyRevenue, yRevenue, 'gestern'),
                     trend: _trendIcon(dailyRevenue, yRevenue),
                     accent: AppColors.gold,
-                  ),
+                  ).animate().fadeIn(delay: 120.ms, duration: 360.ms).slideY(
+                      begin: 0.15, end: 0, curve: Curves.easeOutCubic),
                   _MetricCard(
                     emoji: '📅',
                     label: 'Kunden 7 Tage',
@@ -212,7 +224,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         : 'Ø ${_fmtInt.format(w7Customers / last7.length)} / Tag',
                     trend: null,
                     accent: AppColors.secondary,
-                  ),
+                  ).animate().fadeIn(delay: 180.ms, duration: 360.ms).slideY(
+                      begin: 0.15, end: 0, curve: Curves.easeOutCubic),
                   _MetricCard(
                     emoji: '⭐',
                     label: 'Beliebtheit',
@@ -220,7 +233,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     sub: _reputationLabel(avgReputation),
                     trend: null,
                     accent: AppColors.cream,
-                  ),
+                  ).animate().fadeIn(delay: 240.ms, duration: 360.ms).slideY(
+                      begin: 0.15, end: 0, curve: Curves.easeOutCubic),
                 ]),
               ),
             ),
@@ -337,7 +351,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
                     return Padding(
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-                      child: GestureDetector(
+                      child: Pressable(
                         onTap: () => context.push('/shop/${shop.id}'),
                         child: Container(
                           padding: const EdgeInsets.all(16),
@@ -448,7 +462,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           ),
                         ),
                       ),
-                    );
+                    )
+                        .animate()
+                        .fadeIn(
+                            delay: (60 * i).ms,
+                            duration: 340.ms,
+                            curve: Curves.easeOut)
+                        .slideX(
+                            begin: 0.08,
+                            end: 0,
+                            curve: Curves.easeOutCubic);
                   },
                   childCount: game.shops.length,
                 ),
@@ -657,8 +680,9 @@ class _CashCard extends StatelessWidget {
           const SizedBox(height: 8),
           AnimatedMoney(
             amount: cash,
-            fontSize: 38,
+            fontSize: 40,
             color: Colors.white,
+            fontFamily: AppTheme.displayFont,
           ),
           const SizedBox(height: 20),
           Container(height: 1, color: Colors.white.withAlpha(40)),
@@ -781,12 +805,7 @@ class _MetricCard extends StatelessWidget {
           const Spacer(),
           Text(
             value,
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: accent,
-              letterSpacing: -0.5,
-            ),
+            style: AppText.display(size: 23, weight: FontWeight.w800, color: accent),
           ),
           const SizedBox(height: 2),
           Text(
@@ -1044,12 +1063,7 @@ class _KpiCard extends StatelessWidget {
           const Spacer(),
           Text(
             value,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
-              letterSpacing: -0.3,
-            ),
+            style: AppText.display(size: 19, weight: FontWeight.w800),
           ),
           const SizedBox(height: 2),
           Text(

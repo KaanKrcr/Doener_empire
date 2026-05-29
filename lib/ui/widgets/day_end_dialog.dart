@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme.dart';
 import '../../models/event_model.dart';
 import '../../models/achievement_model.dart';
 import '../../providers/game_provider.dart';
+import 'animated_money.dart';
+import 'confetti_overlay.dart';
 
 final _fmt = NumberFormat('#,##0', 'de_DE');
 
@@ -34,9 +37,13 @@ class DayEndDialog extends ConsumerWidget {
     return Dialog(
       backgroundColor: AppColors.bgCard,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      child: ConstrainedBox(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 420),
-        child: Column(
+        child: Stack(
+          children: [
+            Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // Header mit Gradient
@@ -79,35 +86,38 @@ class DayEndDialog extends ConsumerWidget {
                       Text(
                         isGoodDay ? '😊' : '😬',
                         style: const TextStyle(fontSize: 28),
-                      ),
+                      )
+                          .animate()
+                          .scale(
+                            delay: 120.ms,
+                            duration: 460.ms,
+                            begin: const Offset(0.3, 0.3),
+                            end: const Offset(1, 1),
+                            curve: Curves.elasticOut,
+                          ),
                     ],
                   ),
                   const SizedBox(height: 16),
                   Text(
                     isGoodDay ? 'Erfolgreicher Tag!' : 'Schwieriger Tag',
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
+                    style: AppText.display(
+                      size: 22,
+                      weight: FontWeight.w700,
                       color: Colors.white,
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    '${r.profit >= 0 ? "+" : ""}${_fmt.format(r.profit)} € Gewinn',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
-                      letterSpacing: -1,
-                      shadows: [
-                        Shadow(
-                          color: Colors.black.withAlpha(60),
-                          offset: const Offset(0, 2),
-                          blurRadius: 4,
-                        ),
-                      ],
-                    ),
-                  ),
+                  AnimatedMoney(
+                    amount: r.profit,
+                    fontSize: 34,
+                    showSign: true,
+                    compact: true,
+                    color: Colors.white,
+                    fontFamily: AppTheme.displayFont,
+                  )
+                      .animate()
+                      .fadeIn(delay: 200.ms, duration: 400.ms)
+                      .slideY(begin: 0.3, end: 0, curve: Curves.easeOutCubic),
                 ],
               ),
             ),
@@ -122,19 +132,19 @@ class DayEndDialog extends ConsumerWidget {
                     value: '+${_fmt.format(r.revenue)} €',
                     color: AppColors.success,
                     icon: Icons.trending_up,
-                  ),
+                  ).animate().fadeIn(delay: 320.ms).slideX(begin: -0.1, end: 0),
                   _SummaryRow(
                     label: 'Kosten',
                     value: '-${_fmt.format(r.costs)} €',
                     color: AppColors.danger,
                     icon: Icons.trending_down,
-                  ),
+                  ).animate().fadeIn(delay: 400.ms).slideX(begin: -0.1, end: 0),
                   _SummaryRow(
                     label: 'Kunden bedient',
                     value: _fmt.format(r.customers),
                     color: AppColors.accent,
                     icon: Icons.people_alt_rounded,
-                  ),
+                  ).animate().fadeIn(delay: 480.ms).slideX(begin: -0.1, end: 0),
                   if (r.missionCompleted != null) ...[
                     const Divider(color: AppColors.border, height: 24),
                     Container(
@@ -265,6 +275,13 @@ class DayEndDialog extends ConsumerWidget {
               ),
             ),
           ],
+            ),
+            if (isGoodDay && r.profit > 0)
+              const Positioned.fill(
+                child: ConfettiOverlay(),
+              ),
+          ],
+        ),
         ),
       ),
     );
