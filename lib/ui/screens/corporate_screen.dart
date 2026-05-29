@@ -64,14 +64,9 @@ class _CorporateScreenState extends ConsumerState<CorporateScreen>
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
               child: Row(
                 children: [
-                  const Text(
+                  Text(
                     'Konzern',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.textPrimary,
-                      letterSpacing: -0.5,
-                    ),
+                    style: AppText.display(size: 28, weight: FontWeight.w800),
                   ),
                   const Spacer(),
                   if (game.stocks.isPublic)

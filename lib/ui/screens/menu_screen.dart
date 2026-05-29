@@ -118,20 +118,18 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                         ),
                       ),
                       const SizedBox(width: 16),
-                      const Column(
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             'DÖNER EMPIRE',
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w900,
-                              color: AppColors.textPrimary,
-                              letterSpacing: 2,
-                              fontFamily: 'Inter',
+                            style: AppText.display(
+                              size: 24,
+                              weight: FontWeight.w800,
+                              letterSpacing: 0.5,
                             ),
                           ),
-                          Text(
+                          const Text(
                             'Vom Imbiss zum Imperium',
                             style: TextStyle(
                               fontSize: 12,
@@ -149,13 +147,11 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                   // Tagline
                   Text(
                     _hasSave ? 'Willkommen zurück.' : 'Dein Imperium\nwartet.',
-                    style: const TextStyle(
-                      fontSize: 40,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
-                      height: 1.1,
-                      letterSpacing: -1.5,
-                      fontFamily: 'Inter',
+                    style: AppText.display(
+                      size: 42,
+                      weight: FontWeight.w800,
+                      height: 1.05,
+                      letterSpacing: -0.5,
                     ),
                   ),
                   const SizedBox(height: 12),

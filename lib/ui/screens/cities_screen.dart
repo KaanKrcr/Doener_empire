@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -68,7 +69,8 @@ class CitiesScreen extends ConsumerWidget {
                 totalRevenue: game.totalRevenue,
                 onUnlock: () => _unlockCity(context, ref, city, game.cash),
                 onOpen: () => context.push('/open-shop/${city.id}'),
-              ),
+              ).animate().fadeIn(duration: 300.ms).slideX(
+                  begin: 0.06, end: 0, curve: Curves.easeOutCubic),
             const SizedBox(height: 16),
           ],
         ],
@@ -204,9 +206,9 @@ class _CityCard extends StatelessWidget {
                 children: [
                   Text(
                     city.name,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
+                    style: AppText.display(
+                      size: 17,
+                      weight: FontWeight.w700,
                       color: isUnlocked
                           ? AppColors.textPrimary
                           : AppColors.textMuted,

@@ -213,10 +213,11 @@ class AppTheme {
         scrolledUnderElevation: 0,
         centerTitle: false,
         titleTextStyle: TextStyle(
+          fontFamily: displayFont,
           color: AppColors.textPrimary,
-          fontSize: 18,
+          fontSize: 20,
           fontWeight: FontWeight.w700,
-          letterSpacing: -0.3,
+          letterSpacing: -0.2,
         ),
         iconTheme:
             IconThemeData(color: AppColors.textSecondary, size: 22),
@@ -277,8 +278,9 @@ class AppTheme {
         backgroundColor: AppColors.bgCard,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         titleTextStyle: const TextStyle(
+          fontFamily: displayFont,
           color: AppColors.textPrimary,
-          fontSize: 18,
+          fontSize: 19,
           fontWeight: FontWeight.w700,
         ),
       ),

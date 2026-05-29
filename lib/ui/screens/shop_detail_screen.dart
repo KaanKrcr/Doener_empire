@@ -1569,9 +1569,7 @@ class _ShopStat extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(value,
-            style: TextStyle(
-                fontSize: 14, fontWeight: FontWeight.w800, color: color)),
+        Text(value, style: AppText.display(size: 16, weight: FontWeight.w800, color: color)),
         const SizedBox(height: 2),
         Text(label,
             style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
