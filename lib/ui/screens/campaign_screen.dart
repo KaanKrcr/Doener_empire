@@ -35,6 +35,8 @@ class CampaignScreen extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
         children: [
           _ProgressHeader(done: doneCount, total: total),
+          const SizedBox(height: 14),
+          _ActivePerksCard(state: game),
           const SizedBox(height: 16),
           for (var i = 0; i < kCampaignChapters.length; i++)
             _ChapterCard(
@@ -107,6 +109,150 @@ class _ProgressHeader extends StatelessWidget {
               backgroundColor: AppColors.bg.withValues(alpha: 0.5),
               color: AppColors.gold,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Sammelanzeige aller bisher freigeschalteten Kampagnen-Perks + ihrer
+/// summierten Gesamtwirkung.
+class _ActivePerksCard extends StatelessWidget {
+  final GameState state;
+  const _ActivePerksCard({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final unlocked = kCampaignChapters
+        .where((c) => state.completedChapterIds.contains(c.id) && c.perk != null)
+        .map((c) => c.perk!)
+        .toList();
+    final total = aggregateCampaignPerks(state.completedChapterIds);
+
+    final stats = <(String, String)>[
+      if (total.customerBoost > 0)
+        ('Kunden', '+${(total.customerBoost * 100).round()}%'),
+      if (total.avgOrderBoost > 0)
+        ('Bestellwert', '+${(total.avgOrderBoost * 100).round()}%'),
+      if (total.ingredientSaving > 0)
+        ('Zutaten', '−${(total.ingredientSaving * 100).round()}%'),
+      if (total.rentSaving > 0)
+        ('Miete', '−${(total.rentSaving * 100).round()}%'),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.secondary.withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('⭐', style: TextStyle(fontSize: 18)),
+              const SizedBox(width: 8),
+              Text('AKTIVE BONI', style: AppText.label(color: AppColors.secondary)),
+              const Spacer(),
+              Text(
+                '${unlocked.length} Perk${unlocked.length == 1 ? "" : "s"}',
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textMuted,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (unlocked.isEmpty)
+            const Text(
+              'Noch keine Boni. Schließe Kapitel ab, um dauerhafte '
+              'Konzern-Vorteile freizuschalten.',
+              style: TextStyle(
+                fontSize: 12.5,
+                color: AppColors.textMuted,
+                height: 1.4,
+              ),
+            )
+          else ...[
+            // Summierte Gesamtwirkung als Stat-Kacheln
+            Row(
+              children: [
+                for (final s in stats) ...[
+                  Expanded(child: _PerkStatTile(label: s.$1, value: s.$2)),
+                  if (s != stats.last) const SizedBox(width: 8),
+                ],
+              ],
+            ),
+            const SizedBox(height: 14),
+            // Liste der freigeschalteten Perks
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final p in unlocked)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 9, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.secondary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(9),
+                      border: Border.all(
+                          color: AppColors.secondary.withValues(alpha: 0.35)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(p.emoji, style: const TextStyle(fontSize: 13)),
+                        const SizedBox(width: 5),
+                        Text(
+                          p.title,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _PerkStatTile extends StatelessWidget {
+  final String label;
+  final String value;
+  const _PerkStatTile({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+      decoration: BoxDecoration(
+        color: AppColors.bg.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: AppText.display(
+                size: 17, weight: FontWeight.w800, color: AppColors.secondary),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
           ),
         ],
       ),
