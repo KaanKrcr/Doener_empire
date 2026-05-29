@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme.dart';
@@ -70,7 +71,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       backgroundColor: AppColors.bg,
       body: Stack(
         children: [
-          // Hintergrund-Glow
+          // Hintergrund-Glow (sanft atmend)
           Positioned(
             top: -120,
             left: -80,
@@ -86,7 +87,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   ],
                 ),
               ),
-            ),
+            )
+                .animate(onPlay: (c) => c.repeat(reverse: true))
+                .scaleXY(
+                    begin: 0.85,
+                    end: 1.12,
+                    duration: 2600.ms,
+                    curve: Curves.easeInOut),
           ),
           Center(
             child: Column(
@@ -124,20 +131,24 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   position: _textSlide,
                   child: FadeTransition(
                     opacity: _textOpacity,
-                    child: const Column(
+                    child: Column(
                       children: [
                         Text(
                           'DÖNER EMPIRE',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.textPrimary,
-                            letterSpacing: 4,
-                            fontFamily: 'Inter',
+                          style: AppText.display(
+                            size: 34,
+                            weight: FontWeight.w800,
+                            letterSpacing: 1.5,
                           ),
-                        ),
-                        SizedBox(height: 6),
-                        Text(
+                        )
+                            .animate(onPlay: (c) => c.forward())
+                            .shimmer(
+                              delay: 900.ms,
+                              duration: 1400.ms,
+                              color: AppColors.gold.withAlpha(120),
+                            ),
+                        const SizedBox(height: 6),
+                        const Text(
                           'Vom Imbiss zum Imperium',
                           style: TextStyle(
                             fontSize: 13,
