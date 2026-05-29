@@ -13,6 +13,7 @@ import 'screens/finance_screen.dart';
 import 'screens/bank_screen.dart';
 
 final navIndexProvider = StateProvider<int>((ref) => 0);
+final tutorialCardCollapsedProvider = StateProvider<bool>((ref) => true);
 
 const int kTabDashboard = 0;
 const int kTabCities = 1;
@@ -43,6 +44,7 @@ class MainScaffold extends ConsumerWidget {
             : tutorialStepFromIndex(game.tutorialStep);
     final tutorialProgress =
         ((game?.tutorialStep ?? 0) + 1).clamp(1, kTutorialStepCount);
+    final tutorialCollapsed = ref.watch(tutorialCardCollapsedProvider);
 
     ref.listen<int>(navIndexProvider, (prev, next) {
       ref.read(gameProvider.notifier).onTutorialTabOpened(next);
@@ -89,8 +91,13 @@ class MainScaffold extends ConsumerWidget {
                   step: tutorialStep,
                   currentStep: tutorialProgress,
                   totalSteps: kTutorialStepCount,
+                  collapsed: tutorialCollapsed,
                   onSkip: () => ref.read(gameProvider.notifier).skipTutorial(),
                   onPause: () => ref.read(gameProvider.notifier).skipTutorial(),
+                  onToggleCollapse: () {
+                    ref.read(tutorialCardCollapsedProvider.notifier).state =
+                        !tutorialCollapsed;
+                  },
                   onAction: () =>
                       ref.read(gameProvider.notifier).acknowledgeTutorialStep(),
                   onWhy: () => showModalBottomSheet<void>(
@@ -411,31 +418,36 @@ class _TutorialCard extends StatelessWidget {
   final TutorialStep step;
   final int currentStep;
   final int totalSteps;
+  final bool collapsed;
   final VoidCallback onSkip;
   final VoidCallback onPause;
   final VoidCallback onWhy;
   final VoidCallback onAction;
   final VoidCallback onJump;
+  final VoidCallback onToggleCollapse;
 
   const _TutorialCard({
     required this.step,
     required this.currentStep,
     required this.totalSteps,
+    required this.collapsed,
     required this.onSkip,
     required this.onPause,
     required this.onWhy,
     required this.onAction,
     required this.onJump,
+    required this.onToggleCollapse,
   });
 
   @override
   Widget build(BuildContext context) {
     final actionLabel = step.actionLabel ?? 'Weiter';
     final hasJump = step.targetTabIndex != null;
+    final canConfirmStep = step.actionLabel != null;
     final progress = currentStep / totalSteps;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
       decoration: BoxDecoration(
         color: AppColors.bgCard.withAlpha(250),
         borderRadius: BorderRadius.circular(14),
@@ -460,6 +472,16 @@ class _TutorialCard extends StatelessWidget {
                   fontWeight: FontWeight.w800,
                   fontSize: 11,
                 ),
+              ),
+              IconButton(
+                onPressed: onToggleCollapse,
+                icon: Icon(
+                  collapsed
+                      ? Icons.keyboard_arrow_down_rounded
+                      : Icons.keyboard_arrow_up_rounded,
+                  color: AppColors.textSecondary,
+                ),
+                tooltip: collapsed ? 'Aufklappen' : 'Einklappen',
               ),
               const Spacer(),
               TextButton(
@@ -499,70 +521,87 @@ class _TutorialCard extends StatelessWidget {
               fontSize: 12,
               height: 1.35,
             ),
-            maxLines: 3,
+            maxLines: collapsed ? 1 : 3,
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              if (hasJump)
-                OutlinedButton.icon(
-                  onPressed: onJump,
+          if (!collapsed) ...[
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (hasJump)
+                  OutlinedButton.icon(
+                    onPressed: onJump,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: const BorderSide(color: AppColors.primary),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    icon: const Icon(Icons.near_me_rounded, size: 16),
+                    label: const Text('Zum Ziel'),
+                  ),
+                OutlinedButton(
+                  onPressed: onWhy,
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    side: const BorderSide(color: AppColors.primary),
+                    foregroundColor: AppColors.textSecondary,
+                    side: const BorderSide(color: AppColors.border),
                     visualDensity: VisualDensity.compact,
                   ),
-                  icon: const Icon(Icons.near_me_rounded, size: 16),
-                  label: const Text('Zum Ziel'),
+                  child: const Text('Warum ist das wichtig?'),
                 ),
-              OutlinedButton(
-                onPressed: onWhy,
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: onPause,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.textMuted,
+                      side: const BorderSide(color: AppColors.border),
+                    ),
+                    child: const Text('Später fortsetzen'),
+                  ),
+                ),
+                if (canConfirmStep) ...[
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: onAction,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                      ),
+                      child: Text(actionLabel),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              step.hint,
+              style: const TextStyle(
+                color: AppColors.textMuted,
+                fontSize: 11,
+              ),
+            ),
+          ] else if (hasJump)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton.icon(
+                onPressed: onJump,
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.textSecondary,
-                  side: const BorderSide(color: AppColors.border),
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(color: AppColors.primary),
                   visualDensity: VisualDensity.compact,
                 ),
-                child: const Text('Warum ist das wichtig?'),
+                icon: const Icon(Icons.near_me_rounded, size: 16),
+                label: const Text('Zum Ziel'),
               ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: onPause,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.textMuted,
-                    side: const BorderSide(color: AppColors.border),
-                  ),
-                  child: const Text('Später fortsetzen'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: onAction,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: Text(actionLabel),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            step.hint,
-            style: const TextStyle(
-              color: AppColors.textMuted,
-              fontSize: 11,
             ),
-          ),
         ],
       ),
     );

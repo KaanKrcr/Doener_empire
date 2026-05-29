@@ -239,7 +239,19 @@ class _CityCard extends StatelessWidget {
                 child: const Text('+ Filiale'),
               )
             else if (city.unlockCost == 0)
-              const SizedBox()
+              OutlinedButton(
+                onPressed: onUnlock,
+                style: OutlinedButton.styleFrom(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  textStyle: const TextStyle(fontSize: 12),
+                  side: const BorderSide(color: AppColors.secondary),
+                ),
+                child: const Text(
+                  'Kostenlos',
+                  style: TextStyle(color: AppColors.secondary),
+                ),
+              )
             else
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,

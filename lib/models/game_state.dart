@@ -568,13 +568,23 @@ class GameState {
       return shop.copyWith(menu: [...shop.menu, ...missingDefaults]);
     }).toList();
 
+    final unlockedCityIds = List<String>.from(asList(j['unlockedCityIds']));
+    final freeCityIds = kAllCities
+        .where((city) => city.unlockCost <= 0)
+        .map((city) => city.id);
+    for (final freeCityId in freeCityIds) {
+      if (!unlockedCityIds.contains(freeCityId)) {
+        unlockedCityIds.add(freeCityId);
+      }
+    }
+
     return GameState(
       companyName: companyName,
       founderName: (j['founderName'] ?? '') as String,
       cash: asDouble(j['cash']),
       currentDay: asInt(j['currentDay'], 1),
       shops: shops,
-      unlockedCityIds: List<String>.from(asList(j['unlockedCityIds'])),
+      unlockedCityIds: unlockedCityIds,
       loans: asList(j['loans'])
           .whereType<Map>()
           .map((e) => Loan.fromJson(Map<String, dynamic>.from(e)))

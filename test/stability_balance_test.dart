@@ -170,6 +170,22 @@ void main() {
       );
       expect(loaded.globalUpgradeIds.contains(kGlobalSpiessProfiId), isTrue);
     });
+
+    test('Kostenlose Startstädte bleiben bei Alt-Save freigeschaltet', () {
+      final state = GameState.initial(
+        companyName: 'LegacyCities',
+        founderName: 'Tester',
+        startCash: 10000,
+      );
+      final json = state.toJson();
+      json['unlockedCityIds'] = <String>[];
+
+      final loaded = GameState.fromJson(json);
+
+      expect(loaded.unlockedCityIds.contains('fulda'), isTrue);
+      expect(loaded.unlockedCityIds.contains('bayreuth'), isTrue);
+      expect(loaded.unlockedCityIds.contains('goettingen'), isTrue);
+    });
   });
 
   group('2) Lieferdienst Tageslogik', () {
