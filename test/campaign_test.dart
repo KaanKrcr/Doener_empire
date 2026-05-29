@@ -1,7 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:doener_empire/models/game_state.dart';
 import 'package:doener_empire/models/shop_model.dart';
+import 'package:doener_empire/models/stock_model.dart';
+import 'package:doener_empire/models/brand_model.dart';
 import 'package:doener_empire/models/campaign_model.dart';
+import 'package:doener_empire/models/mission_model.dart';
 import 'package:doener_empire/services/campaign_engine.dart';
 
 GameState _fresh() => GameState.initial(
@@ -61,5 +64,32 @@ void main() {
     final ch = CampaignEngine.activeChapter(s)!;
     final p = CampaignEngine.chapterProgress(ch, s);
     expect(p, inInclusiveRange(0.0, 1.0));
+  });
+
+  test('Endgame-Bedingungen werden korrekt gemessen', () {
+    const publicObj = CampaignObjective(
+        type: MissionType.companyPublic, target: 1, label: 'IPO');
+    const brandObj = CampaignObjective(
+        type: MissionType.brandAwareness, target: 40, label: 'Marke');
+    const acqObj = CampaignObjective(
+        type: MissionType.acquiredShops, target: 2, label: 'Übernahmen');
+
+    final base = _fresh();
+    // Noch nichts erfüllt
+    expect(CampaignEngine.objectiveDone(publicObj, base), isFalse);
+    expect(CampaignEngine.objectiveDone(brandObj, base), isFalse);
+    expect(CampaignEngine.objectiveDone(acqObj, base), isFalse);
+
+    final advanced = base.copyWith(
+      stocks: const StockState(isPublic: true),
+      brand: const BrandStats(brandAwareness: 55),
+      shops: [
+        _shop('a').copyWith(wasAcquired: true),
+        _shop('b').copyWith(wasAcquired: true),
+      ],
+    );
+    expect(CampaignEngine.objectiveDone(publicObj, advanced), isTrue);
+    expect(CampaignEngine.objectiveDone(brandObj, advanced), isTrue);
+    expect(CampaignEngine.objectiveDone(acqObj, advanced), isTrue);
   });
 }

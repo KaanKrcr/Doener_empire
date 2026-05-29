@@ -113,6 +113,12 @@ class MissionEngine {
         if (state.shops.isEmpty) return 0;
         return state.shops.fold<double>(
             0, (max, s) => s.reputation > max ? s.reputation : max);
+      case MissionType.companyPublic:
+        return state.stocks.isPublic ? 1 : 0;
+      case MissionType.brandAwareness:
+        return state.brand.brandAwareness;
+      case MissionType.acquiredShops:
+        return state.shops.where((s) => s.wasAcquired).length.toDouble();
     }
   }
 }

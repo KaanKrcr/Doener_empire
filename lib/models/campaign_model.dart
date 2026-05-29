@@ -165,8 +165,56 @@ const List<CampaignChapter> kCampaignChapters = [
     rewardLabel: 'Angekommen in der ersten Liga',
   ),
   CampaignChapter(
-    id: 'ch6_imperium',
+    id: 'ch6_boerse',
     number: 6,
+    title: 'Börsen-Legende',
+    story:
+        'Dein Unternehmen ist zu groß für deine Hosentasche. Investoren klopfen '
+        'an. Wag den Börsengang und mach deine Marke deutschlandweit bekannt — '
+        'jetzt spielst du in der Liga der Großen.',
+    emoji: '📈',
+    objectives: [
+      CampaignObjective(
+        type: MissionType.companyPublic,
+        target: 1,
+        label: 'Führe den Börsengang (IPO) durch',
+      ),
+      CampaignObjective(
+        type: MissionType.brandAwareness,
+        target: 40,
+        label: 'Erreiche 40 Markenbekanntheit',
+      ),
+    ],
+    cashReward: 40000,
+    rewardLabel: 'An der Börse notiert',
+  ),
+  CampaignChapter(
+    id: 'ch7_markt',
+    number: 7,
+    title: 'Marktbeherrschung',
+    story:
+        'Konkurrenz? Die kaufst du einfach auf. Übernimm rivalisierende Läden '
+        'und festige deine Vormachtstellung, bis dir niemand mehr das Wasser '
+        'reichen kann.',
+    emoji: '🤝',
+    objectives: [
+      CampaignObjective(
+        type: MissionType.acquiredShops,
+        target: 2,
+        label: 'Übernimm 2 Konkurrenz-Filialen',
+      ),
+      CampaignObjective(
+        type: MissionType.reachCash,
+        target: 120000,
+        label: 'Erreiche 120.000 € Kapital',
+      ),
+    ],
+    cashReward: 50000,
+    rewardLabel: 'Unangefochtener Marktführer',
+  ),
+  CampaignChapter(
+    id: 'ch6_imperium',
+    number: 8,
     title: 'Döner-Imperium',
     story:
         'Vom kleinen Spieß zum landesweiten Imperium. Dein Name steht für Döner '

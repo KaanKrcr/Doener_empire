@@ -48,6 +48,9 @@ enum MissionType {
   unlockCity,
   daysSurvived,
   reputationLevel,
+  companyPublic, // Börsengang durchgeführt (stocks.isPublic)
+  brandAwareness, // Markenbekanntheit (brand.brandAwareness, 0..100)
+  acquiredShops, // übernommene Konkurrenz-Filialen (wasAcquired)
 }
 
 /// Reihenfolge bestimmt die "Story". Eine Mission ist erst aktiv,
