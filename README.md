@@ -1,6 +1,24 @@
 # Döner Empire
 
-Mobile-Wirtschaftssimulation in Flutter.
+Mobile-Wirtschaftssimulation in Flutter — vom kleinen Imbiss zum landesweiten
+Döner-Imperium.
+
+## Spielfeatures
+
+- **Filialen & Expansion:** Standorte in echten Städten eröffnen, Equipment &
+  Mitarbeiter, Tageszeit-/Wochentag-Nachfrage, Jahreszeiten
+- **Speisekarte & Strategie:** Preisstrategie + umsatzoptimale Preis-Empfehlung,
+  Kombo-Menüs, Zutaten-Qualitätsstufen, Tagesspecial
+- **Story-Kampagne:** 8 Kapitel mit Cash-Belohnungen und permanenten
+  Konzern-Perks; Trophäen-Galerie; Marken-Skins; Start-Szenarien
+- **Retention:** Daily Challenges, Wochen-Report, Quartalssteuer
+- **Konzern:** Börsengang/Aktienkurs, Produktionsanlagen, M&A, HR-Manager,
+  globale Upgrades, stadt-/konzernweites Marketing
+- **Analyse:** Produkt-Profitabilität, Filial-Ranking, Marktanteile,
+  Unternehmens-Gesundheit, Kundenbewertungen, Dashboard-Hinweise
+- **Game-Feel:** Sound & Haptik, Animationen, Konfetti, Events/Krisen
+
+Details: siehe [CHANGELOG.md](CHANGELOG.md).
 
 ## Voraussetzungen
 
