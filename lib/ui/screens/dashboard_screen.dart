@@ -617,6 +617,7 @@ class _HeaderBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final weekday = _kWeekdays[game.currentDay % 7];
+    final season = GameEngine.seasonForDay(game.currentDay);
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
       child: Row(
@@ -650,6 +651,23 @@ class _HeaderBar extends StatelessWidget {
                           color: AppColors.primary,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 1,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.secondary.withAlpha(36),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '${season.emoji} ${season.label}',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: AppColors.secondary,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),

@@ -93,6 +93,8 @@ class GameEngine {
 
     // Tagesspecial: ein Produkt pro Tag mit erhöhter Nachfrage
     final specialId = dailySpecialProductId(effectiveDay);
+    // Jahreszeit: kategorieabhängige Nachfrage
+    final season = seasonForDay(effectiveDay);
 
     double totalDemand = 0;
     double totalRevenue = 0;
@@ -105,6 +107,7 @@ class GameEngine {
         difficulty: state?.difficulty ?? GameDifficulty.normal,
       );
       if (sp.productId == specialId) demand *= kDailySpecialBoost;
+      demand *= seasonCategoryMultiplier(season, pd.category);
       totalDemand += demand;
       totalRevenue += demand *
           sp.price *
@@ -267,6 +270,36 @@ class GameEngine {
 
   /// Nachfrage-Multiplikator für das Tagesspecial.
   static const double kDailySpecialBoost = 1.6;
+
+  // ── Jahreszeiten ──────────────────────────────────────────────────────────
+
+  /// Aktuelle Jahreszeit (wechselt alle 30 Tage).
+  static Season seasonForDay(int day) {
+    final idx = ((day - 1) ~/ 30) % 4;
+    return Season.values[idx.clamp(0, 3)];
+  }
+
+  /// Saisonaler Nachfrage-Multiplikator je Produktkategorie.
+  static double seasonCategoryMultiplier(Season s, ProductCategory cat) {
+    switch (s) {
+      case Season.sommer:
+        if (cat == ProductCategory.getraenk) return 1.25;
+        if (cat == ProductCategory.doener) return 0.95;
+        return 1.0;
+      case Season.winter:
+        if (cat == ProductCategory.doener) return 1.12;
+        if (cat == ProductCategory.box) return 1.12;
+        if (cat == ProductCategory.getraenk) return 0.85;
+        return 1.0;
+      case Season.fruehling:
+        if (cat == ProductCategory.beilage) return 1.08;
+        return 1.0;
+      case Season.herbst:
+        if (cat == ProductCategory.box) return 1.08;
+        if (cat == ProductCategory.getraenk) return 1.05;
+        return 1.0;
+    }
+  }
 
   /// Steuersatz auf den Monatsgewinn (alle 30 Tage fällig).
   static const double kMonthlyTaxRate = 0.12;
@@ -1754,6 +1787,23 @@ class WeeklyReport {
     required this.bestDayRevenue,
     required this.profitGrowthPct,
   });
+}
+
+enum Season { fruehling, sommer, herbst, winter }
+
+extension SeasonX on Season {
+  String get label => switch (this) {
+        Season.fruehling => 'Frühling',
+        Season.sommer => 'Sommer',
+        Season.herbst => 'Herbst',
+        Season.winter => 'Winter',
+      };
+  String get emoji => switch (this) {
+        Season.fruehling => '🌸',
+        Season.sommer => '☀️',
+        Season.herbst => '🍂',
+        Season.winter => '❄️',
+      };
 }
 
 enum ChallengeType { moreCustomers, moreRevenue, moreProfit, allProfitable }
