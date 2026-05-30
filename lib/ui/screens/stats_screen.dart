@@ -12,6 +12,7 @@ import '../../models/shop_model.dart';
 import '../../models/time_profile_model.dart';
 import '../../providers/game_provider.dart';
 import '../../services/game_engine.dart';
+import '../../services/review_util.dart';
 
 /// Statistik / Imperium-Übersicht.
 /// Zeigt: Markenbekanntheit, Konkurrenz, Achievements, Wochen-Charts.
@@ -84,6 +85,15 @@ class StatsScreen extends ConsumerWidget {
                 ),
               ),
             ),
+
+            // Kundenbewertungen
+            if (game.shops.isNotEmpty)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                  child: _ReviewsCard(reviews: generateReviews(game)),
+                ),
+              ),
 
             // Konkurrenz
             SliverToBoxAdapter(
@@ -544,6 +554,92 @@ class _AchievementChip extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ReviewsCard extends StatelessWidget {
+  final List<CustomerReview> reviews;
+  const _ReviewsCard({required this.reviews});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Text('💬', style: TextStyle(fontSize: 16)),
+              SizedBox(width: 6),
+              Text(
+                'KUNDENBEWERTUNGEN',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textMuted,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          for (var i = 0; i < reviews.length; i++) ...[
+            _ReviewRow(review: reviews[i]),
+            if (i < reviews.length - 1)
+              const Divider(color: AppColors.border, height: 18),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ReviewRow extends StatelessWidget {
+  final CustomerReview review;
+  const _ReviewRow({required this.review});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            for (var s = 0; s < 5; s++)
+              Icon(
+                s < review.stars ? Icons.star_rounded : Icons.star_outline_rounded,
+                size: 14,
+                color: AppColors.gold,
+              ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '${review.author} · ${review.shopName}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    fontSize: 10, color: AppColors.textMuted),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          review.text,
+          style: const TextStyle(
+            fontSize: 12.5,
+            color: AppColors.textSecondary,
+            height: 1.3,
+          ),
+        ),
+      ],
     );
   }
 }
