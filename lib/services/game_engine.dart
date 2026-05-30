@@ -267,6 +267,42 @@ class GameEngine {
   /// Nachfrage-Multiplikator für das Tagesspecial.
   static const double kDailySpecialBoost = 1.6;
 
+  /// Aktuelle Hinweise/Warnungen für den Spieler (verlustreiche Filialen,
+  /// schlechter Ruf, niedrige Liquidität). Rein abgeleitet — keine Seiteneffekte.
+  static List<ShopAlert> shopAlerts(GameState state) {
+    final alerts = <ShopAlert>[];
+    double dailyCostTotal = 0;
+    for (final shop in state.shops) {
+      final rev =
+          calculateDailyRevenue(shop, day: state.currentDay, state: state);
+      final cost =
+          calculateDailyCosts(shop, day: state.currentDay, state: state);
+      dailyCostTotal += cost;
+      if (rev - cost < 0) {
+        alerts.add(ShopAlert(
+          level: AlertLevel.danger,
+          message:
+              '${shop.displayName} macht Verlust (${(rev - cost).round()} €/Tag)',
+          shopId: shop.id,
+        ));
+      } else if (shop.reputation < 2.0) {
+        alerts.add(ShopAlert(
+          level: AlertLevel.warn,
+          message:
+              '${shop.displayName}: schlechter Ruf (${shop.reputation.toStringAsFixed(1)} ⭐)',
+          shopId: shop.id,
+        ));
+      }
+    }
+    if (state.cash >= 0 && dailyCostTotal > 0 && state.cash < dailyCostTotal * 2) {
+      alerts.add(const ShopAlert(
+        level: AlertLevel.warn,
+        message: 'Liquidität niedrig — die Kasse reicht nur wenige Tage.',
+      ));
+    }
+    return alerts;
+  }
+
   // ──────────────────────────────────────────────────────────────────────────
   // ── Preiselastizität ─────────────────────────────────────────────────────
   // ──────────────────────────────────────────────────────────────────────────
@@ -1525,4 +1561,18 @@ class ProductProfit {
 
   double get profit => revenue - ingredientCost;
   double get margin => revenue > 0 ? profit / revenue : 0;
+}
+
+enum AlertLevel { warn, danger }
+
+/// Ein Hinweis/Warnung für den Spieler (Dashboard).
+class ShopAlert {
+  final AlertLevel level;
+  final String message;
+  final String? shopId;
+  const ShopAlert({
+    required this.level,
+    required this.message,
+    this.shopId,
+  });
 }

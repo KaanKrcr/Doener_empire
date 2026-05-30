@@ -131,6 +131,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       orElse: () => kAllProducts.first,
     );
     final brandTheme = brandThemeById(game.activeThemeId);
+    final alerts = GameEngine.shopAlerts(game);
 
     // Daten aus History für Trend-Vergleiche
     final history = game.history;
@@ -191,6 +192,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
               ),
             ),
+
+            // ── Hinweise / Warnungen ────────────────────────────────────
+            if (alerts.isNotEmpty)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                  child: _AlertsCard(
+                    alerts: alerts,
+                    onTapShop: (id) => context.push('/shop/$id'),
+                  ),
+                ),
+              ),
 
             // ── Mission-Banner ──────────────────────────────────────────
             const SliverToBoxAdapter(
@@ -1195,6 +1208,74 @@ class _CampaignBanner extends StatelessWidget {
                 color: AppColors.textMuted, size: 20),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AlertsCard extends StatelessWidget {
+  final List<ShopAlert> alerts;
+  final void Function(String shopId) onTapShop;
+  const _AlertsCard({required this.alerts, required this.onTapShop});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasDanger = alerts.any((a) => a.level == AlertLevel.danger);
+    final accent = hasDanger ? AppColors.danger : AppColors.warning;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: accent.withAlpha(20),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: accent.withAlpha(90)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.notifications_active_rounded, size: 16, color: accent),
+              const SizedBox(width: 6),
+              Text('HINWEISE', style: AppText.label(color: accent, size: 10)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          for (final a in alerts)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: a.shopId != null ? () => onTapShop(a.shopId!) : null,
+                child: Row(
+                  children: [
+                    Icon(
+                      a.level == AlertLevel.danger
+                          ? Icons.error_outline_rounded
+                          : Icons.warning_amber_rounded,
+                      size: 15,
+                      color: a.level == AlertLevel.danger
+                          ? AppColors.danger
+                          : AppColors.warning,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        a.message,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    if (a.shopId != null)
+                      const Icon(Icons.chevron_right_rounded,
+                          size: 16, color: AppColors.textMuted),
+                  ],
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
