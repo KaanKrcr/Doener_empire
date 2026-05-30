@@ -198,6 +198,41 @@ final List<Achievement> kAllAchievements = [
     tier: AchievementTier.platin,
     check: (shops, emp, rev, cash, day, cust, rep, brand, comp) => shops >= 20,
   ),
+
+  // Zusätzliche Langzeit-Ziele
+  Achievement(
+    id: 'five_star_shop',
+    title: 'Perfekte Filiale',
+    description: 'Erreiche die volle 5,0 Reputation in einer Filiale.',
+    emoji: '🌟',
+    tier: AchievementTier.gold,
+    check: (shops, emp, rev, cash, day, cust, rep, brand, comp) => rep >= 5.0,
+  ),
+  Achievement(
+    id: 'fifty_employees',
+    title: 'Großer Arbeitgeber',
+    description: 'Beschäftige insgesamt 50 Mitarbeiter.',
+    emoji: '👔',
+    tier: AchievementTier.gold,
+    check: (shops, emp, rev, cash, day, cust, rep, brand, comp) => emp >= 50,
+  ),
+  Achievement(
+    id: 'hundred_days',
+    title: '100 Tage am Spieß',
+    description: 'Überlebe 100 Tage im Geschäft.',
+    emoji: '🗓️',
+    tier: AchievementTier.gold,
+    check: (shops, emp, rev, cash, day, cust, rep, brand, comp) => day >= 100,
+  ),
+  Achievement(
+    id: 'cash_500k',
+    title: 'Halbe Million',
+    description: 'Erreiche 500.000 € auf dem Konto.',
+    emoji: '🤑',
+    tier: AchievementTier.platin,
+    check: (shops, emp, rev, cash, day, cust, rep, brand, comp) =>
+        cash >= 500000,
+  ),
 ];
 
 /// Statisches Lookup
