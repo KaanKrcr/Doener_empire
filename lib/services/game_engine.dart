@@ -386,6 +386,17 @@ class GameEngine {
     return list;
   }
 
+  /// Geschätzter Marktanteil des Spielers in einer Stadt (0..1).
+  /// = 1 − Summe der Konkurrenz-Marktanteile, sofern der Spieler dort vertreten
+  /// ist. Ohne eigene Filiale 0.
+  static double playerMarketShareIn(GameState state, String cityId) {
+    if (!state.hasShopIn(cityId)) return 0;
+    final compSum = state
+        .competitorsIn(cityId)
+        .fold<double>(0, (s, c) => s + c.marketShare);
+    return (1 - compSum).clamp(0.0, 1.0);
+  }
+
   /// Unternehmens-Gesundheit (0..100) aus Liquidität, Profitabilität,
   /// Verschuldung und Reputation. Rein abgeleitet.
   static HealthScore healthScore(GameState state) {

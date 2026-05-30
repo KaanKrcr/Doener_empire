@@ -95,6 +95,15 @@ class StatsScreen extends ConsumerWidget {
                 ),
               ),
 
+            // Marktanteile
+            if (game.shops.isNotEmpty)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                  child: _MarketShareCard(game: game),
+                ),
+              ),
+
             // Konkurrenz
             SliverToBoxAdapter(
               child: Padding(
@@ -640,6 +649,115 @@ class _ReviewRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _MarketShareCard extends StatelessWidget {
+  final GameState game;
+  const _MarketShareCard({required this.game});
+
+  @override
+  Widget build(BuildContext context) {
+    final cityIds =
+        game.shops.map((s) => s.cityId).toSet().toList();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Text('📊', style: TextStyle(fontSize: 16)),
+              SizedBox(width: 6),
+              Text(
+                'MARKTANTEILE',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textMuted,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          for (final cityId in cityIds)
+            _MarketShareRow(
+              cityId: cityId,
+              share: GameEngine.playerMarketShareIn(game, cityId),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MarketShareRow extends StatelessWidget {
+  final String cityId;
+  final double share;
+  const _MarketShareRow({required this.cityId, required this.share});
+
+  @override
+  Widget build(BuildContext context) {
+    final city = kAllCities.firstWhere(
+      (c) => c.id == cityId,
+      orElse: () => kAllCities.first,
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Text(city.emoji, style: const TextStyle(fontSize: 15)),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 86,
+            child: Text(
+              city.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: Stack(
+                children: [
+                  Container(height: 10, color: AppColors.bgSurface),
+                  FractionallySizedBox(
+                    widthFactor: share.clamp(0.0, 1.0),
+                    child: Container(height: 10, color: AppColors.primary),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 38,
+            child: Text(
+              '${(share * 100).round()}%',
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.primary,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
