@@ -257,6 +257,16 @@ class _GameMenuSheet extends StatelessWidget {
                 context.push('/branding');
               },
             ),
+            ListTile(
+              leading:
+                  const Icon(Icons.share_rounded, color: AppColors.secondary),
+              title: const Text('Mein Imperium'),
+              subtitle: const Text('Zusammenfassung teilen/kopieren.'),
+              onTap: () {
+                onClose();
+                context.push('/empire-card');
+              },
+            ),
             const Divider(height: 18, color: AppColors.border),
             const _SoundToggleTile(),
             const ListTile(

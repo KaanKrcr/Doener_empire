@@ -8,6 +8,7 @@ import '../ui/screens/shop_detail_screen.dart';
 import '../ui/screens/campaign_screen.dart';
 import '../ui/screens/achievements_screen.dart';
 import '../ui/screens/branding_screen.dart';
+import '../ui/screens/empire_card_screen.dart';
 import '../ui/screens/settings_screen.dart';
 import '../ui/main_scaffold.dart';
 
@@ -56,6 +57,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/branding',
       pageBuilder: (_, __) => _slideUpPage(const BrandingScreen()),
+    ),
+    GoRoute(
+      path: '/empire-card',
+      pageBuilder: (_, __) => _slideUpPage(const EmpireCardScreen()),
     ),
   ],
 );
