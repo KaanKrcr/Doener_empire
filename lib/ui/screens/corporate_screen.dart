@@ -11,6 +11,7 @@ import '../../models/production_model.dart';
 import '../../models/stock_model.dart';
 import '../../models/game_state.dart';
 import '../../models/hr_manager_model.dart';
+import '../../models/combo_model.dart';
 import '../../providers/game_provider.dart';
 import '../../services/corporate_engine.dart';
 import '../../services/game_engine.dart';
@@ -1306,6 +1307,32 @@ class _StrategieTab extends ConsumerWidget {
         _PriceStrategySection(globalPrices: globalPrices),
         const SizedBox(height: 28),
 
+        // ── Menü-Angebote / Kombos ────────────────────────────────────────
+        _buildSectionHeader(Icons.lunch_dining_rounded, 'MENÜ-ANGEBOTE'),
+        const SizedBox(height: 4),
+        const Padding(
+          padding: EdgeInsets.only(bottom: 10),
+          child: Text(
+            'Konzernweite Angebote. Wirken nur in Filialen, die alle nötigen '
+            'Produkte führen. Kleine Tagespauschale, dafür mehr Kundschaft.',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 12, height: 1.35),
+          ),
+        ),
+        for (final combo in kAllCombos)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _ComboCard(
+              combo: combo,
+              active: game.activeComboIds.contains(combo.id),
+              supportingShops:
+                  shops.where((s) => GameEngine.shopSupportsCombo(s, combo)).length,
+              totalShops: shops.length,
+              onToggle: () =>
+                  ref.read(gameProvider.notifier).toggleCombo(combo.id),
+            ),
+          ),
+        const SizedBox(height: 28),
+
         // ── Stadtweite Marketing ──────────────────────────────────────────
         _buildSectionHeader(
             Icons.location_city_rounded, 'STADTWEITE MARKETING'),
@@ -1374,6 +1401,128 @@ class _StrategieTab extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ComboCard extends StatelessWidget {
+  final MenuCombo combo;
+  final bool active;
+  final int supportingShops;
+  final int totalShops;
+  final VoidCallback onToggle;
+
+  const _ComboCard({
+    required this.combo,
+    required this.active,
+    required this.supportingShops,
+    required this.totalShops,
+    required this.onToggle,
+  });
+
+  String _productNames() {
+    return combo.productIds.map((id) {
+      final p = kAllProducts.where((x) => x.id == id);
+      return p.isEmpty ? id : '${p.first.emoji} ${p.first.name}';
+    }).join(' + ');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final noShopSupports = totalShops > 0 && supportingShops == 0;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: active ? AppColors.primary.withAlpha(15) : AppColors.bgCard,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: active ? AppColors.primary.withAlpha(110) : AppColors.border,
+          width: active ? 1.5 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(combo.emoji, style: const TextStyle(fontSize: 24)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      combo.name,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      combo.description,
+                      style: const TextStyle(
+                          fontSize: 11, color: AppColors.textMuted, height: 1.3),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                value: active,
+                activeThumbColor: AppColors.primary,
+                onChanged: (_) => onToggle(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _productNames(),
+            style: const TextStyle(
+              fontSize: 11.5,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              _Chip('+${(combo.customerBoost * 100).round()}% Kunden',
+                  AppColors.accent),
+              _Chip('+${(combo.avgOrderBoost * 100).round()}% Bestellwert',
+                  AppColors.success),
+              _Chip('${_fmt.format(combo.dailyCost)} €/Tag', AppColors.warning),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(
+                noShopSupports
+                    ? Icons.warning_amber_rounded
+                    : Icons.storefront_rounded,
+                size: 14,
+                color: noShopSupports ? AppColors.warning : AppColors.textMuted,
+              ),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Text(
+                  noShopSupports
+                      ? 'Keine Filiale führt alle Produkte — wirkt noch nicht.'
+                      : 'Wirkt in $supportingShops/$totalShops Filialen',
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    color:
+                        noShopSupports ? AppColors.warning : AppColors.textMuted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

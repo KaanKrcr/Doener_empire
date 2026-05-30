@@ -12,6 +12,7 @@ import '../models/upgrade_model.dart';
 import '../models/difficulty_model.dart';
 import '../models/hr_manager_model.dart';
 import '../models/campaign_model.dart';
+import '../models/combo_model.dart';
 import '../core/constants.dart';
 import 'competitor_engine.dart';
 import 'corporate_engine.dart';
@@ -85,6 +86,10 @@ class GameEngine {
     // Dauerhafte Story-Kampagnen-Perks (konzernweit)
     final perks = aggregateCampaignPerks(state?.completedChapterIds ?? const []);
 
+    // Menü-Angebote/Kombos (nur wenn die Filiale die Produkte führt)
+    final comboBoost = _comboCustomerBoost(shop, state);
+    final comboAOV = _comboAvgOrderBoost(shop, state);
+
     double totalDemand = 0;
     double totalRevenue = 0;
     for (final sp in activeMenu) {
@@ -96,8 +101,9 @@ class GameEngine {
         difficulty: state?.difficulty ?? GameDifficulty.normal,
       );
       totalDemand += demand;
-      totalRevenue +=
-          demand * sp.price * (1.0 + campaignAOV + upgradeAOV + perks.avgOrderBoost);
+      totalRevenue += demand *
+          sp.price *
+          (1.0 + campaignAOV + upgradeAOV + perks.avgOrderBoost + comboAOV);
     }
     final avgDemand = totalDemand / activeMenu.length;
     final avgOrderValue = totalDemand > 0 ? totalRevenue / totalDemand : 0;
@@ -110,7 +116,7 @@ class GameEngine {
         timeMult *
         brandMult *
         compPressure *
-        (1.0 + campaignBoost + upgradeBoost + perks.customerBoost);
+        (1.0 + campaignBoost + upgradeBoost + perks.customerBoost + comboBoost);
     final actualCustomers = rawCustomers.clamp(0.0, capacity.toDouble());
 
     final actualRevenue =
@@ -399,12 +405,14 @@ class GameEngine {
         (stateWithComp.hrManager?.salaryPerDay ?? 0) * economicPressure;
     final globalUpgradeCost =
         globalUpgradeDailyCost(stateWithComp) * economicPressure;
+    final comboCost = activeComboDailyCost(stateWithComp) * economicPressure;
     final totalCosts = totalRent +
         totalSalaries +
         hrDailySalary +
         totalIngredients +
         totalDeliveryCommission +
-        globalUpgradeCost;
+        globalUpgradeCost +
+        comboCost;
 
     // Kreditraten abziehen
     double loanPayments = 0;
@@ -586,11 +594,12 @@ class GameEngine {
           calculateDailyCosts(shop, day: state.currentDay, state: state) /
               kDailyOpenHours;
     });
-    // Globale Upgrade-Kosten anteilig über den Tag verteilen
-    final globalCosts = globalUpgradeDailyCost(state) *
-        state.difficulty.modifiers.economicPressureMultiplier /
-        kDailyOpenHours;
-    return shopCosts + globalCosts;
+    // Globale Upgrade- + Kombo-Kosten anteilig über den Tag verteilen
+    final pressure = state.difficulty.modifiers.economicPressureMultiplier;
+    final globalCosts =
+        globalUpgradeDailyCost(state) * pressure / kDailyOpenHours;
+    final comboCosts = activeComboDailyCost(state) * pressure / kDailyOpenHours;
+    return shopCosts + globalCosts + comboCosts;
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -1151,6 +1160,60 @@ class GameEngine {
     return cost;
   }
 
+  // ── Menü-Angebote / Kombos ────────────────────────────────────────────────
+
+  /// Führt die Filiale alle Produkte eines Kombos (aktiv im Menü)?
+  static bool shopSupportsCombo(Shop shop, MenuCombo combo) {
+    final active =
+        shop.menu.where((p) => p.isActive).map((p) => p.productId).toSet();
+    return combo.productIds.every(active.contains);
+  }
+
+  /// Aktive Kombos, die in dieser Filiale auch wirklich greifen.
+  static List<MenuCombo> _effectiveCombos(Shop shop, GameState? state) {
+    if (state == null) return const [];
+    final out = <MenuCombo>[];
+    for (final id in state.activeComboIds) {
+      final c = comboById(id);
+      if (c != null && shopSupportsCombo(shop, c)) out.add(c);
+    }
+    return out;
+  }
+
+  static double _comboCustomerBoost(Shop shop, GameState? state) {
+    double b = 0;
+    for (final c in _effectiveCombos(shop, state)) {
+      b += c.customerBoost;
+    }
+    return b;
+  }
+
+  static double _comboAvgOrderBoost(Shop shop, GameState? state) {
+    double b = 0;
+    for (final c in _effectiveCombos(shop, state)) {
+      b += c.avgOrderBoost;
+    }
+    return b;
+  }
+
+  static double _comboReputationPerDay(Shop shop, GameState? state) {
+    double v = 0;
+    for (final c in _effectiveCombos(shop, state)) {
+      v += c.reputationPerDay;
+    }
+    return v;
+  }
+
+  /// Konzernweite Tagespauschale aller aktiven Kombos (einmalig).
+  static double activeComboDailyCost(GameState state) {
+    double cost = 0;
+    for (final id in state.activeComboIds) {
+      final c = comboById(id);
+      if (c != null) cost += c.dailyCost;
+    }
+    return cost;
+  }
+
   static double _upgradeReputationPerDay(Shop shop, [GameState? state]) {
     double v = 0;
     for (final id in _effectiveUpgradeIds(shop, state)) {
@@ -1348,6 +1411,9 @@ class GameEngine {
 
     // Permanente Upgrades (WLAN, Musik, etc.) — inkl. globale Konzern-Upgrades
     sumScore += _upgradeReputationPerDay(shop, state);
+
+    // Menü-Angebote/Kombos (nur wo unterstützt)
+    sumScore += _comboReputationPerDay(shop, state);
 
     if (n == 0) return shop.reputation;
     final delta = sumScore / n;

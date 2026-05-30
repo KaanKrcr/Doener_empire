@@ -582,6 +582,21 @@ class GameNotifier extends Notifier<GameState?> {
     _save();
   }
 
+  /// Menü-Angebot/Kombo konzernweit an-/abschalten.
+  void toggleCombo(String comboId) {
+    if (state == null) return;
+    final s = state!;
+    final active = List<String>.from(s.activeComboIds);
+    if (active.contains(comboId)) {
+      active.remove(comboId);
+    } else {
+      active.add(comboId);
+      SoundService.play(Sfx.purchase);
+    }
+    state = s.copyWith(activeComboIds: active);
+    _save();
+  }
+
   // ── Corporate: IPO / Facilities / M&A / Manager ─────────────────────────
 
   /// IPO durchführen — Spieler gibt Anteile ab für großen Cash-Schub.
