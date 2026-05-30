@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/theme.dart';
 import '../../core/constants.dart';
+import '../widgets/pressable.dart';
 import '../../models/competitor_model.dart';
 import '../../models/achievement_model.dart';
 import '../../models/city_model.dart';
@@ -68,7 +70,10 @@ class StatsScreen extends ConsumerWidget {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                child: _AchievementsCard(game: game),
+                child: Pressable(
+                  onTap: () => context.push('/achievements'),
+                  child: _AchievementsCard(game: game),
+                ),
               ),
             ),
 
@@ -368,6 +373,9 @@ class _AchievementsCard extends StatelessWidget {
                   fontWeight: FontWeight.w800,
                 ),
               ),
+              const SizedBox(width: 2),
+              const Icon(Icons.chevron_right_rounded,
+                  size: 18, color: AppColors.textMuted),
             ],
           ),
           const SizedBox(height: 10),
