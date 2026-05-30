@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme.dart';
+import '../../core/constants.dart';
 import '../../services/sound_service.dart';
 import '../../models/game_state.dart';
 import '../../models/campaign_model.dart';
@@ -123,6 +124,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final customersToday = GameEngine.totalCustomersToday(game);
     final activeChapter = ref.watch(activeChapterProvider);
     final chapterProgress = ref.watch(activeChapterProgressProvider);
+    final specialId = GameEngine.dailySpecialProductId(game.currentDay);
+    final specialProduct = kAllProducts.firstWhere(
+      (p) => p.id == specialId,
+      orElse: () => kAllProducts.first,
+    );
 
     // Daten aus History für Trend-Vergleiche
     final history = game.history;
@@ -200,6 +206,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   chapter: activeChapter,
                   progress: chapterProgress,
                   onTap: () => context.push('/campaign'),
+                ),
+              ),
+            ),
+
+            // ── Tagesspecial ────────────────────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                child: _DailySpecialBanner(
+                  emoji: specialProduct.emoji,
+                  name: specialProduct.name,
                 ),
               ),
             ),
@@ -1176,6 +1193,67 @@ class _CampaignBanner extends StatelessWidget {
                 color: AppColors.textMuted, size: 20),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _DailySpecialBanner extends StatelessWidget {
+  final String emoji;
+  final String name;
+  const _DailySpecialBanner({required this.emoji, required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.gold.withAlpha(36),
+            AppColors.tomato.withAlpha(26),
+          ],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.gold.withAlpha(70)),
+      ),
+      child: Row(
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 26)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('TAGESSPECIAL', style: AppText.label(color: AppColors.gold, size: 10)),
+                const SizedBox(height: 1),
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.display(size: 15, weight: FontWeight.w700),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.gold.withAlpha(40),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Text(
+              '+Nachfrage',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: AppColors.gold,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

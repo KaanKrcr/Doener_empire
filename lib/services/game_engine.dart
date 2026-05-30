@@ -90,16 +90,20 @@ class GameEngine {
     final comboBoost = _comboCustomerBoost(shop, state);
     final comboAOV = _comboAvgOrderBoost(shop, state);
 
+    // Tagesspecial: ein Produkt pro Tag mit erhöhter Nachfrage
+    final specialId = dailySpecialProductId(effectiveDay);
+
     double totalDemand = 0;
     double totalRevenue = 0;
     for (final sp in activeMenu) {
       final pd = _productData(sp.productId);
       if (pd == null) continue;
-      final demand = priceDemandFactor(
+      var demand = priceDemandFactor(
         price: sp.price,
         basePrice: pd.basePrice,
         difficulty: state?.difficulty ?? GameDifficulty.normal,
       );
+      if (sp.productId == specialId) demand *= kDailySpecialBoost;
       totalDemand += demand;
       totalRevenue += demand *
           sp.price *
@@ -251,6 +255,17 @@ class GameEngine {
     list.sort((a, b) => b.profit.compareTo(a.profit));
     return list;
   }
+
+  /// Das Produkt, das an einem bestimmten Tag „Tagesspecial" ist (rotiert
+  /// deterministisch). Filialen, die es im Menü führen, profitieren von
+  /// erhöhter Nachfrage auf dieses Gericht.
+  static String dailySpecialProductId(int day) {
+    if (kAllProducts.isEmpty) return '';
+    return kAllProducts[day % kAllProducts.length].id;
+  }
+
+  /// Nachfrage-Multiplikator für das Tagesspecial.
+  static const double kDailySpecialBoost = 1.6;
 
   // ──────────────────────────────────────────────────────────────────────────
   // ── Preiselastizität ─────────────────────────────────────────────────────
