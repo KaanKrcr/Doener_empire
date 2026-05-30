@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:fl_chart/fl_chart.dart';
 import '../../core/theme.dart';
 import '../../core/constants.dart';
 import '../../models/competitor_model.dart';
@@ -242,10 +243,6 @@ class _StockTab extends ConsumerWidget {
 
     // Public: Aktienkurs-Chart + Bewertung
     final history = game.stocks.priceHistory;
-    final maxP =
-        history.isEmpty ? 1.0 : history.reduce((a, b) => a > b ? a : b);
-    final minP =
-        history.isEmpty ? 0.0 : history.reduce((a, b) => a < b ? a : b);
 
     return ListView(
       padding: const EdgeInsets.all(20),
@@ -281,30 +278,8 @@ class _StockTab extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
               SizedBox(
-                height: 80,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    for (final p in history.length > 30
-                        ? history.sublist(history.length - 30)
-                        : history)
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 1),
-                          child: Container(
-                            height: maxP > minP
-                                ? ((p - minP) / (maxP - minP) * 60)
-                                    .clamp(2.0, 60.0)
-                                : 2,
-                            decoration: BoxDecoration(
-                              color: AppColors.bg,
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
+                height: 92,
+                child: _StockChart(history: history),
               ),
             ],
           ),
@@ -475,6 +450,74 @@ class _MetricRow extends StatelessWidget {
               fontSize: 14,
               fontWeight: FontWeight.w800,
               color: AppColors.textPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Aktienkurs-Chart (fl_chart) ─────────────────────────────────────────
+
+class _StockChart extends StatelessWidget {
+  final List<double> history;
+  const _StockChart({required this.history});
+
+  @override
+  Widget build(BuildContext context) {
+    final data =
+        history.length > 40 ? history.sublist(history.length - 40) : history;
+    if (data.length < 2) {
+      return const Center(
+        child: Text(
+          'Noch keine Kursdaten',
+          style: TextStyle(fontSize: 12, color: AppColors.bg),
+        ),
+      );
+    }
+
+    double maxP = data.reduce((a, b) => a > b ? a : b);
+    double minP = data.reduce((a, b) => a < b ? a : b);
+    if (maxP == minP) {
+      maxP += 1;
+      minP -= 1;
+    }
+    final pad = (maxP - minP) * 0.12;
+
+    final spots = [
+      for (var i = 0; i < data.length; i++) FlSpot(i.toDouble(), data[i]),
+    ];
+
+    return LineChart(
+      LineChartData(
+        gridData: const FlGridData(show: false),
+        titlesData: const FlTitlesData(show: false),
+        borderData: FlBorderData(show: false),
+        lineTouchData: const LineTouchData(enabled: false),
+        minX: 0,
+        maxX: (data.length - 1).toDouble(),
+        minY: minP - pad,
+        maxY: maxP + pad,
+        lineBarsData: [
+          LineChartBarData(
+            spots: spots,
+            isCurved: true,
+            curveSmoothness: 0.2,
+            color: AppColors.bg,
+            barWidth: 2.5,
+            isStrokeCapRound: true,
+            dotData: const FlDotData(show: false),
+            belowBarData: BarAreaData(
+              show: true,
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.bg.withValues(alpha: 0.30),
+                  AppColors.bg.withValues(alpha: 0.0),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
             ),
           ),
         ],
