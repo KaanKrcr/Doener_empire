@@ -581,6 +581,34 @@ const List<MarketingCampaign> kAllCampaigns = [
     reputationBoostPerDay: 0.03,
     risk: MarketingRisk.low,
   ),
+  MarketingCampaign(
+    id: 'happy_hour',
+    name: 'Happy Hour',
+    description:
+        'Rabatt zur Randzeit füllt den Laden — mehr Andrang, etwas weniger Marge.',
+    emoji: '⏰',
+    cost: 300,
+    durationDays: 5,
+    scope: MarketingScope.shop,
+    customerBoost: 0.20,
+    avgOrderValueMod: -0.08,
+    risk: MarketingRisk.low,
+  ),
+  MarketingCampaign(
+    id: 'gewinnspiel',
+    name: 'Gewinnspiel',
+    description:
+        'Verlosung eines Gratis-Döner-Jahres. Viral-Potenzial, gut für die Marke.',
+    emoji: '🎁',
+    cost: 2500,
+    durationDays: 10,
+    scope: MarketingScope.shop,
+    customerBoost: 0.22,
+    reputationBoostPerDay: 0.03,
+    brandAwarenessDelta: 0.4,
+    viralChance: 0.20,
+    risk: MarketingRisk.medium,
+  ),
 ];
 
 // ─── Stadtweite Marketing-Kampagnen ──────────────────────────────────────────
