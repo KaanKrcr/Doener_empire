@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme.dart';
+import '../../services/sound_service.dart';
 import '../../models/campaign_model.dart';
 import '../../models/game_state.dart';
 import '../../providers/game_provider.dart';
@@ -532,6 +534,8 @@ class CampaignChapterDialog extends StatelessWidget {
   const CampaignChapterDialog({super.key, required this.chapter});
 
   static Future<void> show(BuildContext context, CampaignChapter chapter) {
+    HapticFeedback.heavyImpact();
+    SoundService.play(Sfx.reward);
     return showDialog(
       context: context,
       barrierDismissible: false,

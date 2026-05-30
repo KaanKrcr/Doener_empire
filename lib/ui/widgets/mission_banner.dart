@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme.dart';
 import '../../models/mission_model.dart';
 import '../../providers/game_provider.dart';
 import '../../services/mission_engine.dart';
+import '../../services/sound_service.dart';
 
 final _fmtInt = NumberFormat('#,##0', 'de_DE');
 
@@ -211,6 +213,8 @@ class MissionCompletedDialog extends StatelessWidget {
   const MissionCompletedDialog({super.key, required this.mission});
 
   static Future<void> show(BuildContext context, Mission mission) {
+    HapticFeedback.heavyImpact();
+    SoundService.play(Sfx.reward);
     return showGeneralDialog(
       context: context,
       barrierDismissible: true,

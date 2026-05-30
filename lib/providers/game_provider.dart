@@ -23,6 +23,7 @@ import '../services/game_engine.dart';
 import '../services/hr_engine.dart';
 import '../services/mission_engine.dart';
 import '../services/campaign_engine.dart';
+import '../services/sound_service.dart';
 import '../services/save_service.dart';
 import '../services/corporate_engine.dart';
 import '../core/constants.dart';
@@ -381,6 +382,7 @@ class GameNotifier extends Notifier<GameState?> {
   void openShop(Shop shop) {
     if (state == null) return;
     state = GameEngine.openShop(state!, shop);
+    SoundService.play(Sfx.purchase);
     _completeTutorialStep(TutorialStep.openFirstShop, saveAfterUpdate: false);
     _checkMissions();
     _save();
@@ -389,6 +391,7 @@ class GameNotifier extends Notifier<GameState?> {
   void buyEquipment(String shopId, EquipmentData equipment) {
     if (state == null) return;
     state = GameEngine.buyEquipment(state!, shopId, equipment);
+    SoundService.play(Sfx.purchase);
     _checkMissions();
     _save();
   }
@@ -396,6 +399,7 @@ class GameNotifier extends Notifier<GameState?> {
   void hireEmployee(String shopId, Employee employee) {
     if (state == null) return;
     state = GameEngine.hireEmployee(state!, shopId, employee);
+    SoundService.play(Sfx.purchase);
     _completeTutorialStep(TutorialStep.hireFirstEmployee,
         saveAfterUpdate: false);
     _checkMissions();
@@ -574,6 +578,7 @@ class GameNotifier extends Notifier<GameState?> {
   void buyUpgrade(String shopId, UpgradeData upgrade) {
     if (state == null) return;
     state = GameEngine.buyUpgrade(state!, shopId, upgrade);
+    SoundService.play(Sfx.purchase);
     _save();
   }
 

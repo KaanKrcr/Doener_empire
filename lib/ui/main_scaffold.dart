@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../core/theme.dart';
 import '../models/tutorial_model.dart';
 import '../providers/game_provider.dart';
+import '../services/sound_service.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/cities_screen.dart';
 import 'screens/stats_screen.dart';
@@ -155,6 +156,7 @@ class MainScaffold extends ConsumerWidget {
         highlightIndex: tutorialStep?.targetTabIndex,
         onTap: (i) {
           HapticFeedback.selectionClick();
+          SoundService.play(Sfx.tap);
           ref.read(navIndexProvider.notifier).state = i;
         },
       ),
@@ -247,12 +249,7 @@ class _GameMenuSheet extends StatelessWidget {
               },
             ),
             const Divider(height: 18, color: AppColors.border),
-            const ListTile(
-              enabled: false,
-              leading: Icon(Icons.volume_up_rounded),
-              title: Text('Sound an/aus'),
-              subtitle: Text('Noch nicht implementiert (Platzhalter).'),
-            ),
+            const _SoundToggleTile(),
             const ListTile(
               enabled: false,
               leading: Icon(Icons.language_rounded),
@@ -262,6 +259,35 @@ class _GameMenuSheet extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _SoundToggleTile extends StatefulWidget {
+  const _SoundToggleTile();
+
+  @override
+  State<_SoundToggleTile> createState() => _SoundToggleTileState();
+}
+
+class _SoundToggleTileState extends State<_SoundToggleTile> {
+  @override
+  Widget build(BuildContext context) {
+    final on = SoundService.enabled;
+    return SwitchListTile(
+      value: on,
+      activeThumbColor: AppColors.primary,
+      secondary: Icon(
+        on ? Icons.volume_up_rounded : Icons.volume_off_rounded,
+        color: on ? AppColors.primary : AppColors.textMuted,
+      ),
+      title: const Text('Sound-Effekte'),
+      subtitle: Text(on ? 'An' : 'Aus'),
+      onChanged: (v) async {
+        await SoundService.setEnabled(v);
+        if (v) SoundService.play(Sfx.tap);
+        if (mounted) setState(() {});
+      },
     );
   }
 }
