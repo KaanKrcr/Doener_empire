@@ -43,6 +43,8 @@ class DayEndResult {
   final CampaignChapter? chapterCompleted;
   final WeeklyReport? weeklyReport;
   final double taxPaid;
+  final bool challengeMet;
+  final double challengeReward;
 
   DayEndResult({
     required this.day,
@@ -57,6 +59,8 @@ class DayEndResult {
     this.chapterCompleted,
     this.weeklyReport,
     this.taxPaid = 0,
+    this.challengeMet = false,
+    this.challengeReward = 0,
   });
 }
 
@@ -259,6 +263,34 @@ class GameNotifier extends Notifier<GameState?> {
       }
     }
 
+    // Daily Challenge auswerten
+    bool challengeMet = false;
+    double challengeReward = 0;
+    if (oldState.shops.isNotEmpty) {
+      final challenge = GameEngine.dailyChallenge(today);
+      final yesterday =
+          oldState.history.isNotEmpty ? oldState.history.last : null;
+      final anyLoss = oldState.shops.any((s) {
+        final r = GameEngine.calculateDailyRevenue(s,
+            day: today, state: oldState);
+        final c =
+            GameEngine.calculateDailyCosts(s, day: today, state: oldState);
+        return r - c < 0;
+      });
+      challengeMet = GameEngine.isChallengeMet(
+        challenge,
+        customersToday: preview.customers,
+        revenueToday: preview.revenue,
+        profitToday: preview.revenue - preview.costs,
+        yesterday: yesterday,
+        anyShopLoss: anyLoss,
+      );
+      if (challengeMet) {
+        challengeReward = challenge.reward;
+        newState = newState.copyWith(cash: newState.cash + challengeReward);
+      }
+    }
+
     state = newState;
     lastDayResult = DayEndResult(
       day: today,
@@ -273,6 +305,8 @@ class GameNotifier extends Notifier<GameState?> {
       chapterCompleted: chapterCompleted,
       weeklyReport: weeklyReport,
       taxPaid: taxPaid,
+      challengeMet: challengeMet,
+      challengeReward: challengeReward,
     );
     _completeTutorialStep(TutorialStep.endFirstDay, saveAfterUpdate: false);
     _save();

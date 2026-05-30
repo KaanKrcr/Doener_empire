@@ -271,6 +271,37 @@ class GameEngine {
   /// Steuersatz auf den Monatsgewinn (alle 30 Tage fällig).
   static const double kMonthlyTaxRate = 0.12;
 
+  // ── Daily Challenges ──────────────────────────────────────────────────────
+
+  /// Die Tagesaufgabe für einen Tag (deterministisch, rotiert).
+  static DailyChallenge dailyChallenge(int day) {
+    const types = ChallengeType.values;
+    final type = types[day % types.length];
+    final reward = 500.0 + (day % 4) * 250.0; // 500..1250
+    return DailyChallenge(type: type, reward: reward);
+  }
+
+  /// Prüft, ob die Tagesaufgabe erfüllt wurde.
+  static bool isChallengeMet(
+    DailyChallenge c, {
+    required int customersToday,
+    required double revenueToday,
+    required double profitToday,
+    required DailyRecord? yesterday,
+    required bool anyShopLoss,
+  }) {
+    switch (c.type) {
+      case ChallengeType.moreCustomers:
+        return yesterday != null && customersToday > yesterday.customers;
+      case ChallengeType.moreRevenue:
+        return yesterday != null && revenueToday > yesterday.revenue;
+      case ChallengeType.moreProfit:
+        return yesterday != null && profitToday > yesterday.operatingProfit;
+      case ChallengeType.allProfitable:
+        return !anyShopLoss;
+    }
+  }
+
   /// Fällige Steuer auf den operativen Gewinn der letzten ~30 Tage.
   /// Nur auf positiven Gewinn — bei Verlust 0. Rein aus der History abgeleitet.
   static double monthlyTaxDue(GameState state) {
@@ -1723,6 +1754,29 @@ class WeeklyReport {
     required this.bestDayRevenue,
     required this.profitGrowthPct,
   });
+}
+
+enum ChallengeType { moreCustomers, moreRevenue, moreProfit, allProfitable }
+
+/// Eine Tagesaufgabe (Daily Challenge).
+class DailyChallenge {
+  final ChallengeType type;
+  final double reward;
+  const DailyChallenge({required this.type, required this.reward});
+
+  String get emoji => switch (type) {
+        ChallengeType.moreCustomers => '👥',
+        ChallengeType.moreRevenue => '💰',
+        ChallengeType.moreProfit => '📈',
+        ChallengeType.allProfitable => '✅',
+      };
+
+  String get label => switch (type) {
+        ChallengeType.moreCustomers => 'Bediene heute mehr Kunden als gestern',
+        ChallengeType.moreRevenue => 'Mach heute mehr Umsatz als gestern',
+        ChallengeType.moreProfit => 'Mach heute mehr Gewinn als gestern',
+        ChallengeType.allProfitable => 'Halte heute alle Filialen profitabel',
+      };
 }
 
 /// Unternehmens-Gesundheit (0..100) mit Kurz-Label.
