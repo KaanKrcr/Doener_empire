@@ -322,6 +322,56 @@ class GameEngine {
     return list;
   }
 
+  /// Unternehmens-Gesundheit (0..100) aus Liquidität, Profitabilität,
+  /// Verschuldung und Reputation. Rein abgeleitet.
+  static HealthScore healthScore(GameState state) {
+    if (state.shops.isEmpty) {
+      return const HealthScore(score: 50, label: 'Neu gegründet');
+    }
+    double dailyCost = 0, dailyRev = 0;
+    for (final shop in state.shops) {
+      dailyRev +=
+          calculateDailyRevenue(shop, day: state.currentDay, state: state);
+      dailyCost +=
+          calculateDailyCosts(shop, day: state.currentDay, state: state);
+    }
+    final dailyProfit = dailyRev - dailyCost;
+
+    // Liquidität: Reichweite der Kasse in Tagen (0..14 → 0..1)
+    final runway = dailyCost > 0 ? state.cash / dailyCost : 30.0;
+    final liq = (runway / 14).clamp(0.0, 1.0);
+
+    // Profitabilität: Tagesmarge (−10 % → 0, +30 % → 1)
+    final margin = dailyRev > 0 ? dailyProfit / dailyRev : 0.0;
+    final profScore = ((margin + 0.10) / 0.40).clamp(0.0, 1.0);
+
+    // Verschuldung: Schulden im Verhältnis zur Kasse (weniger = besser)
+    final debt = state.activeLoansTotal;
+    final debtScore = state.cash > 0
+        ? (1 - (debt / (state.cash + debt)).clamp(0.0, 1.0))
+        : 0.0;
+
+    // Reputation
+    final avgRep = state.shops.fold<double>(0, (s, sh) => s + sh.reputation) /
+        state.shops.length;
+    final repScore = (avgRep / 5).clamp(0.0, 1.0);
+
+    final score =
+        (liq * 0.30 + profScore * 0.35 + debtScore * 0.15 + repScore * 0.20) *
+            100;
+
+    final label = score >= 80
+        ? 'Exzellent'
+        : score >= 62
+            ? 'Stark'
+            : score >= 45
+                ? 'Solide'
+                : score >= 28
+                    ? 'Angeschlagen'
+                    : 'Kritisch';
+    return HealthScore(score: score.clamp(0, 100), label: label);
+  }
+
   /// Aktuelle Hinweise/Warnungen für den Spieler (verlustreiche Filialen,
   /// schlechter Ruf, niedrige Liquidität). Rein abgeleitet — keine Seiteneffekte.
   static List<ShopAlert> shopAlerts(GameState state) {
@@ -1673,6 +1723,13 @@ class WeeklyReport {
     required this.bestDayRevenue,
     required this.profitGrowthPct,
   });
+}
+
+/// Unternehmens-Gesundheit (0..100) mit Kurz-Label.
+class HealthScore {
+  final double score;
+  final String label;
+  const HealthScore({required this.score, required this.label});
 }
 
 enum AlertLevel { warn, danger }

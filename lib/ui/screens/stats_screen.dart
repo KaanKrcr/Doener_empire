@@ -57,6 +57,14 @@ class StatsScreen extends ConsumerWidget {
               ),
             ),
 
+            // Unternehmens-Gesundheit
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                child: _HealthCard(health: GameEngine.healthScore(game)),
+              ),
+            ),
+
             // Tageszeit-Heatmap (für aktuell besten Shop)
             if (game.shops.isNotEmpty)
               SliverToBoxAdapter(
@@ -97,6 +105,88 @@ class StatsScreen extends ConsumerWidget {
             const SliverToBoxAdapter(child: SizedBox(height: 32)),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _HealthCard extends StatelessWidget {
+  final HealthScore health;
+  const _HealthCard({required this.health});
+
+  Color get _color {
+    final s = health.score;
+    if (s >= 80) return AppColors.gold;
+    if (s >= 62) return AppColors.success;
+    if (s >= 45) return AppColors.secondary;
+    if (s >= 28) return AppColors.warning;
+    return AppColors.danger;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('🩺', style: TextStyle(fontSize: 16)),
+              const SizedBox(width: 6),
+              const Text(
+                'UNTERNEHMENS-GESUNDHEIT',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textMuted,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                health.label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: _color,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                health.score.toStringAsFixed(0),
+                style: AppText.display(
+                    size: 34, weight: FontWeight.w800, color: _color),
+              ),
+              const Padding(
+                padding: EdgeInsets.only(bottom: 6, left: 2),
+                child: Text('/ 100',
+                    style:
+                        TextStyle(fontSize: 13, color: AppColors.textMuted)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              value: (health.score / 100).clamp(0.0, 1.0),
+              minHeight: 8,
+              backgroundColor: AppColors.bg.withValues(alpha: 0.5),
+              valueColor: AlwaysStoppedAnimation(_color),
+            ),
+          ),
+        ],
       ),
     );
   }
