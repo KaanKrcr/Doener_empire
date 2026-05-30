@@ -279,6 +279,34 @@ const List<UpgradeData> kGlobalUpgrades = [
     customerBoost: 0.08,
     brandPerDay: 0.04,
   ),
+  UpgradeData(
+    id: 'social_media_team',
+    name: 'Social-Media-Team',
+    description:
+        'Eigenes Team für TikTok, Instagram & Co. Hält die Marke landesweit präsent.',
+    emoji: '📣',
+    category: UpgradeCategory.service,
+    scope: UpgradeScope.global,
+    installCost: 14000,
+    monthlyCost: 700,
+    customerBoost: 0.07,
+    reputationPerDay: 0.004,
+    brandPerDay: 0.06,
+  ),
+  UpgradeData(
+    id: 'bio_zertifikat',
+    name: 'Bio-Zertifizierung',
+    description:
+        'Konzernweites Bio-Siegel. Premium-Image, höherer Bestellwert — aber laufende Audit-Kosten.',
+    emoji: '🌿',
+    category: UpgradeCategory.hygiene,
+    scope: UpgradeScope.global,
+    installCost: 10000,
+    monthlyCost: 450,
+    reputationPerDay: 0.012,
+    avgOrderValueBoost: 0.05,
+    brandPerDay: 0.02,
+  ),
 ];
 
 const List<UpgradeData> kAllUpgrades = [...kShopUpgrades, ...kGlobalUpgrades];
