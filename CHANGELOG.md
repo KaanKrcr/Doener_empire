@@ -1,5 +1,49 @@
 # Changelog
 
+## 1.1.0-internal - 2026-05-30
+
+### Optik & Game-Feel
+
+- Gebündelte Schriften (Baloo 2 / Inter) + app-weite Typografie
+- Animationen (flutter_animate), Tap-Feedback (Pressable), Seiten-Übergänge
+- Tagesabschluss-Konfetti, Splash-Politur
+- Sound-Effekte (Kenney CC0) + Haptik, Mute-Schalter im Spielmenü
+- Aktienkurs-Chart auf fl_chart umgestellt
+
+### Story & Progression
+
+- Story-Kampagne: 8 Kapitel mit Zielen, Cash-Belohnungen und permanenten
+  Konzern-Perks; Perk-Übersicht; Kapitel-Abschluss-Feier
+- Trophäen-Galerie (eigener Screen)
+- Filial-Branding / Skins über Trophäen freischaltbar
+- Start-Szenarien (Klassisch, Schuldenstart, Hardcore, High-Roller)
+
+### Gameplay-Tiefe
+
+- Kombo-Menüs / Mittagsangebote (an Produkt-/Equipment-Progression gekoppelt)
+- Produkt-Qualitätsstufen (Günstig/Standard/Premium)
+- Tagesspecial (täglich rotierendes Gericht mit Bonus-Nachfrage)
+- Krisen-Events (Küchenbrand, Shitstorm, Einbruch, Stromausfall, u. a.)
+- Quartalssteuer (12 % auf den Monatsgewinn)
+
+### Analyse & Komfort
+
+- Produkt-Profitabilität + Filial-Ranking (Finanzen)
+- Dashboard-Hinweise (Verluste/Ruf/Liquidität)
+- Unternehmens-Gesundheit (Health-Score) im Imperium-Tab
+- Wochen-Report alle 7 Tage
+- Empire-Share-Card (teilbare Zusammenfassung)
+
+### Behoben
+
+- Neues-Spiel zeigte veraltetes Startkapital (50 Mio. statt echtem Wert)
+
+### Geprüft
+
+- `flutter analyze` ohne Findings
+- `flutter test`: 67 Tests erfolgreich
+- `flutter build apk --debug` erfolgreich
+
 ## 1.0.0-internal.1 - 2026-05-25
 
 ### Hinzugefügt
