@@ -267,6 +267,18 @@ class GameEngine {
   /// Nachfrage-Multiplikator für das Tagesspecial.
   static const double kDailySpecialBoost = 1.6;
 
+  /// Filialen nach geschätztem Tagesgewinn (Umsatz − Kosten), absteigend.
+  static List<({Shop shop, double profit})> shopsByProfit(GameState state) {
+    final list = state.shops.map((s) {
+      final rev =
+          calculateDailyRevenue(s, day: state.currentDay, state: state);
+      final cost = calculateDailyCosts(s, day: state.currentDay, state: state);
+      return (shop: s, profit: rev - cost);
+    }).toList();
+    list.sort((a, b) => b.profit.compareTo(a.profit));
+    return list;
+  }
+
   /// Aktuelle Hinweise/Warnungen für den Spieler (verlustreiche Filialen,
   /// schlechter Ruf, niedrige Liquidität). Rein abgeleitet — keine Seiteneffekte.
   static List<ShopAlert> shopAlerts(GameState state) {

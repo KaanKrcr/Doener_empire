@@ -6,6 +6,7 @@ import '../../core/theme.dart';
 import '../../core/constants.dart';
 import '../../models/game_state.dart';
 import '../../models/product_model.dart';
+import '../../models/shop_model.dart';
 import '../../providers/game_provider.dart';
 import '../../services/game_engine.dart';
 
@@ -141,6 +142,14 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
             icon: Icons.account_balance_outlined,
           ),
           const SizedBox(height: 20),
+
+          // Filial-Ranking
+          if (game.shops.length >= 2) ...[
+            const _Section('FILIAL-RANKING (heute, geschätzt)'),
+            const SizedBox(height: 8),
+            _ShopRankingCard(ranking: GameEngine.shopsByProfit(game)),
+            const SizedBox(height: 20),
+          ],
 
           // Filialen
           const _Section('FILIALEN'),
@@ -752,6 +761,91 @@ class _CostBreakdownCard extends StatelessWidget {
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       color: it.$3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ShopRankingCard extends StatelessWidget {
+  final List<({Shop shop, double profit})> ranking;
+  const _ShopRankingCard({required this.ranking});
+
+  @override
+  Widget build(BuildContext context) {
+    final maxAbs = ranking.fold<double>(
+        1, (m, e) => e.profit.abs() > m ? e.profit.abs() : m);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < ranking.length; i++)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 7),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      SizedBox(
+                        width: 18,
+                        child: Text(
+                          '${i + 1}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          ranking[i].shop.displayName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '${ranking[i].profit >= 0 ? "+" : ""}${_fmt.format(ranking[i].profit)} €',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: ranking[i].profit >= 0
+                              ? AppColors.success
+                              : AppColors.danger,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 26),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: (ranking[i].profit.abs() / maxAbs).clamp(0.0, 1.0),
+                        minHeight: 5,
+                        backgroundColor: AppColors.bg.withValues(alpha: 0.5),
+                        color: ranking[i].profit >= 0
+                            ? AppColors.success
+                            : AppColors.danger,
+                      ),
                     ),
                   ),
                 ],
