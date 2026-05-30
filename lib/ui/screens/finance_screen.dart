@@ -3,8 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../core/theme.dart';
+import '../../core/constants.dart';
 import '../../models/game_state.dart';
+import '../../models/product_model.dart';
 import '../../providers/game_provider.dart';
+import '../../services/game_engine.dart';
 
 final _fmt = NumberFormat('#,##0', 'de_DE');
 
@@ -98,6 +101,16 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
               history: game.history.length > 7
                   ? game.history.sublist(game.history.length - 7)
                   : game.history,
+            ),
+            const SizedBox(height: 20),
+          ],
+
+          // Produkt-Profitabilität
+          if (game.shops.isNotEmpty) ...[
+            const _Section('PRODUKT-PROFITABILITÄT (heute, geschätzt)'),
+            const SizedBox(height: 8),
+            _ProductProfitCard(
+              products: GameEngine.productProfitBreakdown(game),
             ),
             const SizedBox(height: 20),
           ],
@@ -744,6 +757,148 @@ class _CostBreakdownCard extends StatelessWidget {
                 ],
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProductProfitCard extends StatelessWidget {
+  final List<ProductProfit> products;
+  const _ProductProfitCard({required this.products});
+
+  @override
+  Widget build(BuildContext context) {
+    if (products.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.bgCard,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: const Text(
+          'Noch keine Verkäufe heute. Sobald Kunden kommen, siehst du hier, '
+          'welches Gericht am meisten Gewinn bringt.',
+          style: TextStyle(fontSize: 12.5, color: AppColors.textMuted, height: 1.4),
+        ),
+      );
+    }
+
+    final maxProfit = products.fold<double>(
+        0, (m, p) => p.profit > m ? p.profit : m);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < products.length; i++)
+            _ProductProfitRow(
+              rank: i + 1,
+              data: products[i],
+              maxProfit: maxProfit,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProductProfitRow extends StatelessWidget {
+  final int rank;
+  final ProductProfit data;
+  final double maxProfit;
+  const _ProductProfitRow({
+    required this.rank,
+    required this.data,
+    required this.maxProfit,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final pd = kAllProducts.firstWhere(
+      (p) => p.id == data.productId,
+      orElse: () => const ProductData(
+        id: '?',
+        name: 'Produkt',
+        emoji: '🍽️',
+        basePrice: 0,
+        ingredientCostPerUnit: 0,
+        category: ProductCategory.beilage,
+      ),
+    );
+    final barFrac = maxProfit > 0 ? (data.profit / maxProfit).clamp(0.0, 1.0) : 0.0;
+    final marginPct = (data.margin * 100).round();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              SizedBox(
+                width: 18,
+                child: Text(
+                  '$rank',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ),
+              Text(pd.emoji, style: const TextStyle(fontSize: 16)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  pd.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              Text(
+                '+${_fmt.format(data.profit)} €',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.success,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          Row(
+            children: [
+              const SizedBox(width: 26),
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: barFrac,
+                    minHeight: 5,
+                    backgroundColor: AppColors.bg.withValues(alpha: 0.5),
+                    color: AppColors.gold,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '${data.units.round()} Stk · $marginPct% Marge',
+                style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
+              ),
+            ],
+          ),
         ],
       ),
     );

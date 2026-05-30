@@ -198,6 +198,54 @@ class GameEngine {
             calculateDailyCustomers(shop, day: state.currentDay, state: state));
   }
 
+  /// Konzernweite Produkt-Profitabilität (Schätzung auf Basis des aktuellen
+  /// Nachfrage-Modells). Verteilt die Tageskunden je Shop anteilig nach der
+  /// Preis-Nachfrage-Gewichtung auf die aktiven Produkte und summiert über
+  /// alle Filialen. Zutaten-Ersparnisse wirken gleichmäßig und ändern das
+  /// Ranking nicht, daher hier mit Brutto-Zutatenkosten gerechnet.
+  static List<ProductProfit> productProfitBreakdown(GameState state) {
+    final agg = <String, ProductProfit>{};
+    for (final shop in state.shops) {
+      final stats =
+          calculateShopStats(shop, day: state.currentDay, state: state);
+      final customers = stats.actualCustomers;
+      if (customers <= 0) continue;
+
+      final activeMenu = shop.menu.where((p) => p.isActive).toList();
+      final weights = <String, double>{};
+      double totalW = 0;
+      for (final sp in activeMenu) {
+        final pd = _productData(sp.productId);
+        if (pd == null) continue;
+        final w = priceDemandFactor(
+          price: sp.price,
+          basePrice: pd.basePrice,
+          difficulty: state.difficulty,
+        );
+        weights[sp.productId] = w;
+        totalW += w;
+      }
+      if (totalW <= 0) continue;
+
+      for (final sp in activeMenu) {
+        final pd = _productData(sp.productId);
+        if (pd == null) continue;
+        final w = weights[sp.productId] ?? 0;
+        final units = customers * (w / totalW);
+        final revenue = units * sp.price;
+        final ingredientCost = units * pd.ingredientCostPerUnit;
+        final entry = agg.putIfAbsent(
+            sp.productId, () => ProductProfit(productId: sp.productId));
+        entry.units += units;
+        entry.revenue += revenue;
+        entry.ingredientCost += ingredientCost;
+      }
+    }
+    final list = agg.values.toList();
+    list.sort((a, b) => b.profit.compareTo(a.profit));
+    return list;
+  }
+
   // ──────────────────────────────────────────────────────────────────────────
   // ── Preiselastizität ─────────────────────────────────────────────────────
   // ──────────────────────────────────────────────────────────────────────────
@@ -1378,4 +1426,22 @@ class ShopCostBreakdown {
 
   double get total =>
       rent + salaries + ingredients + upgrades + deliveryCommission;
+}
+
+/// Geschätzte Tages-Profitabilität eines Produkts über alle Filialen.
+class ProductProfit {
+  final String productId;
+  double units;
+  double revenue;
+  double ingredientCost;
+
+  ProductProfit({
+    required this.productId,
+    this.units = 0,
+    this.revenue = 0,
+    this.ingredientCost = 0,
+  });
+
+  double get profit => revenue - ingredientCost;
+  double get margin => revenue > 0 ? profit / revenue : 0;
 }
