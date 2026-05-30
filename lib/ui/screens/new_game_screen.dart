@@ -1,8 +1,10 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import '../../models/difficulty_model.dart';
 import '../../core/theme.dart';
+import '../../core/constants.dart';
 import '../../providers/game_provider.dart';
 
 class NewGameScreen extends ConsumerStatefulWidget {
@@ -200,14 +202,15 @@ class _NewGameScreenState extends ConsumerState<NewGameScreen> {
                           color: AppColors.gold),
                     ),
                     const SizedBox(width: 16),
-                    const Column(
+                    Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Startkapital',
+                        const Text('Startkapital',
                             style: TextStyle(
                                 fontSize: 12, color: AppColors.textMuted)),
-                        Text('50.000.000 €',
-                            style: TextStyle(
+                        Text(
+                            '${NumberFormat('#,##0', 'de_DE').format(kStartingCash)} €',
+                            style: const TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w800,
                                 color: AppColors.gold)),
