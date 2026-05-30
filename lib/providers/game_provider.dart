@@ -77,11 +77,13 @@ class GameNotifier extends Notifier<GameState?> {
     String founderName, {
     GameDifficulty difficulty = GameDifficulty.normal,
     bool tutorialEnabled = true,
+    double? startCash,
+    double startingLoanAmount = 0,
   }) async {
     state = GameState.initial(
       companyName: companyName,
       founderName: founderName,
-      startCash: kStartingCash,
+      startCash: startCash ?? kStartingCash,
       difficulty: difficulty,
       tutorialEnabled: tutorialEnabled,
     );
@@ -92,6 +94,17 @@ class GameNotifier extends Notifier<GameState?> {
       employeePool: _generateEmployeePool(state!),
       lastEmployeePoolDay: 1,
     );
+    // Szenario-Startkredit (z.B. „Schuldenstart")
+    if (startingLoanAmount > 0) {
+      final loan = Loan(
+        id: 'start_loan',
+        amount: startingLoanAmount,
+        interestRate: 0.08,
+        durationDays: 180,
+        dayTaken: 1,
+      );
+      state = state!.copyWith(loans: [loan]);
+    }
     await SaveService.save(state!);
     _startTickTimer();
   }

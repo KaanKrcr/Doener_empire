@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../models/difficulty_model.dart';
+import '../../models/scenario_model.dart';
 import '../../core/theme.dart';
-import '../../core/constants.dart';
 import '../../providers/game_provider.dart';
 
 class NewGameScreen extends ConsumerStatefulWidget {
@@ -20,6 +20,7 @@ class _NewGameScreenState extends ConsumerState<NewGameScreen> {
   final _companyCtrl = TextEditingController();
   GameDifficulty _selectedDifficulty = GameDifficulty.normal;
   bool _tutorialEnabled = true;
+  Scenario _scenario = kScenarios.first;
   bool _loading = false;
 
   @override
@@ -37,6 +38,8 @@ class _NewGameScreenState extends ConsumerState<NewGameScreen> {
           _founderCtrl.text.trim(),
           difficulty: _selectedDifficulty,
           tutorialEnabled: _tutorialEnabled,
+          startCash: _scenario.startCash,
+          startingLoanAmount: _scenario.startingLoan,
         );
     if (mounted) context.go('/game');
   }
@@ -78,6 +81,29 @@ class _NewGameScreenState extends ConsumerState<NewGameScreen> {
                 ),
               ),
               const SizedBox(height: 40),
+
+              const _SectionLabel('Szenario'),
+              const SizedBox(height: 8),
+              const Text(
+                'Wähle deine Ausgangslage. Szenarien setzen Startkapital, '
+                'Schwierigkeit und Tutorial.',
+                style: TextStyle(
+                    fontSize: 12, color: AppColors.textMuted, height: 1.4),
+              ),
+              const SizedBox(height: 12),
+              for (final scenario in kScenarios) ...[
+                _ScenarioTile(
+                  scenario: scenario,
+                  selected: _scenario.id == scenario.id,
+                  onTap: () => setState(() {
+                    _scenario = scenario;
+                    _selectedDifficulty = scenario.difficulty;
+                    _tutorialEnabled = scenario.tutorialEnabled;
+                  }),
+                ),
+                const SizedBox(height: 10),
+              ],
+              const SizedBox(height: 30),
 
               const _SectionLabel('Dein Name'),
               const SizedBox(height: 8),
@@ -209,11 +235,17 @@ class _NewGameScreenState extends ConsumerState<NewGameScreen> {
                             style: TextStyle(
                                 fontSize: 12, color: AppColors.textMuted)),
                         Text(
-                            '${NumberFormat('#,##0', 'de_DE').format(kStartingCash)} €',
+                            '${NumberFormat('#,##0', 'de_DE').format(_scenario.startCash)} €',
                             style: const TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w800,
                                 color: AppColors.gold)),
+                        if (_scenario.startingLoan > 0)
+                          Text(
+                            'inkl. ${NumberFormat('#,##0', 'de_DE').format(_scenario.startingLoan)} € Startkredit',
+                            style: const TextStyle(
+                                fontSize: 11, color: AppColors.danger),
+                          ),
                       ],
                     ),
                   ],
@@ -291,6 +323,81 @@ class _SectionLabel extends StatelessWidget {
         fontWeight: FontWeight.w700,
         color: AppColors.textSecondary,
         letterSpacing: 0.5,
+      ),
+    );
+  }
+}
+
+class _ScenarioTile extends StatelessWidget {
+  final Scenario scenario;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ScenarioTile({
+    required this.scenario,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppColors.primary.withAlpha((0.12 * 255).round())
+              : AppColors.bgCard,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected ? AppColors.primary : AppColors.border,
+            width: selected ? 1.4 : 1.0,
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(scenario.emoji, style: const TextStyle(fontSize: 24)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    scenario.name,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: selected
+                          ? AppColors.textPrimary
+                          : AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    scenario.description,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textMuted,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(
+              selected
+                  ? Icons.radio_button_checked
+                  : Icons.radio_button_unchecked,
+              color: selected ? AppColors.primary : AppColors.textMuted,
+              size: 20,
+            ),
+          ],
+        ),
       ),
     );
   }
