@@ -248,25 +248,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
             ),
 
-            // ── Tagesspecial ────────────────────────────────────────────
+            // ── Heute: Tagesspecial + Tagesaufgabe ──────────────────────
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                child: _DailySpecialBanner(
-                  emoji: specialProduct.emoji,
-                  name: specialProduct.name,
-                ),
-              ),
-            ),
-
-            // ── Daily Challenge ─────────────────────────────────────────
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-                child: _DailyChallengeBanner(
-                  emoji: challenge.emoji,
-                  label: challenge.label,
-                  reward: challenge.reward,
+                child: _TodayCard(
+                  specialEmoji: specialProduct.emoji,
+                  specialName: specialProduct.name,
+                  challengeEmoji: challenge.emoji,
+                  challengeLabel: challenge.label,
+                  challengeReward: challenge.reward,
                 ),
               ),
             ),
@@ -1334,65 +1325,50 @@ class _AlertsCard extends StatelessWidget {
   }
 }
 
-class _DailyChallengeBanner extends StatelessWidget {
-  final String emoji;
-  final String label;
-  final double reward;
-  const _DailyChallengeBanner({
-    required this.emoji,
-    required this.label,
-    required this.reward,
+/// Kompakte „Heute"-Karte: Tagesspecial + Tagesaufgabe in einer Karte
+/// (statt zwei separater Banner).
+class _TodayCard extends StatelessWidget {
+  final String specialEmoji;
+  final String specialName;
+  final String challengeEmoji;
+  final String challengeLabel;
+  final double challengeReward;
+
+  const _TodayCard({
+    required this.specialEmoji,
+    required this.specialName,
+    required this.challengeEmoji,
+    required this.challengeLabel,
+    required this.challengeReward,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.accent.withAlpha(22),
+        color: AppColors.bgCard,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.accent.withAlpha(80)),
+        border: Border.all(color: AppColors.border),
       ),
-      child: Row(
+      child: Column(
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 24)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('TAGESAUFGABE',
-                    style: AppText.label(color: AppColors.accent, size: 10)),
-                const SizedBox(height: 1),
-                Text(
-                  label,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w600,
-                    height: 1.25,
-                  ),
-                ),
-              ],
-            ),
+          _TodayRow(
+            emoji: specialEmoji,
+            label: 'TAGESSPECIAL',
+            labelColor: AppColors.gold,
+            value: specialName,
+            chipText: '+Nachfrage',
+            chipColor: AppColors.gold,
           ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.accent.withAlpha(40),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              '+${_fmtInt.format(reward)} €',
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                color: AppColors.accent,
-              ),
-            ),
+          const Divider(color: AppColors.border, height: 16),
+          _TodayRow(
+            emoji: challengeEmoji,
+            label: 'TAGESAUFGABE',
+            labelColor: AppColors.accent,
+            value: challengeLabel,
+            chipText: '+${_fmtInt.format(challengeReward)} €',
+            chipColor: AppColors.accent,
           ),
         ],
       ),
@@ -1400,63 +1376,65 @@ class _DailyChallengeBanner extends StatelessWidget {
   }
 }
 
-class _DailySpecialBanner extends StatelessWidget {
+class _TodayRow extends StatelessWidget {
   final String emoji;
-  final String name;
-  const _DailySpecialBanner({required this.emoji, required this.name});
+  final String label;
+  final Color labelColor;
+  final String value;
+  final String chipText;
+  final Color chipColor;
+
+  const _TodayRow({
+    required this.emoji,
+    required this.label,
+    required this.labelColor,
+    required this.value,
+    required this.chipText,
+    required this.chipColor,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppColors.gold.withAlpha(36),
-            AppColors.tomato.withAlpha(26),
-          ],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.gold.withAlpha(70)),
-      ),
-      child: Row(
-        children: [
-          Text(emoji, style: const TextStyle(fontSize: 26)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('TAGESSPECIAL', style: AppText.label(color: AppColors.gold, size: 10)),
-                const SizedBox(height: 1),
-                Text(
-                  name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppText.display(size: 15, weight: FontWeight.w700),
+    return Row(
+      children: [
+        Text(emoji, style: const TextStyle(fontSize: 22)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: AppText.label(color: labelColor, size: 9)),
+              const SizedBox(height: 1),
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w700,
                 ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.gold.withAlpha(40),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Text(
-              '+Nachfrage',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                color: AppColors.gold,
               ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: chipColor.withAlpha(40),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            chipText,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: chipColor,
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
