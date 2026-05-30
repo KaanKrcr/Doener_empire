@@ -2010,6 +2010,21 @@ class _PriceStrategySection extends ConsumerWidget {
             ),
           ],
         ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () =>
+                ref.read(gameProvider.notifier).applyRecommendedPrices(),
+            icon: const Icon(Icons.lightbulb_outline_rounded, size: 16),
+            label: const Text('Empfohlene Preise (umsatzoptimal)'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.gold,
+              side: BorderSide(color: AppColors.gold.withValues(alpha: 0.5)),
+              padding: const EdgeInsets.symmetric(vertical: 10),
+            ),
+          ),
+        ),
         const SizedBox(height: 14),
         const Text(
           'EINZELNE PRODUKTPREISE GLOBAL',

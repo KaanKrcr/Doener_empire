@@ -643,6 +643,19 @@ class GameNotifier extends Notifier<GameState?> {
     _save();
   }
 
+  /// Setzt alle globalen Preise auf den umsatzoptimalen Vorschlag.
+  void applyRecommendedPrices() {
+    if (state == null) return;
+    var s = state!;
+    for (final p in kAllProducts) {
+      final opt = GameEngine.revenueOptimalPrice(p.basePrice, s.difficulty);
+      s = GameEngine.setGlobalPrice(s, p.id, opt);
+    }
+    state = s;
+    SoundService.play(Sfx.purchase);
+    _save();
+  }
+
   /// Permanenten Shop-Upgrade kaufen (WLAN, Musik, Klima, etc.)
   void buyUpgrade(String shopId, UpgradeData upgrade) {
     if (state == null) return;

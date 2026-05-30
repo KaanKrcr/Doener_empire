@@ -506,6 +506,26 @@ class GameEngine {
     }
   }
 
+  /// Umsatzoptimaler Preis für ein Produkt: maximiert Nachfrage × Preis
+  /// (numerischer Scan). Hilft dem Spieler bei der Preisfindung.
+  static double revenueOptimalPrice(double basePrice,
+      [GameDifficulty difficulty = GameDifficulty.normal]) {
+    if (basePrice <= 0) return basePrice;
+    double bestPrice = basePrice;
+    double bestRev = -1;
+    final step = basePrice * 0.02;
+    for (double p = basePrice * 0.5; p <= basePrice * 2.0; p += step) {
+      final d = priceDemandFactor(
+          price: p, basePrice: basePrice, difficulty: difficulty);
+      final rev = d * p;
+      if (rev > bestRev) {
+        bestRev = rev;
+        bestPrice = p;
+      }
+    }
+    return double.parse(bestPrice.clamp(0.5, 99.0).toStringAsFixed(2));
+  }
+
   // ──────────────────────────────────────────────────────────────────────────
   // ── Tageskosten für einen Shop ───────────────────────────────────────────
   // ──────────────────────────────────────────────────────────────────────────
