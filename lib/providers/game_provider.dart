@@ -42,6 +42,7 @@ class DayEndResult {
   final QuarterlyReport? quarterlyReport;
   final CampaignChapter? chapterCompleted;
   final WeeklyReport? weeklyReport;
+  final double taxPaid;
 
   DayEndResult({
     required this.day,
@@ -55,6 +56,7 @@ class DayEndResult {
     this.quarterlyReport,
     this.chapterCompleted,
     this.weeklyReport,
+    this.taxPaid = 0,
   });
 }
 
@@ -235,6 +237,15 @@ class GameNotifier extends Notifier<GameState?> {
       weeklyReport = GameEngine.buildWeeklyReport(newState);
     }
 
+    // Steuer alle 30 Tage auf den Monatsgewinn
+    double taxPaid = 0;
+    if (newState.currentDay > 30 && (newState.currentDay - 1) % 30 == 0) {
+      taxPaid = GameEngine.monthlyTaxDue(newState);
+      if (taxPaid > 0) {
+        newState = newState.copyWith(cash: newState.cash - taxPaid);
+      }
+    }
+
     state = newState;
     lastDayResult = DayEndResult(
       day: today,
@@ -248,6 +259,7 @@ class GameNotifier extends Notifier<GameState?> {
       quarterlyReport: quarterlyReport,
       chapterCompleted: chapterCompleted,
       weeklyReport: weeklyReport,
+      taxPaid: taxPaid,
     );
     _completeTutorialStep(TutorialStep.endFirstDay, saveAfterUpdate: false);
     _save();

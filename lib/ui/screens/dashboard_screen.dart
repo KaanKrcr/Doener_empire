@@ -60,6 +60,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       if (result.weeklyReport != null && mounted) {
         await WeeklyReportDialog.show(context, result.weeklyReport!);
       }
+      if (result.taxPaid > 0 && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                '💸 Steuern (30 Tage): −${_fmtInt.format(result.taxPaid)} €'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
       notifier.clearLastDayResult();
     }
     if (mounted) setState(() => _endingDay = false);

@@ -268,6 +268,19 @@ class GameEngine {
   /// Nachfrage-Multiplikator für das Tagesspecial.
   static const double kDailySpecialBoost = 1.6;
 
+  /// Steuersatz auf den Monatsgewinn (alle 30 Tage fällig).
+  static const double kMonthlyTaxRate = 0.12;
+
+  /// Fällige Steuer auf den operativen Gewinn der letzten ~30 Tage.
+  /// Nur auf positiven Gewinn — bei Verlust 0. Rein aus der History abgeleitet.
+  static double monthlyTaxDue(GameState state) {
+    final h = state.history;
+    if (h.isEmpty) return 0;
+    final window = h.length >= 30 ? h.sublist(h.length - 30) : h;
+    final profit = window.fold<double>(0, (s, r) => s + r.operatingProfit);
+    return profit > 0 ? profit * kMonthlyTaxRate : 0;
+  }
+
   /// Wochenbilanz der letzten 7 abgeschlossenen Tage (inkl. Wachstum ggü.
   /// der Vorwoche). null, wenn noch keine volle Woche vorliegt.
   static WeeklyReport? buildWeeklyReport(GameState state) {
