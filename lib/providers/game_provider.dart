@@ -41,6 +41,7 @@ class DayEndResult {
   final List<Achievement> newAchievements;
   final QuarterlyReport? quarterlyReport;
   final CampaignChapter? chapterCompleted;
+  final WeeklyReport? weeklyReport;
 
   DayEndResult({
     required this.day,
@@ -53,6 +54,7 @@ class DayEndResult {
     this.newAchievements = const [],
     this.quarterlyReport,
     this.chapterCompleted,
+    this.weeklyReport,
   });
 }
 
@@ -227,6 +229,12 @@ class GameNotifier extends Notifier<GameState?> {
       quarterlyReport = report;
     }
 
+    // Wochen-Report alle 7 Tage (zu Beginn einer neuen Woche)
+    WeeklyReport? weeklyReport;
+    if (newState.currentDay > 7 && newState.currentDay % 7 == 1) {
+      weeklyReport = GameEngine.buildWeeklyReport(newState);
+    }
+
     state = newState;
     lastDayResult = DayEndResult(
       day: today,
@@ -239,6 +247,7 @@ class GameNotifier extends Notifier<GameState?> {
       newAchievements: newAchievs,
       quarterlyReport: quarterlyReport,
       chapterCompleted: chapterCompleted,
+      weeklyReport: weeklyReport,
     );
     _completeTutorialStep(TutorialStep.endFirstDay, saveAfterUpdate: false);
     _save();

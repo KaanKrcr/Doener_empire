@@ -21,6 +21,7 @@ import '../widgets/money_pulse.dart';
 import '../widgets/pressable.dart';
 import '../widgets/bankruptcy_dialog.dart';
 import '../widgets/quarterly_report_dialog.dart';
+import '../widgets/weekly_report_dialog.dart';
 
 final _fmtInt = NumberFormat('#,##0', 'de_DE');
 const _kWeekdays = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
@@ -55,6 +56,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       }
       if (result.chapterCompleted != null && mounted) {
         await CampaignChapterDialog.show(context, result.chapterCompleted!);
+      }
+      if (result.weeklyReport != null && mounted) {
+        await WeeklyReportDialog.show(context, result.weeklyReport!);
       }
       notifier.clearLastDayResult();
     }

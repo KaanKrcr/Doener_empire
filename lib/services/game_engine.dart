@@ -268,6 +268,35 @@ class GameEngine {
   /// Nachfrage-Multiplikator für das Tagesspecial.
   static const double kDailySpecialBoost = 1.6;
 
+  /// Wochenbilanz der letzten 7 abgeschlossenen Tage (inkl. Wachstum ggü.
+  /// der Vorwoche). null, wenn noch keine volle Woche vorliegt.
+  static WeeklyReport? buildWeeklyReport(GameState state) {
+    final h = state.history;
+    if (h.length < 7) return null;
+    final last7 = h.sublist(h.length - 7);
+    final prev7 = h.length >= 14 ? h.sublist(h.length - 14, h.length - 7) : const <DailyRecord>[];
+
+    final revenue = last7.fold<double>(0, (s, r) => s + r.revenue);
+    final profit = last7.fold<double>(0, (s, r) => s + r.operatingProfit);
+    final customers = last7.fold<int>(0, (s, r) => s + r.customers);
+    final best = last7.reduce((a, b) => a.revenue > b.revenue ? a : b);
+
+    final prevProfit = prev7.fold<double>(0, (s, r) => s + r.operatingProfit);
+    final growth = prevProfit.abs() > 0.01
+        ? (profit - prevProfit) / prevProfit.abs() * 100
+        : 0.0;
+
+    return WeeklyReport(
+      weekNumber: ((state.currentDay - 1) / 7).floor().clamp(1, 9999),
+      revenue: revenue,
+      profit: profit,
+      customers: customers,
+      bestDay: best.day,
+      bestDayRevenue: best.revenue,
+      profitGrowthPct: growth,
+    );
+  }
+
   /// Filialen nach geschätztem Tagesgewinn (Umsatz − Kosten), absteigend.
   static List<({Shop shop, double profit})> shopsByProfit(GameState state) {
     final list = state.shops.map((s) {
@@ -1610,6 +1639,27 @@ class ProductProfit {
 
   double get profit => revenue - ingredientCost;
   double get margin => revenue > 0 ? profit / revenue : 0;
+}
+
+/// Wochenbilanz-Zusammenfassung für den Wochen-Report.
+class WeeklyReport {
+  final int weekNumber;
+  final double revenue;
+  final double profit;
+  final int customers;
+  final int bestDay;
+  final double bestDayRevenue;
+  final double profitGrowthPct;
+
+  const WeeklyReport({
+    required this.weekNumber,
+    required this.revenue,
+    required this.profit,
+    required this.customers,
+    required this.bestDay,
+    required this.bestDayRevenue,
+    required this.profitGrowthPct,
+  });
 }
 
 enum AlertLevel { warn, danger }
