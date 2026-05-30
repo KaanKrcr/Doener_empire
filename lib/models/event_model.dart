@@ -599,4 +599,217 @@ const List<GameEvent> kAllEvents = [
       ),
     ],
   ),
+
+  // ── KRISEN (dramatisch, kontextabhängig) ────────────────────────────
+  GameEvent(
+    id: 'kitchen_fire',
+    title: 'Feuer in der Küche!',
+    description:
+        'Ein Fettbrand ist in einer Filiale ausgebrochen. Niemand verletzt, '
+        'aber die Küche ist beschädigt. Wie reagierst du?',
+    emoji: '🔥',
+    category: EventCategory.bad,
+    weight: EventWeight.rare,
+    requirements: EventRequirements(minDay: 15),
+    choices: [
+      EventChoice(
+        label: 'Sofort professionell sanieren (2.500 €)',
+        effect: EventEffect(
+          cashDelta: -2500,
+          reputationDelta: 0.10,
+          resultMessage:
+              'Schnell und sauber wieder eröffnet — Kunden honorieren die Professionalität.',
+        ),
+        cost: 2500,
+      ),
+      EventChoice(
+        label: 'Notbetrieb mit halber Küche',
+        effect: EventEffect(
+          cashDelta: -4000,
+          reputationDelta: -0.30,
+          resultMessage:
+              'Tagelang eingeschränkt — Umsatzausfall und genervte Stammkunden.',
+        ),
+      ),
+    ],
+  ),
+  GameEvent(
+    id: 'social_scandal',
+    title: 'Shitstorm auf Social Media',
+    description:
+        'Ein Mitarbeiter-Video sorgt für einen Skandal — der Hashtag trendet, '
+        'und nicht im Guten. Wie gehst du damit um?',
+    emoji: '🌪️',
+    category: EventCategory.bad,
+    weight: EventWeight.rare,
+    requirements: EventRequirements(minShops: 2, minDay: 12),
+    choices: [
+      EventChoice(
+        label: 'Ehrliche Entschuldigung + Team-Schulung (1.200 €)',
+        effect: EventEffect(
+          cashDelta: -1200,
+          reputationDelta: 0.10,
+          brandAwarenessDelta: -1.0,
+          resultMessage:
+              'Die offene Reaktion kommt an — der Sturm legt sich schneller als gedacht.',
+        ),
+        cost: 1200,
+      ),
+      EventChoice(
+        label: 'Aussitzen und schweigen',
+        effect: EventEffect(
+          reputationDelta: -0.50,
+          brandAwarenessDelta: -4.0,
+          resultMessage:
+              'Das Schweigen wird als Arroganz gelesen — Reputation und Marke leiden deutlich.',
+        ),
+      ),
+      EventChoice(
+        label: 'Anwalt einschalten, hart kontern (3.000 €)',
+        effect: EventEffect(
+          cashDelta: -3000,
+          reputationDelta: -0.10,
+          resultMessage:
+              'Teuer, und die Öffentlichkeit findet es kleinlich — aber das Thema verschwindet.',
+        ),
+        cost: 3000,
+      ),
+    ],
+  ),
+  GameEvent(
+    id: 'night_robbery',
+    title: 'Einbruch über Nacht',
+    description:
+        'Diebe haben nachts die Kasse einer Filiale geknackt. Was nun?',
+    emoji: '🚨',
+    category: EventCategory.bad,
+    requirements: EventRequirements(minCash: 25000, minDay: 20),
+    choices: [
+      EventChoice(
+        label: 'Anzeige + Versicherung regeln',
+        effect: EventEffect(
+          cashDelta: -800,
+          resultMessage:
+              'Ein Teil ist versichert — der Schaden hält sich in Grenzen.',
+        ),
+      ),
+      EventChoice(
+        label: 'Sicherheitssystem nachrüsten (2.500 €)',
+        effect: EventEffect(
+          cashDelta: -2500,
+          reputationDelta: 0.05,
+          brandAwarenessDelta: 0.5,
+          resultMessage:
+              'Investition in Sicherheit — Mitarbeiter und Kunden fühlen sich wohler.',
+        ),
+        cost: 2500,
+      ),
+    ],
+  ),
+  GameEvent(
+    id: 'power_outage',
+    title: 'Stromausfall im Viertel',
+    description:
+        'Ein Kabelschaden legt das ganze Viertel lahm. Kühlung und Grill stehen still.',
+    emoji: '⚡',
+    category: EventCategory.bad,
+    weight: EventWeight.common,
+    choices: [
+      EventChoice(
+        label: 'Notstromaggregat mieten (600 €)',
+        effect: EventEffect(
+          cashDelta: -600,
+          resultMessage: 'Der Laden läuft weiter, als wäre nichts gewesen.',
+        ),
+        cost: 600,
+      ),
+      EventChoice(
+        label: 'Spontan-Aktion: Holzkohlegrill auf den Gehweg',
+        effect: EventEffect(
+          cashDelta: 300,
+          reputationDelta: 0.20,
+          brandAwarenessDelta: 1.0,
+          resultMessage:
+              'Improvisierter Grill-Abend wird zum Stadtgespräch — sympathisch und lukrativ!',
+        ),
+      ),
+      EventChoice(
+        label: 'Tag abschreiben, schließen',
+        effect: EventEffect(
+          cashDelta: -1500,
+          resultMessage: 'Verderbliche Ware verloren, Umsatz futsch.',
+        ),
+      ),
+    ],
+  ),
+  GameEvent(
+    id: 'food_poisoning_rumor',
+    title: 'Gerücht: Lebensmittelvergiftung',
+    description:
+        'Im Netz kursiert die Behauptung, jemand sei nach dem Essen bei dir krank '
+        'geworden. Beweise gibt es keine. Wie reagierst du?',
+    emoji: '🤢',
+    category: EventCategory.bad,
+    requirements: EventRequirements(minShops: 2, minDay: 25),
+    choices: [
+      EventChoice(
+        label: 'Transparenz-Offensive + freiwilliger Labortest (1.500 €)',
+        effect: EventEffect(
+          cashDelta: -1500,
+          reputationDelta: 0.25,
+          brandAwarenessDelta: 1.0,
+          resultMessage:
+              'Der Labortest entlastet dich öffentlich — am Ende stärkt es das Vertrauen.',
+        ),
+        cost: 1500,
+      ),
+      EventChoice(
+        label: 'Knapp dementieren',
+        effect: EventEffect(
+          reputationDelta: -0.20,
+          resultMessage: 'Das Dementi verpufft — ein Teil der Zweifel bleibt.',
+        ),
+      ),
+      EventChoice(
+        label: 'Ignorieren, wird schon vorbeigehen',
+        effect: EventEffect(
+          reputationDelta: -0.50,
+          brandAwarenessDelta: -3.0,
+          resultMessage:
+              'Das Gerücht frisst sich fest — spürbarer Reputations- und Markenschaden.',
+        ),
+      ),
+    ],
+  ),
+  GameEvent(
+    id: 'employee_theft',
+    title: 'Griff in die Kasse',
+    description:
+        'Das neue Kassensystem deckt auf: ein Mitarbeiter hat über Wochen Geld '
+        'abgezweigt. Wie gehst du vor?',
+    emoji: '🕵️',
+    category: EventCategory.bad,
+    requirements: EventRequirements(minShops: 2, minDay: 20),
+    choices: [
+      EventChoice(
+        label: 'Fristlos kündigen + Anzeige',
+        effect: EventEffect(
+          cashDelta: -300,
+          resultMessage:
+              'Klare Kante. Das Team versteht die Botschaft, etwas Geld ist futsch.',
+        ),
+      ),
+      EventChoice(
+        label: 'Zentrales Kassensystem konzernweit aufrüsten (2.000 €)',
+        effect: EventEffect(
+          cashDelta: -2000,
+          reputationDelta: 0.05,
+          brandAwarenessDelta: 0.5,
+          resultMessage:
+              'Investition in Kontrolle — künftig hat Schwund keine Chance mehr.',
+        ),
+        cost: 2000,
+      ),
+    ],
+  ),
 ];
