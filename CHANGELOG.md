@@ -38,10 +38,20 @@
 
 - Neues-Spiel zeigte veraltetes Startkapital (50 Mio. statt echtem Wert)
 
+### Weitere Gameplay-/Analyse-Features
+
+- Daily Challenges (tägliche, relativ gestellte Ziele mit Belohnung)
+- Jahreszeiten (saisonale Kategorie-Nachfrage)
+- Kunden-Bewertungen (prozedural aus Reputation/Preis/Qualität)
+- Marktanteil-Visualisierung pro Stadt
+- Preis-Empfehlung (umsatzoptimale Preise per Knopfdruck)
+- 4 neue Trophäen (Langzeit-Ziele)
+- Dashboard entzerrt (Tagesspecial + Tagesaufgabe als eine „Heute"-Karte)
+
 ### Geprüft
 
 - `flutter analyze` ohne Findings
-- `flutter test`: 67 Tests erfolgreich
+- `flutter test`: 83 Tests erfolgreich (inkl. 60-Tage-Integrationstest aller Systeme)
 - `flutter build apk --debug` erfolgreich
 
 ## 1.0.0-internal.1 - 2026-05-25
