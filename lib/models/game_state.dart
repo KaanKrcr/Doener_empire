@@ -202,6 +202,10 @@ class GameState {
   /// Aktives kosmetisches Marken-Thema (Branding-Skin).
   final String activeThemeId;
 
+  /// Konzernweite Zutaten-Qualität je Produkt (productId → Qualitätsname).
+  /// Fehlt ein Eintrag → Standard.
+  final Map<String, String> productQuality;
+
   const GameState({
     required this.companyName,
     required this.founderName,
@@ -240,6 +244,7 @@ class GameState {
     this.completedChapterIds = const [],
     this.activeComboIds = const [],
     this.activeThemeId = 'klassik',
+    this.productQuality = const {},
   });
 
   factory GameState.initial({
@@ -287,6 +292,7 @@ class GameState {
       completedChapterIds: const [],
       activeComboIds: const [],
       activeThemeId: 'klassik',
+      productQuality: const {},
     );
   }
 
@@ -341,6 +347,7 @@ class GameState {
     List<String>? completedChapterIds,
     List<String>? activeComboIds,
     String? activeThemeId,
+    Map<String, String>? productQuality,
   }) {
     return GameState(
       companyName: companyName ?? this.companyName,
@@ -381,6 +388,7 @@ class GameState {
       completedChapterIds: completedChapterIds ?? this.completedChapterIds,
       activeComboIds: activeComboIds ?? this.activeComboIds,
       activeThemeId: activeThemeId ?? this.activeThemeId,
+      productQuality: productQuality ?? this.productQuality,
     );
   }
 
@@ -424,6 +432,7 @@ class GameState {
         'completedChapterIds': completedChapterIds,
         'activeComboIds': activeComboIds,
         'activeThemeId': activeThemeId,
+        'productQuality': productQuality,
       };
 
   factory GameState.fromJson(Map<String, dynamic> j) {
@@ -674,6 +683,8 @@ class GameState {
           List<String>.from(asList(j['completedChapterIds'])),
       activeComboIds: List<String>.from(asList(j['activeComboIds'])),
       activeThemeId: (j['activeThemeId'] as String?) ?? 'klassik',
+      productQuality: asMap(j['productQuality'])
+          .map((k, v) => MapEntry(k, v.toString())),
     );
   }
 }

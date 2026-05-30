@@ -8,6 +8,7 @@ import '../models/employee_model.dart';
 import '../models/equipment_model.dart';
 import '../models/mission_model.dart';
 import '../models/campaign_model.dart';
+import '../models/quality_model.dart';
 import '../models/event_model.dart';
 import '../models/marketing_model.dart';
 import '../models/achievement_model.dart';
@@ -587,6 +588,16 @@ class GameNotifier extends Notifier<GameState?> {
     if (state == null) return;
     if (state!.activeThemeId == themeId) return;
     state = state!.copyWith(activeThemeId: themeId);
+    SoundService.play(Sfx.tap);
+    _save();
+  }
+
+  /// Konzernweite Zutaten-Qualität eines Produkts setzen.
+  void setProductQuality(String productId, IngredientQuality quality) {
+    if (state == null) return;
+    final map = Map<String, String>.from(state!.productQuality);
+    map[productId] = quality.name;
+    state = state!.copyWith(productQuality: map);
     SoundService.play(Sfx.tap);
     _save();
   }

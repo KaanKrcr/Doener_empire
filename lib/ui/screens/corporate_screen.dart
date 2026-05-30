@@ -12,6 +12,7 @@ import '../../models/stock_model.dart';
 import '../../models/game_state.dart';
 import '../../models/hr_manager_model.dart';
 import '../../models/combo_model.dart';
+import '../../models/quality_model.dart';
 import '../../providers/game_provider.dart';
 import '../../services/corporate_engine.dart';
 import '../../services/game_engine.dart';
@@ -1307,6 +1308,26 @@ class _StrategieTab extends ConsumerWidget {
         _PriceStrategySection(globalPrices: globalPrices),
         const SizedBox(height: 28),
 
+        // ── Zutaten-Qualität ──────────────────────────────────────────────
+        _buildSectionHeader(Icons.eco_rounded, 'ZUTATEN-QUALITÄT'),
+        const SizedBox(height: 4),
+        const Padding(
+          padding: EdgeInsets.only(bottom: 10),
+          child: Text(
+            'Premium = teurere Zutaten, aber besserer Ruf. Günstig spart Kosten, '
+            'kostet aber Reputation.',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 12, height: 1.35),
+          ),
+        ),
+        for (final p in kAllProducts)
+          _QualityRow(
+            product: p,
+            quality: ingredientQualityFromName(game.productQuality[p.id]),
+            onChanged: (q) =>
+                ref.read(gameProvider.notifier).setProductQuality(p.id, q),
+          ),
+        const SizedBox(height: 28),
+
         // ── Menü-Angebote / Kombos ────────────────────────────────────────
         _buildSectionHeader(Icons.lunch_dining_rounded, 'MENÜ-ANGEBOTE'),
         const SizedBox(height: 4),
@@ -1401,6 +1422,79 @@ class _StrategieTab extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _QualityRow extends StatelessWidget {
+  final ProductData product;
+  final IngredientQuality quality;
+  final ValueChanged<IngredientQuality> onChanged;
+
+  const _QualityRow({
+    required this.product,
+    required this.quality,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Text(product.emoji, style: const TextStyle(fontSize: 16)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              product.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 12.5,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.bg.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(9),
+              border: Border.all(color: AppColors.border),
+            ),
+            padding: const EdgeInsets.all(2),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final q in IngredientQuality.values)
+                  GestureDetector(
+                    onTap: () => onChanged(q),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 9, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: q == quality
+                            ? AppColors.primary
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                      child: Text(
+                        q.emoji,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: q == quality
+                              ? Colors.white
+                              : AppColors.textMuted,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

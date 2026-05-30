@@ -13,6 +13,7 @@ import '../models/difficulty_model.dart';
 import '../models/hr_manager_model.dart';
 import '../models/campaign_model.dart';
 import '../models/combo_model.dart';
+import '../models/quality_model.dart';
 import '../core/constants.dart';
 import 'competitor_engine.dart';
 import 'corporate_engine.dart';
@@ -375,8 +376,12 @@ class GameEngine {
             .clamp(0.0, 0.85);
     final activeMenu = shop.menu.where((p) => p.isActive).toList();
     final ingredientRatio = _weightedIngredientRatio(activeMenu);
-    final ingredients =
-        revenue * ingredientRatio * (1 - ingredientSaving) * pressure;
+    final qualityMult = _menuIngredientQualityMult(shop, state);
+    final ingredients = revenue *
+        ingredientRatio *
+        (1 - ingredientSaving) *
+        qualityMult *
+        pressure;
 
     // Liefer-Provision (Lieferando etc.) — nie negativ, immer <= Umsatz
     final deliveryCommission = _deliveryCommissionCost(shop, revenue, state)
@@ -1277,6 +1282,35 @@ class GameEngine {
     return cost;
   }
 
+  // ── Zutaten-Qualität ──────────────────────────────────────────────────────
+
+  static IngredientQuality productQualityOf(GameState? state, String productId) {
+    if (state == null) return IngredientQuality.standard;
+    return ingredientQualityFromName(state.productQuality[productId]);
+  }
+
+  /// Durchschnittlicher Zutatenkosten-Multiplikator über die aktiven Produkte.
+  static double _menuIngredientQualityMult(Shop shop, GameState? state) {
+    final active = shop.menu.where((p) => p.isActive).toList();
+    if (active.isEmpty || state == null) return 1.0;
+    double sum = 0;
+    for (final sp in active) {
+      sum += productQualityOf(state, sp.productId).ingredientMult;
+    }
+    return sum / active.length;
+  }
+
+  /// Durchschnittlicher Reputations-Beitrag der Qualitätsniveaus.
+  static double _menuQualityReputation(Shop shop, GameState? state) {
+    final active = shop.menu.where((p) => p.isActive).toList();
+    if (active.isEmpty || state == null) return 0.0;
+    double sum = 0;
+    for (final sp in active) {
+      sum += productQualityOf(state, sp.productId).reputationPerDay;
+    }
+    return sum / active.length;
+  }
+
   static double _upgradeReputationPerDay(Shop shop, [GameState? state]) {
     double v = 0;
     for (final id in _effectiveUpgradeIds(shop, state)) {
@@ -1477,6 +1511,9 @@ class GameEngine {
 
     // Menü-Angebote/Kombos (nur wo unterstützt)
     sumScore += _comboReputationPerDay(shop, state);
+
+    // Zutaten-Qualität (Premium hebt, Günstig senkt die Reputation)
+    sumScore += _menuQualityReputation(shop, state);
 
     if (n == 0) return shop.reputation;
     final delta = sumScore / n;
