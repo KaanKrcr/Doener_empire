@@ -86,6 +86,28 @@ const List<MenuCombo> kAllCombos = [
     reputationPerDay: 0.006,
     dailyCost: 35,
   ),
+  MenuCombo(
+    id: 'snack_attacke',
+    name: 'Snack-Attacke',
+    emoji: '🍟',
+    description: 'Pommes + Ayran für den kleinen Hunger zwischendurch.',
+    productIds: ['pommes', 'ayran'],
+    customerBoost: 0.06,
+    avgOrderBoost: 0.04,
+    reputationPerDay: 0.003,
+    dailyCost: 30,
+  ),
+  MenuCombo(
+    id: 'doppel_doener',
+    name: 'Doppel-Döner-Deal',
+    emoji: '🥙',
+    description: 'Döner im Fladen + Dürüm — zwei für hungrige Gäste.',
+    productIds: ['doener_fladen', 'doener_duerum'],
+    customerBoost: 0.07,
+    avgOrderBoost: 0.12,
+    reputationPerDay: 0.004,
+    dailyCost: 50,
+  ),
 ];
 
 MenuCombo? comboById(String id) {
