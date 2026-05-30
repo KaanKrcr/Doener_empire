@@ -248,6 +248,15 @@ class _GameMenuSheet extends StatelessWidget {
                 context.push('/settings');
               },
             ),
+            ListTile(
+              leading: const Icon(Icons.palette_rounded, color: AppColors.gold),
+              title: const Text('Marken-Design'),
+              subtitle: const Text('Skins über Trophäen freischalten.'),
+              onTap: () {
+                onClose();
+                context.push('/branding');
+              },
+            ),
             const Divider(height: 18, color: AppColors.border),
             const _SoundToggleTile(),
             const ListTile(

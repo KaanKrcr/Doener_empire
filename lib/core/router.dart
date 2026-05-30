@@ -7,6 +7,7 @@ import '../ui/screens/open_shop_screen.dart';
 import '../ui/screens/shop_detail_screen.dart';
 import '../ui/screens/campaign_screen.dart';
 import '../ui/screens/achievements_screen.dart';
+import '../ui/screens/branding_screen.dart';
 import '../ui/screens/settings_screen.dart';
 import '../ui/main_scaffold.dart';
 
@@ -51,6 +52,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/achievements',
       pageBuilder: (_, __) => _slideUpPage(const AchievementsScreen()),
+    ),
+    GoRoute(
+      path: '/branding',
+      pageBuilder: (_, __) => _slideUpPage(const BrandingScreen()),
     ),
   ],
 );

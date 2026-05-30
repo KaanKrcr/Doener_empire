@@ -10,6 +10,7 @@ import '../../core/constants.dart';
 import '../../services/sound_service.dart';
 import '../../models/game_state.dart';
 import '../../models/campaign_model.dart';
+import '../../models/branding_model.dart';
 import '../../providers/game_provider.dart';
 import '../../services/game_engine.dart';
 import 'campaign_screen.dart';
@@ -129,6 +130,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       (p) => p.id == specialId,
       orElse: () => kAllProducts.first,
     );
+    final brandTheme = brandThemeById(game.activeThemeId);
 
     // Daten aus History für Trend-Vergleiche
     final history = game.history;
@@ -418,10 +420,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                     width: 52,
                                     height: 52,
                                     decoration: BoxDecoration(
-                                      gradient: const LinearGradient(
+                                      gradient: LinearGradient(
                                         colors: [
-                                          AppColors.primary,
-                                          AppColors.primaryDark
+                                          brandTheme.accent,
+                                          brandTheme.accentDark,
                                         ],
                                         begin: Alignment.topLeft,
                                         end: Alignment.bottomRight,
@@ -430,7 +432,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                       boxShadow: [
                                         BoxShadow(
                                           color:
-                                              AppColors.primary.withAlpha(80),
+                                              brandTheme.accent.withAlpha(80),
                                           blurRadius: 14,
                                           offset: const Offset(0, 4),
                                         ),

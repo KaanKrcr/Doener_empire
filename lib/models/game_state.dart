@@ -199,6 +199,9 @@ class GameState {
   /// Konzernweit aktive Menü-Angebote/Kombos (Kombo-IDs).
   final List<String> activeComboIds;
 
+  /// Aktives kosmetisches Marken-Thema (Branding-Skin).
+  final String activeThemeId;
+
   const GameState({
     required this.companyName,
     required this.founderName,
@@ -236,6 +239,7 @@ class GameState {
     this.activeGlobalCampaigns = const [],
     this.completedChapterIds = const [],
     this.activeComboIds = const [],
+    this.activeThemeId = 'klassik',
   });
 
   factory GameState.initial({
@@ -282,6 +286,7 @@ class GameState {
       activeGlobalCampaigns: const [],
       completedChapterIds: const [],
       activeComboIds: const [],
+      activeThemeId: 'klassik',
     );
   }
 
@@ -335,6 +340,7 @@ class GameState {
     List<ActiveCampaign>? activeGlobalCampaigns,
     List<String>? completedChapterIds,
     List<String>? activeComboIds,
+    String? activeThemeId,
   }) {
     return GameState(
       companyName: companyName ?? this.companyName,
@@ -374,6 +380,7 @@ class GameState {
           activeGlobalCampaigns ?? this.activeGlobalCampaigns,
       completedChapterIds: completedChapterIds ?? this.completedChapterIds,
       activeComboIds: activeComboIds ?? this.activeComboIds,
+      activeThemeId: activeThemeId ?? this.activeThemeId,
     );
   }
 
@@ -416,6 +423,7 @@ class GameState {
             activeGlobalCampaigns.map((c) => c.toJson()).toList(),
         'completedChapterIds': completedChapterIds,
         'activeComboIds': activeComboIds,
+        'activeThemeId': activeThemeId,
       };
 
   factory GameState.fromJson(Map<String, dynamic> j) {
@@ -665,6 +673,7 @@ class GameState {
       completedChapterIds:
           List<String>.from(asList(j['completedChapterIds'])),
       activeComboIds: List<String>.from(asList(j['activeComboIds'])),
+      activeThemeId: (j['activeThemeId'] as String?) ?? 'klassik',
     );
   }
 }

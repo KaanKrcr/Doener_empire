@@ -582,6 +582,15 @@ class GameNotifier extends Notifier<GameState?> {
     _save();
   }
 
+  /// Kosmetisches Marken-Thema (Skin) aktivieren.
+  void setActiveTheme(String themeId) {
+    if (state == null) return;
+    if (state!.activeThemeId == themeId) return;
+    state = state!.copyWith(activeThemeId: themeId);
+    SoundService.play(Sfx.tap);
+    _save();
+  }
+
   /// Menü-Angebot/Kombo konzernweit an-/abschalten.
   void toggleCombo(String comboId) {
     if (state == null) return;
