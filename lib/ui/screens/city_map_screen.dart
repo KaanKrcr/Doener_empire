@@ -38,6 +38,10 @@ class _CityMapScreenState extends ConsumerState<CityMapScreen> {
     final game = ref.watch(gameProvider)!;
     final cityShops =
         game.shops.where((shop) => shop.cityId == city.id).toList();
+    final cityCompetitors = game.competitorsIn(city.id);
+    final cityCompetitionPressure = cityCompetitors
+        .fold<double>(0, (sum, competitor) => sum + competitor.marketShare)
+        .clamp(0.0, 0.95);
     final selected = locations[_selectedIndex.clamp(0, locations.length - 1)];
 
     return Scaffold(
@@ -51,13 +55,11 @@ class _CityMapScreenState extends ConsumerState<CityMapScreen> {
           children: [
             _CityMapTopStrip(
               shopCount: cityShops.length,
+              competitorCount: cityCompetitors.length,
+              competitionPressure: cityCompetitionPressure,
               totalFootTraffic: cityShops.fold<int>(
                 0,
                 (sum, shop) => sum + shop.footTraffic,
-              ),
-              weeklyRent: cityShops.fold<double>(
-                0,
-                (sum, shop) => sum + shop.weeklyRent,
               ),
             ),
             const SizedBox(height: 12),
@@ -86,6 +88,7 @@ class _CityMapScreenState extends ConsumerState<CityMapScreen> {
                   .where((shop) => shop.locationName == selected.name)
                   .length,
               cash: game.cash,
+              competitionPressure: cityCompetitionPressure,
               onOpenShop: () => context.push(
                 '/open-shop/${city.id}?location=${Uri.encodeComponent(selected.name)}',
               ),
@@ -132,13 +135,15 @@ class _CityMapScreenState extends ConsumerState<CityMapScreen> {
 
 class _CityMapTopStrip extends StatelessWidget {
   final int shopCount;
+  final int competitorCount;
+  final double competitionPressure;
   final int totalFootTraffic;
-  final double weeklyRent;
 
   const _CityMapTopStrip({
     required this.shopCount,
+    required this.competitorCount,
+    required this.competitionPressure,
     required this.totalFootTraffic,
-    required this.weeklyRent,
   });
 
   @override
@@ -161,21 +166,39 @@ class _CityMapTopStrip extends StatelessWidget {
           ),
           Expanded(
             child: _TopMetric(
-              label: 'Traffic gesamt',
-              value: _fmt.format(totalFootTraffic),
-              color: AppColors.accent,
+              label: 'Konkurrenten',
+              value: '$competitorCount',
+              color: AppColors.danger,
             ),
           ),
           Expanded(
             child: _TopMetric(
-              label: 'Miete / Woche',
-              value: '${_fmt.format(weeklyRent)} EUR',
-              color: AppColors.warning,
+              label: 'Druck',
+              value: _pressureLabel(competitionPressure),
+              color: _pressureColor(competitionPressure),
+            ),
+          ),
+          Expanded(
+            child: _TopMetric(
+              label: 'Traffic',
+              value: _fmt.format(totalFootTraffic),
+              color: AppColors.accent,
             ),
           ),
         ],
       ),
     );
+  }
+
+  String _pressureLabel(double pressure) {
+    final pct = (pressure * 100).round();
+    return '$pct%';
+  }
+
+  Color _pressureColor(double pressure) {
+    if (pressure >= 0.50) return AppColors.danger;
+    if (pressure >= 0.30) return AppColors.warning;
+    return AppColors.accent;
   }
 }
 
@@ -459,6 +482,7 @@ class _LocationDecisionSheet extends StatelessWidget {
   final LocationTemplate location;
   final int ownShopCount;
   final double cash;
+  final double competitionPressure;
   final VoidCallback onOpenShop;
 
   const _LocationDecisionSheet({
@@ -466,6 +490,7 @@ class _LocationDecisionSheet extends StatelessWidget {
     required this.location,
     required this.ownShopCount,
     required this.cash,
+    required this.competitionPressure,
     required this.onOpenShop,
   });
 
@@ -554,6 +579,12 @@ class _LocationDecisionSheet extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 6),
+          _DecisionMetric(
+            label: 'Konkurrenzdruck',
+            value: _pressureLabel(competitionPressure),
+            color: _pressureColor(competitionPressure),
+          ),
           const SizedBox(height: 10),
           Text(
             _decisionLine(location),
@@ -583,7 +614,9 @@ class _LocationDecisionSheet extends StatelessWidget {
   String _decisionLine(LocationTemplate location) {
     switch (location.personality) {
       case LocationPersonality.business:
-        return 'Mittagsgeschaeft stark: Tempo und schnelle Ausgabe priorisieren.';
+        return competitionPressure >= 0.45
+            ? 'Mittag stark, aber umkaempft: Tempo plus klares Preisprofil setzen.'
+            : 'Mittagsgeschaeft stark: Tempo und schnelle Ausgabe priorisieren.';
       case LocationPersonality.university:
         return 'Preis sensibel: guenstige Kombos bringen hier mehr Volumen.';
       case LocationPersonality.touristic:
@@ -595,6 +628,19 @@ class _LocationDecisionSheet extends StatelessWidget {
       case LocationPersonality.transit:
         return 'Durchlauf-Standort: kurze Wartezeiten schlagen Premium-Menues.';
     }
+  }
+
+  String _pressureLabel(double pressure) {
+    final pct = (pressure * 100).round();
+    if (pressure >= 0.50) return 'Hoch ($pct%)';
+    if (pressure >= 0.30) return 'Mittel ($pct%)';
+    return 'Niedrig ($pct%)';
+  }
+
+  Color _pressureColor(double pressure) {
+    if (pressure >= 0.50) return AppColors.danger;
+    if (pressure >= 0.30) return AppColors.warning;
+    return AppColors.accent;
   }
 }
 

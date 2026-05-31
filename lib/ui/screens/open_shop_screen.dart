@@ -120,6 +120,10 @@ class _OpenShopScreenState extends ConsumerState<OpenShopScreen> {
     final game = ref.watch(gameProvider)!;
     final cityShops =
         game.shops.where((shop) => shop.cityId == city.id).toList();
+    final cityCompetitionPressure = game
+        .competitorsIn(city.id)
+        .fold<double>(0, (sum, competitor) => sum + competitor.marketShare)
+        .clamp(0.0, 0.95);
 
     return PopScope(
       canPop: false,
@@ -144,6 +148,7 @@ class _OpenShopScreenState extends ConsumerState<OpenShopScreen> {
                 city: city,
                 cash: game.cash,
                 cityShopCount: cityShops.length,
+                competitionPressure: cityCompetitionPressure,
               ),
               const SizedBox(height: 12),
               Expanded(
@@ -169,6 +174,7 @@ class _OpenShopScreenState extends ConsumerState<OpenShopScreen> {
                 weeklyRent: weeklyRent,
                 deposit: deposit,
                 cashAfter: game.cash - deposit,
+                competitionPressure: cityCompetitionPressure,
                 loading: _loading,
                 onOpen: _open,
                 onBack: _goBackToCityMap,
@@ -190,11 +196,13 @@ class _OpenShopTopStrip extends StatelessWidget {
   final CityData city;
   final double cash;
   final int cityShopCount;
+  final double competitionPressure;
 
   const _OpenShopTopStrip({
     required this.city,
     required this.cash,
     required this.cityShopCount,
+    required this.competitionPressure,
   });
 
   @override
@@ -224,14 +232,25 @@ class _OpenShopTopStrip extends StatelessWidget {
           ),
           Expanded(
             child: _TopMetric(
-              label: 'Filialen',
-              value: '$cityShopCount',
-              color: AppColors.accent,
+              label: 'Druck',
+              value: _pressureLabel(competitionPressure),
+              color: _pressureColor(competitionPressure),
             ),
           ),
         ],
       ),
     );
+  }
+
+  String _pressureLabel(double pressure) {
+    final pct = (pressure * 100).round();
+    return '$pct%';
+  }
+
+  Color _pressureColor(double pressure) {
+    if (pressure >= 0.50) return AppColors.danger;
+    if (pressure >= 0.30) return AppColors.warning;
+    return AppColors.accent;
   }
 }
 
@@ -521,6 +540,7 @@ class _OpenDecisionSheet extends StatelessWidget {
   final double weeklyRent;
   final double deposit;
   final double cashAfter;
+  final double competitionPressure;
   final bool loading;
   final VoidCallback onOpen;
   final VoidCallback onBack;
@@ -533,6 +553,7 @@ class _OpenDecisionSheet extends StatelessWidget {
     required this.weeklyRent,
     required this.deposit,
     required this.cashAfter,
+    required this.competitionPressure,
     required this.loading,
     required this.onOpen,
     required this.onBack,
@@ -612,6 +633,12 @@ class _OpenDecisionSheet extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
+          _DecisionMetric(
+            label: 'Konkurrenzdruck',
+            value: _pressureLabel(competitionPressure),
+            color: _pressureColor(competitionPressure),
+          ),
+          const SizedBox(height: 10),
           Text(
             _recommendation(location.personality),
             style: const TextStyle(
@@ -653,7 +680,9 @@ class _OpenDecisionSheet extends StatelessWidget {
   String _recommendation(LocationPersonality personality) {
     switch (personality) {
       case LocationPersonality.business:
-        return 'Mittag dominiert: Ausgabe-Takt priorisieren, Premium nur selektiv.';
+        return competitionPressure >= 0.45
+            ? 'Mittag umkaempft: Speed plus preisliche Klarheit zuerst stabilisieren.'
+            : 'Mittag dominiert: Ausgabe-Takt priorisieren, Premium nur selektiv.';
       case LocationPersonality.university:
         return 'Preis wirkt schnell hoch: Kombi-Angebote halten den Durchlauf stabil.';
       case LocationPersonality.touristic:
@@ -665,6 +694,19 @@ class _OpenDecisionSheet extends StatelessWidget {
       case LocationPersonality.transit:
         return 'Transit braucht Tempo: kurze Wartezeit ist wichtiger als Produktbreite.';
     }
+  }
+
+  String _pressureLabel(double pressure) {
+    final pct = (pressure * 100).round();
+    if (pressure >= 0.50) return 'Hoch ($pct%)';
+    if (pressure >= 0.30) return 'Mittel ($pct%)';
+    return 'Niedrig ($pct%)';
+  }
+
+  Color _pressureColor(double pressure) {
+    if (pressure >= 0.50) return AppColors.danger;
+    if (pressure >= 0.30) return AppColors.warning;
+    return AppColors.accent;
   }
 }
 

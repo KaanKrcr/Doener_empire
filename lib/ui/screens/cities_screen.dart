@@ -35,6 +35,10 @@ class _CitiesScreenState extends ConsumerState<CitiesScreen> {
   Widget build(BuildContext context) {
     final game = ref.watch(gameProvider)!;
     final selectedCity = _resolveSelectedCity(game);
+    final selectedCityPressure = game
+        .competitorsIn(selectedCity.id)
+        .fold<double>(0, (sum, competitor) => sum + competitor.marketShare)
+        .clamp(0.0, 0.95);
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -78,6 +82,7 @@ class _CitiesScreenState extends ConsumerState<CitiesScreen> {
                   .where((shop) => shop.cityId == selectedCity.id)
                   .length,
               totalRevenue: game.totalRevenue,
+              competitionPressure: selectedCityPressure,
               onUnlock: () =>
                   _unlockCity(context, ref, selectedCity, game.cash),
               onOpen: () => context.push('/city-map/${selectedCity.id}'),
@@ -492,6 +497,7 @@ class _CityDecisionSheet extends StatelessWidget {
   final _CityStatus status;
   final int shopCount;
   final double totalRevenue;
+  final double competitionPressure;
   final VoidCallback onUnlock;
   final VoidCallback onOpen;
 
@@ -500,6 +506,7 @@ class _CityDecisionSheet extends StatelessWidget {
     required this.status,
     required this.shopCount,
     required this.totalRevenue,
+    required this.competitionPressure,
     required this.onUnlock,
     required this.onOpen,
   });
@@ -590,6 +597,16 @@ class _CityDecisionSheet extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 6),
+          _SheetMetric(
+            label: 'Konkurrenzdruck',
+            value: _pressureLabel(competitionPressure),
+            color: competitionPressure >= 0.50
+                ? AppColors.danger
+                : (competitionPressure >= 0.30
+                    ? AppColors.warning
+                    : AppColors.accent),
+          ),
           const SizedBox(height: 10),
           Text(
             _recommendationLine(remainingRevenue),
@@ -628,15 +645,28 @@ class _CityDecisionSheet extends StatelessWidget {
 
   String _recommendationLine(double remainingRevenue) {
     if (status.isUnlocked && shopCount == 0) {
-      return 'Markt ist offen: jetzt ersten Standort sichern und Tagesgewinn starten.';
+      return competitionPressure >= 0.45
+          ? 'Markt offen, aber umkaempft: jetzt frueh guten Standort sichern.'
+          : 'Markt ist offen: jetzt ersten Standort sichern und Tagesgewinn starten.';
     }
     if (status.isUnlocked) {
-      return 'Naechster Schritt: schwache Lage optimieren oder zweite Filiale planen.';
+      return competitionPressure >= 0.45
+          ? 'Druck steigt: starke Lage halten oder zweite Filiale defensiv platzieren.'
+          : 'Naechster Schritt: schwache Lage optimieren oder zweite Filiale planen.';
     }
     if (status.canUnlock) {
-      return 'Finanziell bereit: Expansion jetzt sichert fruehen Marktanteil.';
+      return competitionPressure >= 0.45
+          ? 'Finanziell bereit: Expansion jetzt verhindert spaeteren Preiskampf.'
+          : 'Finanziell bereit: Expansion jetzt sichert fruehen Marktanteil.';
     }
     return 'Umsatzziel fuer Expansion: noch ${_fmt.format(remainingRevenue)} EUR bis Freischaltung.';
+  }
+
+  String _pressureLabel(double pressure) {
+    final pct = (pressure * 100).round();
+    if (pressure >= 0.50) return 'Hoch ($pct%)';
+    if (pressure >= 0.30) return 'Mittel ($pct%)';
+    return 'Niedrig ($pct%)';
   }
 }
 
