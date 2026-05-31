@@ -29,6 +29,70 @@ enum CandidateOrigin {
   teamContact,
 }
 
+/// Trainierbare Mitarbeiter-Fähigkeiten (für bezahlte Kurse).
+enum EmployeeSkill { speed, friendliness, reliability, experience }
+
+/// Schicht-Fokus eines Mitarbeiters. `ganztags` ist neutral (Standard); ein
+/// spezifischer Fokus, der zur Stoßzeit des Standorts passt, erhöht die
+/// effektive Kapazität.
+enum EmployeeShift { ganztags, frueh, mittag, abend }
+
+extension EmployeeShiftInfo on EmployeeShift {
+  String get label {
+    switch (this) {
+      case EmployeeShift.ganztags:
+        return 'Ganztags';
+      case EmployeeShift.frueh:
+        return 'Früh';
+      case EmployeeShift.mittag:
+        return 'Mittag';
+      case EmployeeShift.abend:
+        return 'Abend';
+    }
+  }
+
+  String get emoji {
+    switch (this) {
+      case EmployeeShift.ganztags:
+        return '🕐';
+      case EmployeeShift.frueh:
+        return '🌅';
+      case EmployeeShift.mittag:
+        return '☀️';
+      case EmployeeShift.abend:
+        return '🌙';
+    }
+  }
+}
+
+extension EmployeeSkillInfo on EmployeeSkill {
+  String get label {
+    switch (this) {
+      case EmployeeSkill.speed:
+        return 'Tempo';
+      case EmployeeSkill.friendliness:
+        return 'Freundlichkeit';
+      case EmployeeSkill.reliability:
+        return 'Zuverlässigkeit';
+      case EmployeeSkill.experience:
+        return 'Erfahrung';
+    }
+  }
+
+  String get emoji {
+    switch (this) {
+      case EmployeeSkill.speed:
+        return '⚡';
+      case EmployeeSkill.friendliness:
+        return '😊';
+      case EmployeeSkill.reliability:
+        return '🛡️';
+      case EmployeeSkill.experience:
+        return '🎯';
+    }
+  }
+}
+
 extension CandidateOriginX on CandidateOrigin {
   String get label {
     switch (this) {
@@ -187,6 +251,7 @@ class Employee {
   final int daysEmployed; // Tracks loyalty & experience growth.
   final CandidateOrigin origin;
   final double growthPotential;
+  final EmployeeShift shift;
 
   const Employee({
     required this.id,
@@ -201,6 +266,7 @@ class Employee {
     this.daysEmployed = 0,
     this.origin = CandidateOrigin.regular,
     this.growthPotential = 0.0,
+    this.shift = EmployeeShift.ganztags,
   });
 
   /// Durchschnitt aller Stats, 0.1..1.0
@@ -251,6 +317,7 @@ class Employee {
     int? daysEmployed,
     CandidateOrigin? origin,
     double? growthPotential,
+    EmployeeShift? shift,
   }) {
     return Employee(
       id: id,
@@ -265,6 +332,7 @@ class Employee {
       daysEmployed: daysEmployed ?? this.daysEmployed,
       origin: origin ?? this.origin,
       growthPotential: growthPotential ?? this.growthPotential,
+      shift: shift ?? this.shift,
     );
   }
 
@@ -281,6 +349,7 @@ class Employee {
         'daysEmployed': daysEmployed,
         'origin': origin.name,
         'growthPotential': growthPotential,
+        'shift': shift.name,
       };
 
   factory Employee.fromJson(Map<String, dynamic> j) {
@@ -326,6 +395,10 @@ class Employee {
         orElse: () => CandidateOrigin.regular,
       ),
       growthPotential: (j['growthPotential'] as num?)?.toDouble() ?? 0.0,
+      shift: EmployeeShift.values.firstWhere(
+        (v) => v.name == (j['shift'] as String?),
+        orElse: () => EmployeeShift.ganztags,
+      ),
     );
   }
 }

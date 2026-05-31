@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../core/theme.dart';
+import '../core/localization.dart';
 import '../models/tutorial_model.dart';
 import '../providers/game_provider.dart';
 import '../services/sound_service.dart';
@@ -94,7 +95,11 @@ class MainScaffold extends ConsumerWidget {
                   totalSteps: kTutorialStepCount,
                   collapsed: tutorialCollapsed,
                   onSkip: () => ref.read(gameProvider.notifier).skipTutorial(),
-                  onPause: () => ref.read(gameProvider.notifier).skipTutorial(),
+                  // „Später" klappt nur ein (Tutorial bleibt aktiv), statt es
+                  // komplett zu beenden.
+                  onPause: () => ref
+                      .read(tutorialCardCollapsedProvider.notifier)
+                      .state = true,
                   onToggleCollapse: () {
                     ref.read(tutorialCardCollapsedProvider.notifier).state =
                         !tutorialCollapsed;
@@ -154,6 +159,7 @@ class MainScaffold extends ConsumerWidget {
       bottomNavigationBar: _BottomNav(
         currentIndex: idx,
         highlightIndex: tutorialStep?.targetTabIndex,
+        strings: ref.strings,
         onTap: (i) {
           HapticFeedback.selectionClick();
           SoundService.play(Sfx.tap);
@@ -206,12 +212,14 @@ class _GameQuickMenuButton extends StatelessWidget {
   }
 }
 
-class _GameMenuSheet extends StatelessWidget {
+class _GameMenuSheet extends ConsumerWidget {
   final VoidCallback onClose;
   const _GameMenuSheet({required this.onClose});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.strings;
+    final lang = ref.watch(languageProvider);
     return SafeArea(
       top: false,
       child: Padding(
@@ -220,9 +228,9 @@ class _GameMenuSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Spielmenü',
-              style: TextStyle(
+            Text(
+              t.gameMenu,
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
                 color: AppColors.textPrimary,
@@ -231,8 +239,8 @@ class _GameMenuSheet extends StatelessWidget {
             const SizedBox(height: 10),
             ListTile(
               leading: const Icon(Icons.home_rounded, color: AppColors.primary),
-              title: const Text('Zurück zum Hauptmenü'),
-              subtitle: const Text('Aktueller Stand bleibt gespeichert.'),
+              title: Text(t.backToMainMenu),
+              subtitle: Text(t.backToMainMenuSub),
               onTap: () {
                 onClose();
                 context.go('/menu');
@@ -241,8 +249,8 @@ class _GameMenuSheet extends StatelessWidget {
             ListTile(
               leading:
                   const Icon(Icons.tune_rounded, color: AppColors.secondary),
-              title: const Text('Einstellungen'),
-              subtitle: const Text('Optionen und Systemstatus anzeigen.'),
+              title: Text(t.settings),
+              subtitle: Text(t.settingsSub),
               onTap: () {
                 onClose();
                 context.push('/settings');
@@ -250,8 +258,8 @@ class _GameMenuSheet extends StatelessWidget {
             ),
             ListTile(
               leading: const Icon(Icons.palette_rounded, color: AppColors.gold),
-              title: const Text('Marken-Design'),
-              subtitle: const Text('Skins über Trophäen freischalten.'),
+              title: Text(t.brandDesign),
+              subtitle: Text(t.brandDesignSub),
               onTap: () {
                 onClose();
                 context.push('/branding');
@@ -260,30 +268,67 @@ class _GameMenuSheet extends StatelessWidget {
             ListTile(
               leading:
                   const Icon(Icons.share_rounded, color: AppColors.secondary),
-              title: const Text('Mein Imperium'),
-              subtitle: const Text('Zusammenfassung teilen/kopieren.'),
+              title: Text(t.myEmpire),
+              subtitle: Text(t.myEmpireSub),
               onTap: () {
                 onClose();
                 context.push('/empire-card');
               },
             ),
             const Divider(height: 18, color: AppColors.border),
-            const _SoundToggleTile(),
-            const ListTile(
-              enabled: false,
-              leading: Icon(Icons.language_rounded),
-              title: Text('Sprache ändern'),
-              subtitle: Text('Noch nicht implementiert (Platzhalter).'),
+            _SoundToggleTile(
+              title: t.soundEffects,
+              onLabel: t.on,
+              offLabel: t.off,
+            ),
+            ListTile(
+              leading:
+                  const Icon(Icons.language_rounded, color: AppColors.accent),
+              title: Text(t.language),
+              subtitle: Text('${lang.flag}  ${lang.label}'),
+              onTap: () => _pickLanguage(context, ref, t),
             ),
           ],
         ),
       ),
     );
   }
+
+  void _pickLanguage(BuildContext context, WidgetRef ref, AppStrings t) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        backgroundColor: AppColors.bgCard,
+        title: Text(t.language),
+        children: [
+          for (final l in AppLanguage.values)
+            ListTile(
+              leading: Text(l.flag, style: const TextStyle(fontSize: 20)),
+              title: Text(l.label),
+              trailing: l == ref.read(languageProvider)
+                  ? const Icon(Icons.check_rounded, color: AppColors.primary)
+                  : null,
+              onTap: () {
+                LanguageService.setLanguage(l);
+                ref.read(languageProvider.notifier).state = l;
+                Navigator.pop(ctx);
+              },
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 class _SoundToggleTile extends StatefulWidget {
-  const _SoundToggleTile();
+  final String title;
+  final String onLabel;
+  final String offLabel;
+  const _SoundToggleTile({
+    required this.title,
+    required this.onLabel,
+    required this.offLabel,
+  });
 
   @override
   State<_SoundToggleTile> createState() => _SoundToggleTileState();
@@ -300,8 +345,8 @@ class _SoundToggleTileState extends State<_SoundToggleTile> {
         on ? Icons.volume_up_rounded : Icons.volume_off_rounded,
         color: on ? AppColors.primary : AppColors.textMuted,
       ),
-      title: const Text('Sound-Effekte'),
-      subtitle: Text(on ? 'An' : 'Aus'),
+      title: Text(widget.title),
+      subtitle: Text(on ? widget.onLabel : widget.offLabel),
       onChanged: (v) async {
         await SoundService.setEnabled(v);
         if (v) SoundService.play(Sfx.tap);
@@ -315,10 +360,12 @@ class _BottomNav extends StatelessWidget {
   final int currentIndex;
   final int? highlightIndex;
   final ValueChanged<int> onTap;
+  final AppStrings strings;
 
   const _BottomNav({
     required this.currentIndex,
     required this.onTap,
+    required this.strings,
     this.highlightIndex,
   });
 
@@ -338,7 +385,7 @@ class _BottomNav extends StatelessWidget {
             children: [
               _NavItem(
                 icon: Icons.storefront_rounded,
-                label: 'Imbiss',
+                label: strings.navShop,
                 index: 0,
                 current: currentIndex,
                 highlight: highlightIndex == 0,
@@ -346,7 +393,7 @@ class _BottomNav extends StatelessWidget {
               ),
               _NavItem(
                 icon: Icons.place_rounded,
-                label: 'Städte',
+                label: strings.navCities,
                 index: 1,
                 current: currentIndex,
                 highlight: highlightIndex == 1,
@@ -354,7 +401,7 @@ class _BottomNav extends StatelessWidget {
               ),
               _NavItem(
                 icon: Icons.emoji_events_rounded,
-                label: 'Imperium',
+                label: strings.navEmpire,
                 index: 2,
                 current: currentIndex,
                 highlight: highlightIndex == 2,
@@ -362,7 +409,7 @@ class _BottomNav extends StatelessWidget {
               ),
               _NavItem(
                 icon: Icons.business_center_rounded,
-                label: 'Konzern',
+                label: strings.navCorporate,
                 index: 3,
                 current: currentIndex,
                 highlight: highlightIndex == 3,
@@ -370,7 +417,7 @@ class _BottomNav extends StatelessWidget {
               ),
               _NavItem(
                 icon: Icons.receipt_long_rounded,
-                label: 'Finanzen',
+                label: strings.navFinance,
                 index: 4,
                 current: currentIndex,
                 highlight: highlightIndex == 4,
@@ -378,7 +425,7 @@ class _BottomNav extends StatelessWidget {
               ),
               _NavItem(
                 icon: Icons.account_balance_rounded,
-                label: 'Bank',
+                label: strings.navBank,
                 index: 5,
                 current: currentIndex,
                 highlight: highlightIndex == 5,
@@ -484,62 +531,123 @@ class _TutorialCard extends StatelessWidget {
     required this.onToggleCollapse,
   });
 
+  BoxDecoration get _boxDeco => BoxDecoration(
+        color: AppColors.bgCard.withAlpha(252),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.primary.withAlpha(60)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(40),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      );
+
+  Widget get _stepBadge => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withAlpha(30),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          '$currentStep/$totalSteps',
+          style: const TextStyle(
+            color: AppColors.primary,
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+      alignment: Alignment.topCenter,
+      child: collapsed ? _buildCollapsed() : _buildExpanded(),
+    );
+  }
+
+  /// Schlanke Ein-Zeilen-Pille — blockiert nur minimal den oberen Rand.
+  Widget _buildCollapsed() {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onToggleCollapse,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(12, 7, 6, 7),
+          decoration: _boxDeco,
+          child: Row(
+            children: [
+              const Text('🎓', style: TextStyle(fontSize: 15)),
+              const SizedBox(width: 8),
+              _stepBadge,
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  step.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const Icon(Icons.keyboard_arrow_down_rounded,
+                  color: AppColors.textSecondary, size: 22),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Aufgeklappte Detail-Karte mit allen Aktionen.
+  Widget _buildExpanded() {
     final actionLabel = step.actionLabel ?? 'Weiter';
     final hasJump = step.targetTabIndex != null;
     final canConfirmStep = step.actionLabel != null;
     final progress = currentStep / totalSteps;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-      decoration: BoxDecoration(
-        color: AppColors.bgCard.withAlpha(250),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(30),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
+      padding: const EdgeInsets.fromLTRB(14, 10, 8, 12),
+      decoration: _boxDeco,
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Text(
-                'Schritt $currentStep von $totalSteps',
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 11,
-                ),
-              ),
-              IconButton(
-                onPressed: onToggleCollapse,
-                icon: Icon(
-                  collapsed
-                      ? Icons.keyboard_arrow_down_rounded
-                      : Icons.keyboard_arrow_up_rounded,
-                  color: AppColors.textSecondary,
-                ),
-                tooltip: collapsed ? 'Aufklappen' : 'Einklappen',
-              ),
+              const Text('🎓', style: TextStyle(fontSize: 15)),
+              const SizedBox(width: 8),
+              _stepBadge,
               const Spacer(),
               TextButton(
                 onPressed: onSkip,
                 style: TextButton.styleFrom(
-                  foregroundColor: AppColors.danger,
+                  foregroundColor: AppColors.textMuted,
                   padding: const EdgeInsets.symmetric(horizontal: 8),
+                  visualDensity: VisualDensity.compact,
                 ),
                 child: const Text('Überspringen'),
               ),
+              InkWell(
+                onTap: onToggleCollapse,
+                borderRadius: BorderRadius.circular(20),
+                child: const Padding(
+                  padding: EdgeInsets.all(4),
+                  child: Icon(Icons.keyboard_arrow_up_rounded,
+                      color: AppColors.textSecondary, size: 22),
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: LinearProgressIndicator(
@@ -550,103 +658,95 @@ class _TutorialCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          Text(
-            step.title,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: Text(
+              step.title,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            step.description,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 12,
-              height: 1.35,
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: Text(
+              step.description,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+                height: 1.35,
+              ),
             ),
-            maxLines: collapsed ? 1 : 3,
-            overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 8),
-          if (!collapsed) ...[
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                if (hasJump)
-                  OutlinedButton.icon(
-                    onPressed: onJump,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.primary,
-                      side: const BorderSide(color: AppColors.primary),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    icon: const Icon(Icons.near_me_rounded, size: 16),
-                    label: const Text('Zum Ziel'),
-                  ),
-                OutlinedButton(
-                  onPressed: onWhy,
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (hasJump)
+                OutlinedButton.icon(
+                  onPressed: onJump,
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.textSecondary,
-                    side: const BorderSide(color: AppColors.border),
+                    foregroundColor: AppColors.primary,
+                    side: const BorderSide(color: AppColors.primary),
                     visualDensity: VisualDensity.compact,
                   ),
-                  child: const Text('Warum ist das wichtig?'),
+                  icon: const Icon(Icons.near_me_rounded, size: 16),
+                  label: const Text('Zum Ziel'),
                 ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
+              OutlinedButton(
+                onPressed: onWhy,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.textSecondary,
+                  side: const BorderSide(color: AppColors.border),
+                  visualDensity: VisualDensity.compact,
+                ),
+                child: const Text('Warum?'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: onPause,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.textMuted,
+                    side: const BorderSide(color: AppColors.border),
+                  ),
+                  child: const Text('Später'),
+                ),
+              ),
+              if (canConfirmStep) ...[
+                const SizedBox(width: 8),
                 Expanded(
-                  child: OutlinedButton(
-                    onPressed: onPause,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.textMuted,
-                      side: const BorderSide(color: AppColors.border),
+                  child: ElevatedButton(
+                    onPressed: onAction,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
                     ),
-                    child: const Text('Später fortsetzen'),
+                    child: Text(actionLabel),
                   ),
                 ),
-                if (canConfirmStep) ...[
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: onAction,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                      ),
-                      child: Text(actionLabel),
-                    ),
-                  ),
-                ],
               ],
-            ),
-            const SizedBox(height: 6),
-            Text(
+            ],
+          ),
+          const SizedBox(height: 6),
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: Text(
               step.hint,
               style: const TextStyle(
                 color: AppColors.textMuted,
                 fontSize: 11,
               ),
             ),
-          ] else if (hasJump)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: OutlinedButton.icon(
-                onPressed: onJump,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.primary,
-                  side: const BorderSide(color: AppColors.primary),
-                  visualDensity: VisualDensity.compact,
-                ),
-                icon: const Icon(Icons.near_me_rounded, size: 16),
-                label: const Text('Zum Ziel'),
-              ),
-            ),
+          ),
         ],
       ),
     );

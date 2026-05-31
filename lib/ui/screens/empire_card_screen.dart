@@ -7,12 +7,15 @@ import '../../core/theme.dart';
 import '../../models/achievement_model.dart';
 import '../../models/campaign_model.dart';
 import '../../models/branding_model.dart';
+import '../../core/constants.dart';
 import '../../providers/game_provider.dart';
 import '../../services/campaign_engine.dart';
+import '../../services/game_engine.dart';
 import '../../services/share_util.dart';
 import '../../services/sound_service.dart';
 
 final _fmt = NumberFormat('#,##0', 'de_DE');
+final _fmtPrice = NumberFormat('#,##0.00', 'de_DE');
 
 /// „Mein Imperium"-Karte — teilbare Zusammenfassung mit Kopier-Funktion.
 class EmpireCardScreen extends ConsumerWidget {
@@ -34,6 +37,7 @@ class EmpireCardScreen extends ConsumerWidget {
         : game.shops.fold<double>(0, (s, sh) => s + sh.reputation) /
             game.shops.length;
     final chapters = CampaignEngine.completedCount(game);
+    final avgDoener = GameEngine.playerAvgDoenerPrice(game);
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -96,6 +100,7 @@ class EmpireCardScreen extends ConsumerWidget {
                 _StatLine(
                     label: 'Gesamtumsatz',
                     value: '${_fmt.format(game.totalRevenue)} €'),
+                if (avgDoener != null) _DoenerIndexLine(avgDoener: avgDoener),
                 _StatLine(
                     label: 'Trophäen',
                     value:
@@ -103,6 +108,10 @@ class EmpireCardScreen extends ConsumerWidget {
                 _StatLine(
                     label: 'Story-Kapitel',
                     value: '$chapters/${kCampaignChapters.length}'),
+                if (game.prestigePoints > 0)
+                  _StatLine(
+                      label: 'Prestige-Stufe',
+                      value: '${game.prestigePoints} 🏅'),
                 const SizedBox(height: 14),
                 Text(
                   '#DönerEmpire',
@@ -135,6 +144,62 @@ class EmpireCardScreen extends ConsumerWidget {
               },
               icon: const Icon(Icons.copy_rounded, size: 18),
               label: const Text('In Zwischenablage kopieren'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Spezial-Zeile: vergleicht den eigenen Ø-Döner-Preis mit dem Bundesschnitt.
+class _DoenerIndexLine extends StatelessWidget {
+  final double avgDoener;
+  const _DoenerIndexLine({required this.avgDoener});
+
+  @override
+  Widget build(BuildContext context) {
+    final diff = avgDoener - kNationalAvgDoenerPrice;
+    final cheaper = diff <= -0.01;
+    final pricier = diff >= 0.01;
+    final note = cheaper
+        ? '👍 günstiger als der Schnitt'
+        : pricier
+            ? '💎 über dem Schnitt'
+            : '⚖️ genau im Schnitt';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Ø Döner-Preis',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.85),
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              Text(
+                '${_fmtPrice.format(avgDoener)} €',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          Text(
+            '$note · Bundesschnitt ${_fmtPrice.format(kNationalAvgDoenerPrice)} €',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.75),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],

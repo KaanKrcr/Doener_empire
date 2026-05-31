@@ -24,6 +24,7 @@ class Shop {
   final bool autoHire; // HR-Manager stellt automatisch bei Engpass ein
   final String? originalCompetitorName; // ehemals welcher Konkurrent
   final bool wasAcquired; // stammt aus einer Übernahme
+  final double morale; // Team-Moral 0.2..1.0 (0.75 = neutral)
 
   const Shop({
     required this.id,
@@ -45,6 +46,7 @@ class Shop {
     this.autoHire = false,
     this.originalCompetitorName,
     this.wasAcquired = false,
+    this.morale = 0.75,
   });
 
   bool hasUpgrade(String upgradeId) => upgradeIds.contains(upgradeId);
@@ -88,6 +90,7 @@ class Shop {
     String? originalCompetitorName,
     bool clearOriginalCompetitorName = false,
     bool? wasAcquired,
+    double? morale,
   }) {
     return Shop(
       id: id,
@@ -111,6 +114,7 @@ class Shop {
           ? null
           : (originalCompetitorName ?? this.originalCompetitorName),
       wasAcquired: wasAcquired ?? this.wasAcquired,
+      morale: morale ?? this.morale,
     );
   }
 
@@ -134,6 +138,7 @@ class Shop {
         'autoHire': autoHire,
         'originalCompetitorName': originalCompetitorName,
         'wasAcquired': wasAcquired,
+        'morale': morale,
       };
 
   factory Shop.fromJson(Map<String, dynamic> j) => Shop(
@@ -168,5 +173,6 @@ class Shop {
         autoHire: j['autoHire'] as bool? ?? false,
         originalCompetitorName: j['originalCompetitorName'] as String?,
         wasAcquired: j['wasAcquired'] as bool? ?? false,
+        morale: (j['morale'] as num?)?.toDouble() ?? 0.75,
       );
 }

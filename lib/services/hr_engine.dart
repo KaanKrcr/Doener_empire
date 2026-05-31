@@ -200,6 +200,51 @@ class HrEngine {
     return recruitmentModifiers(state).trainingGrowthMultiplier;
   }
 
+  // ── Bezahlte Mitarbeiter-Kurse ─────────────────────────────────────────────
+
+  static const double _kTrainingBaseCost = 90;
+
+  /// Aktueller Wert (1..10) der trainierbaren Fähigkeit eines Mitarbeiters.
+  static int skillValue(Employee emp, EmployeeSkill skill) {
+    switch (skill) {
+      case EmployeeSkill.speed:
+        return emp.speed;
+      case EmployeeSkill.friendliness:
+        return emp.friendliness;
+      case EmployeeSkill.reliability:
+        return emp.reliability;
+      case EmployeeSkill.experience:
+        return emp.experience;
+    }
+  }
+
+  /// Ob eine Fähigkeit noch trainierbar ist (Maximum 10).
+  static bool canTrain(Employee emp, EmployeeSkill skill) =>
+      skillValue(emp, skill) < 10;
+
+  /// Kosten, um [skill] um eine Stufe anzuheben. Steigt mit der Zielstufe;
+  /// ein guter Training-Coach (HR) macht Kurse spürbar günstiger.
+  static double trainingCost(GameState state, Employee emp, EmployeeSkill skill) {
+    final target = skillValue(emp, skill) + 1;
+    final coach = trainingGrowthMultiplier(state);
+    return (_kTrainingBaseCost * target / coach).clamp(60.0, 2000.0);
+  }
+
+  /// Liefert den Mitarbeiter mit um eine Stufe erhöhter Fähigkeit (max. 10).
+  static Employee applyTraining(Employee emp, EmployeeSkill skill) {
+    final next = (skillValue(emp, skill) + 1).clamp(1, 10);
+    switch (skill) {
+      case EmployeeSkill.speed:
+        return emp.copyWith(speed: next);
+      case EmployeeSkill.friendliness:
+        return emp.copyWith(friendliness: next);
+      case EmployeeSkill.reliability:
+        return emp.copyWith(reliability: next);
+      case EmployeeSkill.experience:
+        return emp.copyWith(experience: next);
+    }
+  }
+
   static int xpIntervalDays({
     required GameDifficulty difficulty,
     required double trainingGrowthMultiplier,

@@ -3,6 +3,7 @@ import 'dart:math';
 import '../models/competitor_model.dart';
 import '../models/difficulty_model.dart';
 import '../models/game_state.dart';
+import '../models/product_model.dart';
 import '../core/constants.dart';
 import '../models/city_model.dart';
 
@@ -145,24 +146,66 @@ class CompetitorEngine {
       c.shopCount = (c.shopCount + 1).clamp(1, 5);
       c.reputation = (c.reputation - 0.05).clamp(1.0, 5.0); // dilution
     } else if (r < expansionChance + priceChance) {
-      // Preis-Anpassung
-      final hasPlayer = state.hasShopIn(c.cityId);
-      if (c.personality == CompetitorPersonality.aggressive && hasPlayer) {
-        c.priceLevel = (c.priceLevel - 0.05).clamp(0.65, 1.4);
-      } else if (c.personality == CompetitorPersonality.premium) {
-        c.priceLevel = (c.priceLevel + 0.04).clamp(0.65, 1.4);
-      } else if (c.personality == CompetitorPersonality.cheapMass) {
-        c.priceLevel = (c.priceLevel - 0.02).clamp(0.65, 1.4);
-      } else {
-        // balanced/traditional: minimal jiggle
-        c.priceLevel =
-            (c.priceLevel + (_rng.nextDouble() - 0.5) * 0.04).clamp(0.65, 1.4);
-      }
+      // Preis-Anpassung: Reaktion auf das Spieler-Preisniveau in der Stadt.
+      _reactToPlayerPrice(c, state);
     } else {
       // Reputations-Pflege oder -Schwächung
       final delta = (_rng.nextDouble() - 0.45) * 0.20;
       c.reputation = (c.reputation + delta).clamp(1.0, 5.0);
     }
+  }
+
+  /// Durchschnittliches Preisniveau des Spielers in einer Stadt — Preis geteilt
+  /// durch Basispreis, gemittelt über die aktiven Menüs aller Spieler-Filialen.
+  /// `null`, wenn der Spieler dort (noch) keine Filiale betreibt.
+  static double? _playerPriceLevel(GameState state, String cityId) {
+    double sum = 0;
+    int n = 0;
+    for (final shop in state.shops.where((s) => s.cityId == cityId)) {
+      for (final sp in shop.menu.where((p) => p.isActive)) {
+        ProductData? pd;
+        for (final p in kAllProducts) {
+          if (p.id == sp.productId) {
+            pd = p;
+            break;
+          }
+        }
+        if (pd == null || pd.basePrice <= 0) continue;
+        sum += sp.price / pd.basePrice;
+        n++;
+      }
+    }
+    if (n == 0) return null;
+    return sum / n;
+  }
+
+  /// Konkurrent passt sein Preisniveau an das des Spielers an. Je nach
+  /// Persönlichkeit unterbietet er ihn, setzt sich bewusst darüber oder zieht
+  /// nach. Ohne Spieler-Filiale in der Stadt nur sanfte Eigendrift.
+  static void _reactToPlayerPrice(Competitor c, GameState state) {
+    final playerLevel = _playerPriceLevel(state, c.cityId);
+    if (playerLevel == null) {
+      final drift = switch (c.personality) {
+        CompetitorPersonality.premium => 0.03,
+        CompetitorPersonality.cheapMass => -0.03,
+        CompetitorPersonality.aggressive => -0.02,
+        _ => (_rng.nextDouble() - 0.5) * 0.04,
+      };
+      c.priceLevel = (c.priceLevel + drift).clamp(0.65, 1.4);
+      return;
+    }
+
+    // (Offset zum Spieler-Niveau, Reaktionsgeschwindigkeit) je Persönlichkeit.
+    final (offset, step) = switch (c.personality) {
+      CompetitorPersonality.aggressive => (-0.12, 0.50),
+      CompetitorPersonality.cheapMass => (-0.18, 0.35),
+      CompetitorPersonality.balanced => (0.0, 0.40),
+      CompetitorPersonality.premium => (0.15, 0.35),
+      CompetitorPersonality.traditional => (0.05, 0.15),
+    };
+    final target = (playerLevel + offset).clamp(0.65, 1.4);
+    c.priceLevel =
+        (c.priceLevel + (target - c.priceLevel) * step).clamp(0.65, 1.4);
   }
 
   /// Verteilt die Marktanteile auf Konkurrenten + Spieler-Anteil basierend auf

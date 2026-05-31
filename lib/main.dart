@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme.dart';
 import 'core/router.dart';
+import 'core/localization.dart';
 import 'services/sound_service.dart';
 
 void main() async {
@@ -10,6 +11,8 @@ void main() async {
 
   // Sound-Einstellung laden (fehlertolerant)
   await SoundService.init();
+  // Sprach-Einstellung laden (fehlertolerant)
+  await LanguageService.init();
 
   // Portrait-Modus erzwingen
   await SystemChrome.setPreferredOrientations([

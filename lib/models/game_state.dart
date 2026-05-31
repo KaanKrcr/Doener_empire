@@ -206,6 +206,19 @@ class GameState {
   /// Fehlt ein Eintrag → Standard.
   final Map<String, String> productQuality;
 
+  // ── Einkaufsvertrag / Preisbindung (Inflation-Hedge) ──────────────────────
+  /// Spieltag, bis zu dem ein Einkaufsvertrag den Zutaten-Preisindex einfriert.
+  /// 0 = kein aktiver Vertrag.
+  final int supplyContractUntilDay;
+
+  /// Eingefrorener Zutaten-Preisindex, solange der Vertrag läuft.
+  final double supplyContractIndex;
+
+  // ── Prestige / Franchise (New-Game+) ──────────────────────────────────────
+  /// Über alle Neugründungen akkumulierte Prestige-Punkte. Geben dauerhafte
+  /// Boni (Kundenstrom + höheres Startkapital) und steigen mit jeder Franchise.
+  final int prestigePoints;
+
   const GameState({
     required this.companyName,
     required this.founderName,
@@ -245,6 +258,9 @@ class GameState {
     this.activeComboIds = const [],
     this.activeThemeId = 'klassik',
     this.productQuality = const {},
+    this.supplyContractUntilDay = 0,
+    this.supplyContractIndex = 1.0,
+    this.prestigePoints = 0,
   });
 
   factory GameState.initial({
@@ -253,6 +269,7 @@ class GameState {
     required double startCash,
     GameDifficulty difficulty = GameDifficulty.normal,
     bool tutorialEnabled = true,
+    int prestigePoints = 0,
   }) {
     return GameState(
       companyName: companyName,
@@ -293,6 +310,7 @@ class GameState {
       activeComboIds: const [],
       activeThemeId: 'klassik',
       productQuality: const {},
+      prestigePoints: prestigePoints,
     );
   }
 
@@ -348,6 +366,9 @@ class GameState {
     List<String>? activeComboIds,
     String? activeThemeId,
     Map<String, String>? productQuality,
+    int? supplyContractUntilDay,
+    double? supplyContractIndex,
+    int? prestigePoints,
   }) {
     return GameState(
       companyName: companyName ?? this.companyName,
@@ -389,6 +410,10 @@ class GameState {
       activeComboIds: activeComboIds ?? this.activeComboIds,
       activeThemeId: activeThemeId ?? this.activeThemeId,
       productQuality: productQuality ?? this.productQuality,
+      supplyContractUntilDay:
+          supplyContractUntilDay ?? this.supplyContractUntilDay,
+      supplyContractIndex: supplyContractIndex ?? this.supplyContractIndex,
+      prestigePoints: prestigePoints ?? this.prestigePoints,
     );
   }
 
@@ -433,6 +458,9 @@ class GameState {
         'activeComboIds': activeComboIds,
         'activeThemeId': activeThemeId,
         'productQuality': productQuality,
+        'supplyContractUntilDay': supplyContractUntilDay,
+        'supplyContractIndex': supplyContractIndex,
+        'prestigePoints': prestigePoints,
       };
 
   factory GameState.fromJson(Map<String, dynamic> j) {
@@ -685,6 +713,9 @@ class GameState {
       activeThemeId: (j['activeThemeId'] as String?) ?? 'klassik',
       productQuality: asMap(j['productQuality'])
           .map((k, v) => MapEntry(k, v.toString())),
+      supplyContractUntilDay: asInt(j['supplyContractUntilDay']),
+      supplyContractIndex: asDouble(j['supplyContractIndex'], 1.0),
+      prestigePoints: asInt(j['prestigePoints']),
     );
   }
 }

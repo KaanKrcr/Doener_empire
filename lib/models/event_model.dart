@@ -812,4 +812,241 @@ const List<GameEvent> kAllEvents = [
       ),
     ],
   ),
+
+  // ── POLITIK & GESELLSCHAFT (aktuelle Themen) ────────────────────────
+  GameEvent(
+    id: 'doener_price_cap',
+    title: 'Dönerpreisbremse im Gespräch',
+    description:
+        'In den Nachrichten fordert eine Partei einen staatlich gedeckelten '
+        'Döner-Preis von 4,90 €. Das Thema kocht hoch — und alle schauen auf '
+        'die Branche. Wie positionierst du dich?',
+    emoji: '🏛️',
+    category: EventCategory.opportunity,
+    weight: EventWeight.common,
+    requirements: EventRequirements(minDay: 30),
+    choices: [
+      EventChoice(
+        label: 'Solidarische 4,90 €-Aktionswoche ausrufen',
+        effect: EventEffect(
+          cashDelta: -900,
+          reputationDelta: 0.35,
+          brandAwarenessDelta: 4.0,
+          resultMessage:
+              'Die Aktion geht durch die Presse — kostet Marge, bringt aber '
+              'Sympathie und jede Menge Aufmerksamkeit.',
+        ),
+      ),
+      EventChoice(
+        label: 'Klar dagegen: "Qualität hat ihren Preis"',
+        effect: EventEffect(
+          reputationDelta: -0.10,
+          brandAwarenessDelta: 2.0,
+          resultMessage:
+              'Polarisierende Ansage. Manche feiern dich, andere sind sauer — '
+              'gesehen wirst du auf jeden Fall.',
+        ),
+      ),
+      EventChoice(
+        label: 'Stillhalten und abwarten',
+        effect: EventEffect(
+          resultMessage: 'Du hältst dich raus. Kein Risiko, kein Effekt.',
+        ),
+      ),
+    ],
+  ),
+  GameEvent(
+    id: 'mwst_debate',
+    title: 'Streit um die Essens-Mehrwertsteuer',
+    description:
+        'Politik und Gastro-Verbände streiten, ob auf Essen weiter 7 % oder '
+        'wieder 19 % Mehrwertsteuer fällig werden. Es geht um deine Marge.',
+    emoji: '🧾',
+    category: EventCategory.neutral,
+    requirements: EventRequirements(minDay: 40, minShops: 2),
+    choices: [
+      EventChoice(
+        label: 'Verbands-Petition mitzeichnen (500 €)',
+        effect: EventEffect(
+          cashDelta: -500,
+          reputationDelta: 0.10,
+          brandAwarenessDelta: 2.0,
+          resultMessage:
+              'Dein Name steht auf der Liste der Gastro-Initiative — gutes '
+              'Branchen-Standing.',
+        ),
+        cost: 500,
+      ),
+      EventChoice(
+        label: 'Raushalten — soll die Politik regeln',
+        effect: EventEffect(
+          resultMessage: 'Du konzentrierst dich aufs Geschäft. Nichts ändert sich.',
+        ),
+      ),
+    ],
+  ),
+  GameEvent(
+    id: 'energy_cost_spike',
+    title: 'Energiekosten explodieren',
+    description:
+        'Die Strom- und Gaspreise schießen nach oben — Grill, Kühlung und Licht '
+        'laufen den ganzen Tag. Wie reagierst du?',
+    emoji: '🔌',
+    category: EventCategory.bad,
+    weight: EventWeight.common,
+    requirements: EventRequirements(minDay: 25),
+    choices: [
+      EventChoice(
+        label: 'In LED & effiziente Geräte investieren (2.000 €)',
+        effect: EventEffect(
+          cashDelta: -2000,
+          reputationDelta: 0.05,
+          brandAwarenessDelta: 1.0,
+          resultMessage:
+              'Teuer jetzt, aber nachhaltig — und das grüne Image kommt an.',
+        ),
+        cost: 2000,
+      ),
+      EventChoice(
+        label: 'Kosten an die Preise weitergeben',
+        effect: EventEffect(
+          reputationDelta: -0.15,
+          resultMessage:
+              'Verständlich, aber die Kundschaft murrt über die Aufschläge.',
+        ),
+      ),
+      EventChoice(
+        label: 'Mehrkosten erstmal schlucken',
+        effect: EventEffect(
+          cashDelta: -1500,
+          reputationDelta: 0.10,
+          resultMessage:
+              'Du frisst die Kosten — die Stammkundschaft rechnet es dir an.',
+        ),
+      ),
+    ],
+  ),
+  GameEvent(
+    id: 'min_wage_hike',
+    title: 'Mindestlohn steigt',
+    description:
+        'Der gesetzliche Mindestlohn wird angehoben. Dein Personal kostet ab '
+        'sofort mehr. Wie gehst du damit um?',
+    emoji: '💶',
+    category: EventCategory.bad,
+    requirements: EventRequirements(minDay: 35, minShops: 2),
+    choices: [
+      EventChoice(
+        label: 'Löhne fair anheben und offen kommunizieren',
+        effect: EventEffect(
+          cashDelta: -1200,
+          reputationDelta: 0.15,
+          brandAwarenessDelta: 1.5,
+          resultMessage:
+              'Das Team ist loyal, und "fairer Arbeitgeber" macht als Image die Runde.',
+        ),
+      ),
+      EventChoice(
+        label: 'Schichten kürzen, Personal ausdünnen',
+        effect: EventEffect(
+          cashDelta: 300,
+          reputationDelta: -0.20,
+          resultMessage:
+              'Kurzfristig gespart — aber längere Wartezeiten und mürrisches Team.',
+        ),
+      ),
+    ],
+  ),
+  GameEvent(
+    id: 'doener_index_media',
+    title: 'Medien küren den "Döner-Index"',
+    description:
+        'Eine große Zeitung vergleicht bundesweit die Döner-Preise und stellt '
+        'die günstigsten und teuersten Läden vor. Deine Stadt ist dabei.',
+    emoji: '📰',
+    category: EventCategory.opportunity,
+    weight: EventWeight.common,
+    requirements: EventRequirements(minDay: 20),
+    choices: [
+      EventChoice(
+        label: 'Mit fairem Preis-Leistungs-Versprechen werben',
+        effect: EventEffect(
+          reputationDelta: 0.25,
+          brandAwarenessDelta: 3.0,
+          resultMessage:
+              'Du wirst als fairer Laden zitiert — viele neugierige Neukunden.',
+        ),
+      ),
+      EventChoice(
+        label: 'Premium-Qualität in den Vordergrund stellen',
+        effect: EventEffect(
+          reputationDelta: 0.10,
+          brandAwarenessDelta: 2.0,
+          resultMessage:
+              '"Teurer, aber bester Döner" — ein Image, das Feinschmecker anzieht.',
+        ),
+      ),
+    ],
+  ),
+  GameEvent(
+    id: 'tiktok_doener_challenge',
+    title: '#DönerChallenge geht viral',
+    description:
+        'Ein TikTok-Trend lässt halb Deutschland Döner-Videos drehen. Die Welle '
+        'rollt — springst du auf?',
+    emoji: '📲',
+    category: EventCategory.good,
+    weight: EventWeight.rare,
+    requirements: EventRequirements(minDay: 10),
+    choices: [
+      EventChoice(
+        label: 'Eigene Challenge-Edition launchen (500 €)',
+        effect: EventEffect(
+          cashDelta: 1300,
+          reputationDelta: 0.30,
+          brandAwarenessDelta: 6.0,
+          resultMessage:
+              'Dein Clip explodiert — Schlangen vor der Tür und Marke durch die Decke!',
+        ),
+        cost: 500,
+      ),
+      EventChoice(
+        label: 'Einfach mitnehmen, was kommt',
+        effect: EventEffect(
+          cashDelta: 300,
+          brandAwarenessDelta: 1.5,
+          resultMessage: 'Ein paar Trend-Touristen mehr — nett, aber kein Knaller.',
+        ),
+      ),
+    ],
+  ),
+  GameEvent(
+    id: 'best_doener_voting',
+    title: 'Voting: Bester Döner der Stadt',
+    description:
+        'Ein Stadtmagazin sucht per Online-Voting den besten Döner. Platz 1 '
+        'bedeutet wochenlange Gratis-Werbung.',
+    emoji: '🏆',
+    category: EventCategory.opportunity,
+    requirements: EventRequirements(minShops: 2, minDay: 30),
+    choices: [
+      EventChoice(
+        label: 'Stammkunden zum Abstimmen mobilisieren (300 €)',
+        effect: EventEffect(
+          cashDelta: -300,
+          reputationDelta: 0.30,
+          brandAwarenessDelta: 3.5,
+          resultMessage:
+              'Deine Community zieht durch — Titelseite und ein Schub für die Marke!',
+        ),
+        cost: 300,
+      ),
+      EventChoice(
+        label: 'Nicht mitmachen',
+        effect: EventEffect(
+          resultMessage: 'Du sparst dir den Aufwand — die Konkurrenz freut sich.',
+        ),
+      ),
+    ],
+  ),
 ];

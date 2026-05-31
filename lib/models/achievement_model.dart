@@ -1,3 +1,5 @@
+import 'game_state.dart';
+
 /// Achievements / Trophies — anders als Missions, die linear sind,
 /// sind diese ungeordnet und triggern bei Erfüllung einmalig.
 ///
@@ -51,18 +53,19 @@ extension AchievementTierLabel on AchievementTier {
 }
 
 /// Funktion-Signatur für Achievement-Prüfung.
-/// Erhält den GameState und prüft ob das Achievement erfüllt ist.
-typedef AchievementCheck = bool Function(
-  int totalShops,
-  int totalEmployees,
-  double totalRevenue,
-  double cash,
-  int currentDay,
-  int customersTotal,
-  double maxShopRep,
-  double brandAwareness,
-  int competitorsBeat,
-);
+/// Erhält den vollständigen [GameState] und prüft, ob das Achievement erfüllt
+/// ist. (Früher positionsbasiert — jetzt zustandsbasiert, damit auch neue
+/// Felder wie Prestige oder Einkaufsverträge abgefragt werden können.)
+typedef AchievementCheck = bool Function(GameState state);
+
+/// Höchste Filial-Reputation im aktuellen Stand (0, wenn keine Filiale).
+double _maxRep(GameState s) => s.shops.isEmpty
+    ? 0.0
+    : s.shops.fold(0.0, (m, sh) => sh.reputation > m ? sh.reputation : m);
+
+/// Anzahl verschiedener Städte mit eigener Filiale.
+int _distinctCities(GameState s) =>
+    s.shops.map((sh) => sh.cityId).toSet().length;
 
 /// Achievement-Pool. Wird in MainScaffold + Engine geprüft.
 final List<Achievement> kAllAchievements = [
@@ -73,7 +76,7 @@ final List<Achievement> kAllAchievements = [
     description: 'Eröffne deine erste Filiale.',
     emoji: '🥙',
     tier: AchievementTier.bronze,
-    check: (shops, emp, rev, cash, day, cust, rep, brand, comp) => shops >= 1,
+    check: (s) => s.shops.isNotEmpty,
   ),
   Achievement(
     id: 'first_week',
@@ -81,7 +84,7 @@ final List<Achievement> kAllAchievements = [
     description: 'Erreiche Tag 7 ohne Pleite.',
     emoji: '📅',
     tier: AchievementTier.bronze,
-    check: (shops, emp, rev, cash, day, cust, rep, brand, comp) => day >= 7,
+    check: (s) => s.currentDay >= 7,
   ),
   Achievement(
     id: 'first_5_employees',
@@ -89,7 +92,7 @@ final List<Achievement> kAllAchievements = [
     description: 'Stelle insgesamt 5 Mitarbeiter ein.',
     emoji: '👥',
     tier: AchievementTier.bronze,
-    check: (shops, emp, rev, cash, day, cust, rep, brand, comp) => emp >= 5,
+    check: (s) => s.employeeCount >= 5,
   ),
   Achievement(
     id: 'thousand_customers',
@@ -97,7 +100,7 @@ final List<Achievement> kAllAchievements = [
     description: 'Bediene insgesamt 1.000 Kunden.',
     emoji: '👥',
     tier: AchievementTier.bronze,
-    check: (shops, emp, rev, cash, day, cust, rep, brand, comp) => cust >= 1000,
+    check: (s) => s.customersServedTotal >= 1000,
   ),
 
   // Silber
@@ -107,8 +110,7 @@ final List<Achievement> kAllAchievements = [
     description: 'Filialen in 3 verschiedenen Städten.',
     emoji: '🗺️',
     tier: AchievementTier.silber,
-    // Workaround: nutze Stadt-Count über Repräsentation in checkAchievements
-    check: (shops, emp, rev, cash, day, cust, rep, brand, comp) => shops >= 3,
+    check: (s) => _distinctCities(s) >= 3,
   ),
   Achievement(
     id: 'rep_45',
@@ -116,7 +118,7 @@ final List<Achievement> kAllAchievements = [
     description: 'Erreiche 4,5 Reputation in einer Filiale.',
     emoji: '⭐',
     tier: AchievementTier.silber,
-    check: (shops, emp, rev, cash, day, cust, rep, brand, comp) => rep >= 4.5,
+    check: (s) => _maxRep(s) >= 4.5,
   ),
   Achievement(
     id: 'cash_50k',
@@ -124,8 +126,7 @@ final List<Achievement> kAllAchievements = [
     description: 'Erreiche 50.000 € Konto.',
     emoji: '💵',
     tier: AchievementTier.silber,
-    check: (shops, emp, rev, cash, day, cust, rep, brand, comp) =>
-        cash >= 50000,
+    check: (s) => s.cash >= 50000,
   ),
   Achievement(
     id: 'thirty_days',
@@ -133,7 +134,7 @@ final List<Achievement> kAllAchievements = [
     description: 'Überlebe 30 Tage.',
     emoji: '📆',
     tier: AchievementTier.silber,
-    check: (shops, emp, rev, cash, day, cust, rep, brand, comp) => day >= 30,
+    check: (s) => s.currentDay >= 30,
   ),
 
   // Gold
@@ -143,7 +144,7 @@ final List<Achievement> kAllAchievements = [
     description: 'Eröffne 10 Filialen.',
     emoji: '🏬',
     tier: AchievementTier.gold,
-    check: (shops, emp, rev, cash, day, cust, rep, brand, comp) => shops >= 10,
+    check: (s) => s.shops.length >= 10,
   ),
   Achievement(
     id: 'cash_250k',
@@ -151,8 +152,7 @@ final List<Achievement> kAllAchievements = [
     description: 'Erreiche 250.000 € Konto.',
     emoji: '💎',
     tier: AchievementTier.gold,
-    check: (shops, emp, rev, cash, day, cust, rep, brand, comp) =>
-        cash >= 250000,
+    check: (s) => s.cash >= 250000,
   ),
   Achievement(
     id: 'brand_40',
@@ -160,7 +160,7 @@ final List<Achievement> kAllAchievements = [
     description: 'Markenbekanntheit 40+.',
     emoji: '📢',
     tier: AchievementTier.gold,
-    check: (shops, emp, rev, cash, day, cust, rep, brand, comp) => brand >= 40,
+    check: (s) => s.brand.brandAwareness >= 40,
   ),
   Achievement(
     id: 'ten_thousand_customers',
@@ -168,8 +168,7 @@ final List<Achievement> kAllAchievements = [
     description: 'Bediene 10.000 Kunden insgesamt.',
     emoji: '🥳',
     tier: AchievementTier.gold,
-    check: (shops, emp, rev, cash, day, cust, rep, brand, comp) =>
-        cust >= 10000,
+    check: (s) => s.customersServedTotal >= 10000,
   ),
 
   // Platin
@@ -179,8 +178,7 @@ final List<Achievement> kAllAchievements = [
     description: '1.000.000 € Gesamtumsatz.',
     emoji: '👑',
     tier: AchievementTier.platin,
-    check: (shops, emp, rev, cash, day, cust, rep, brand, comp) =>
-        rev >= 1000000,
+    check: (s) => s.totalRevenue >= 1000000,
   ),
   Achievement(
     id: 'brand_80',
@@ -188,7 +186,7 @@ final List<Achievement> kAllAchievements = [
     description: 'Markenbekanntheit 80+.',
     emoji: '🌟',
     tier: AchievementTier.platin,
-    check: (shops, emp, rev, cash, day, cust, rep, brand, comp) => brand >= 80,
+    check: (s) => s.brand.brandAwareness >= 80,
   ),
   Achievement(
     id: 'twenty_shops',
@@ -196,7 +194,7 @@ final List<Achievement> kAllAchievements = [
     description: '20 Filialen aktiv.',
     emoji: '🏰',
     tier: AchievementTier.platin,
-    check: (shops, emp, rev, cash, day, cust, rep, brand, comp) => shops >= 20,
+    check: (s) => s.shops.length >= 20,
   ),
 
   // Zusätzliche Langzeit-Ziele
@@ -206,7 +204,7 @@ final List<Achievement> kAllAchievements = [
     description: 'Erreiche die volle 5,0 Reputation in einer Filiale.',
     emoji: '🌟',
     tier: AchievementTier.gold,
-    check: (shops, emp, rev, cash, day, cust, rep, brand, comp) => rep >= 5.0,
+    check: (s) => _maxRep(s) >= 5.0,
   ),
   Achievement(
     id: 'fifty_employees',
@@ -214,7 +212,7 @@ final List<Achievement> kAllAchievements = [
     description: 'Beschäftige insgesamt 50 Mitarbeiter.',
     emoji: '👔',
     tier: AchievementTier.gold,
-    check: (shops, emp, rev, cash, day, cust, rep, brand, comp) => emp >= 50,
+    check: (s) => s.employeeCount >= 50,
   ),
   Achievement(
     id: 'hundred_days',
@@ -222,7 +220,7 @@ final List<Achievement> kAllAchievements = [
     description: 'Überlebe 100 Tage im Geschäft.',
     emoji: '🗓️',
     tier: AchievementTier.gold,
-    check: (shops, emp, rev, cash, day, cust, rep, brand, comp) => day >= 100,
+    check: (s) => s.currentDay >= 100,
   ),
   Achievement(
     id: 'cash_500k',
@@ -230,8 +228,33 @@ final List<Achievement> kAllAchievements = [
     description: 'Erreiche 500.000 € auf dem Konto.',
     emoji: '🤑',
     tier: AchievementTier.platin,
-    check: (shops, emp, rev, cash, day, cust, rep, brand, comp) =>
-        cash >= 500000,
+    check: (s) => s.cash >= 500000,
+  ),
+
+  // Neue Systeme: Prestige & Einkaufsverträge
+  Achievement(
+    id: 'hedge_master',
+    title: 'Preis-Stratege',
+    description: 'Schließe deinen ersten Einkaufsvertrag ab.',
+    emoji: '🤝',
+    tier: AchievementTier.silber,
+    check: (s) => s.supplyContractUntilDay > 0,
+  ),
+  Achievement(
+    id: 'first_franchise',
+    title: 'Franchise-Gründer',
+    description: 'Gründe dein Imperium als Franchise neu (Prestige).',
+    emoji: '🏅',
+    tier: AchievementTier.gold,
+    check: (s) => s.prestigePoints >= 1,
+  ),
+  Achievement(
+    id: 'prestige_master',
+    title: 'Prestige-Meister',
+    description: 'Sammle 5 Prestige-Punkte über mehrere Franchises.',
+    emoji: '👑',
+    tier: AchievementTier.platin,
+    check: (s) => s.prestigePoints >= 5,
   ),
 ];
 

@@ -103,6 +103,10 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                   ? game.history.sublist(game.history.length - 7)
                   : game.history,
             ),
+            const SizedBox(height: 12),
+            _IngredientIndexCard(day: game.currentDay),
+            const SizedBox(height: 12),
+            const _SupplyContractCard(),
             const SizedBox(height: 20),
           ],
 
@@ -675,6 +679,273 @@ class _SummaryItem extends StatelessWidget {
 }
 
 // ── Kostenstruktur als gestapelter Bar ──────────────────────────────────
+
+/// Einkaufsvertrag / Preisbindung: friert den Zutaten-Preisindex gegen Gebühr
+/// für eine Laufzeit ein — die strategische Antwort auf steigende Preise.
+class _SupplyContractCard extends ConsumerWidget {
+  const _SupplyContractCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final game = ref.watch(gameProvider);
+    if (game == null) return const SizedBox.shrink();
+
+    final active = game.supplyContractUntilDay >= game.currentDay &&
+        game.supplyContractUntilDay > 0;
+
+    if (active) {
+      final remaining = game.supplyContractUntilDay - game.currentDay;
+      final lockedPct = ((game.supplyContractIndex - 1.0) * 100).round();
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.accent.withAlpha(25),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.accent.withAlpha(90)),
+        ),
+        child: Row(
+          children: [
+            const Text('🔒', style: TextStyle(fontSize: 22)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Preis gebunden',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Zutaten-Index auf ${lockedPct >= 0 ? "+" : ""}$lockedPct % fixiert · noch $remaining Tage',
+                    style: const TextStyle(
+                        fontSize: 11, color: AppColors.textMuted, height: 1.3),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          const Text('🤝', style: TextStyle(fontSize: 22)),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Einkaufsvertrag',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Zutatenpreis für eine Laufzeit einfrieren — sichert dich gegen steigende Preise ab.',
+                  style: TextStyle(
+                      fontSize: 11, color: AppColors.textMuted, height: 1.3),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: () => _openSheet(context, ref, game),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              textStyle: const TextStyle(fontSize: 12),
+            ),
+            child: const Text('Preis sichern'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openSheet(BuildContext context, WidgetRef ref, GameState game) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.bgCard,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '🤝 Einkaufsvertrag abschließen',
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Friert den aktuellen Zutaten-Preisindex für die gewählte Laufzeit ein.',
+                style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+              ),
+              const SizedBox(height: 14),
+              for (final days in GameEngine.kSupplyContractDurations) ...[
+                _ContractOption(
+                  days: days,
+                  fee: GameEngine.supplyContractFee(game, days),
+                  canAfford:
+                      game.cash >= GameEngine.supplyContractFee(game, days),
+                  onTap: () {
+                    ref.read(gameProvider.notifier).signSupplyContract(days);
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Preis für $days Tage gesichert 🔒'),
+                        duration: const Duration(milliseconds: 1500),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 8),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ContractOption extends StatelessWidget {
+  final int days;
+  final double fee;
+  final bool canAfford;
+  final VoidCallback onTap;
+  const _ContractOption({
+    required this.days,
+    required this.fee,
+    required this.canAfford,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.bg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              '$days Tage Preisbindung',
+              style: const TextStyle(
+                  fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: canAfford ? onTap : null,
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              textStyle: const TextStyle(fontSize: 12),
+            ),
+            child: Text('${_fmt.format(fee)} €'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Zeigt den aktuellen Zutaten-Preisindex (Inflation) als Aufschlag in Prozent.
+class _IngredientIndexCard extends StatelessWidget {
+  final int day;
+  const _IngredientIndexCard({required this.day});
+
+  @override
+  Widget build(BuildContext context) {
+    final index = GameEngine.ingredientPriceIndex(day);
+    final pct = ((index - 1.0) * 100).round();
+    final elevated = pct > 0;
+    final color = pct >= 8
+        ? AppColors.danger
+        : (pct > 0 ? AppColors.warning : AppColors.success);
+    final note = day <= 7
+        ? 'Noch stabil — die Großhandelspreise ziehen erst später an.'
+        : elevated
+            ? 'Fleisch, Brot & Energie sind teurer geworden — schlägt auf deine Marge durch.'
+            : 'Aktuell günstige Einkaufslage.';
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          const Text('🥩', style: TextStyle(fontSize: 22)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Zutaten-Preisindex',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  note,
+                  style: const TextStyle(
+                      fontSize: 11, color: AppColors.textMuted, height: 1.3),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: color.withAlpha(30),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: color.withAlpha(90)),
+            ),
+            child: Text(
+              '${pct >= 0 ? "+" : ""}$pct %',
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                color: color,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _CostBreakdownCard extends StatelessWidget {
   final List<DailyRecord> history;

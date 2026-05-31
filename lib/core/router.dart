@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../ui/screens/splash_screen.dart';
 import '../ui/screens/menu_screen.dart';
 import '../ui/screens/new_game_screen.dart';
+import '../ui/screens/city_map_screen.dart';
 import '../ui/screens/open_shop_screen.dart';
 import '../ui/screens/shop_detail_screen.dart';
 import '../ui/screens/campaign_screen.dart';
@@ -35,9 +36,18 @@ final appRouter = GoRouter(
 
     // Shop-spezifische Routen (ohne Bottom Nav) — mit Slide-Up-Übergang
     GoRoute(
+      path: '/city-map/:cityId',
+      pageBuilder: (_, state) => _slideUpPage(
+        CityMapScreen(cityId: state.pathParameters['cityId']!),
+      ),
+    ),
+    GoRoute(
       path: '/open-shop/:cityId',
       pageBuilder: (_, state) => _slideUpPage(
-        OpenShopScreen(cityId: state.pathParameters['cityId']!),
+        OpenShopScreen(
+          cityId: state.pathParameters['cityId']!,
+          initialLocationName: state.uri.queryParameters['location'],
+        ),
       ),
     ),
     GoRoute(

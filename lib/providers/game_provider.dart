@@ -411,20 +411,9 @@ class GameNotifier extends Notifier<GameState?> {
   /// Achievements prüfen — returnt NEUE freigeschaltete.
   List<Achievement> _checkAchievements(GameState state) {
     final newOnes = <Achievement>[];
-    final shopCount = state.shops.length;
-    final empCount = state.employeeCount;
-    final cash = state.cash;
-    final day = state.currentDay;
-    final customers = state.customersServedTotal;
-    final maxRep = state.shops.isEmpty
-        ? 0.0
-        : state.shops.fold(0.0, (m, s) => s.reputation > m ? s.reputation : m);
-    final brand = state.brand.brandAwareness;
-
     for (final a in kAllAchievements) {
       if (state.achievementIds.contains(a.id)) continue;
-      if (a.check(shopCount, empCount, state.totalRevenue, cash, day, customers,
-          maxRep, brand, 0)) {
+      if (a.check(state)) {
         newOnes.add(a);
       }
     }
@@ -478,6 +467,29 @@ class GameNotifier extends Notifier<GameState?> {
   void fireEmployee(String shopId, String employeeId) {
     if (state == null) return;
     state = GameEngine.fireEmployee(state!, shopId, employeeId);
+    _save();
+  }
+
+  void trainEmployee(String shopId, String employeeId, EmployeeSkill skill) {
+    if (state == null) return;
+    final before = state!.cash;
+    state = GameEngine.trainEmployee(state!, shopId, employeeId, skill);
+    if (state!.cash != before) SoundService.play(Sfx.purchase);
+    _save();
+  }
+
+  /// Schicht-Fokus eines Mitarbeiters setzen (Peak-Staffing).
+  void setEmployeeShift(String shopId, String employeeId, EmployeeShift shift) {
+    if (state == null) return;
+    final updatedShops = state!.shops.map((s) {
+      if (s.id != shopId) return s;
+      return s.copyWith(
+        employees: s.employees
+            .map((e) => e.id == employeeId ? e.copyWith(shift: shift) : e)
+            .toList(),
+      );
+    }).toList();
+    state = state!.copyWith(shops: updatedShops);
     _save();
   }
 
@@ -598,6 +610,33 @@ class GameNotifier extends Notifier<GameState?> {
     if (state == null) return;
     state = GameEngine.unlockCity(state!, cityId);
     _checkMissions();
+    _save();
+  }
+
+  /// Einkaufsvertrag abschließen: friert den Zutaten-Preisindex für [days] Tage.
+  void signSupplyContract(int days) {
+    if (state == null) return;
+    final before = state!.cash;
+    state = GameEngine.signSupplyContract(state!, days);
+    if (state!.cash != before) SoundService.play(Sfx.purchase);
+    _save();
+  }
+
+  /// Franchise neu gründen (New-Game+): setzt zurück, behält Prestige-Boni.
+  void foundFranchise() {
+    if (state == null) return;
+    if (!GameEngine.canFoundFranchise(state!)) return;
+    state = GameEngine.foundFranchise(state!);
+    SoundService.play(Sfx.reward);
+    _save();
+  }
+
+  /// Konkurrenten übernehmen (Buyout) in einer Stadt mit eigener Filiale.
+  void buyoutCompetitor(String competitorId) {
+    if (state == null) return;
+    final before = state!.cash;
+    state = GameEngine.buyoutCompetitor(state!, competitorId);
+    if (state!.cash != before) SoundService.play(Sfx.purchase);
     _save();
   }
 

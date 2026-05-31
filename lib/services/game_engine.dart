@@ -14,6 +14,9 @@ import '../models/hr_manager_model.dart';
 import '../models/campaign_model.dart';
 import '../models/combo_model.dart';
 import '../models/quality_model.dart';
+import '../models/customer_segment_model.dart';
+import '../models/competitor_model.dart';
+import '../models/time_profile_model.dart';
 import '../core/constants.dart';
 import 'competitor_engine.dart';
 import 'corporate_engine.dart';
@@ -91,10 +94,17 @@ class GameEngine {
     final comboBoost = _comboCustomerBoost(shop, state);
     final comboAOV = _comboAvgOrderBoost(shop, state);
 
+    // Dauerhafter Prestige-Bonus aus früheren Franchise-Neugründungen
+    final prestigeBonus = state == null ? 0.0 : prestigeCustomerBonus(state);
+
     // Tagesspecial: ein Produkt pro Tag mit erhöhter Nachfrage
     final specialId = dailySpecialProductId(effectiveDay);
     // Jahreszeit: kategorieabhängige Nachfrage
     final season = seasonForDay(effectiveDay);
+
+    // Kundschafts-Mix des Standorts: Preissensibilität + Bonwert.
+    final segSensitivity = segmentPriceSensitivity(shop.personality);
+    final segAovMult = segmentAvgOrderMultiplier(shop.personality);
 
     double totalDemand = 0;
     double totalRevenue = 0;
@@ -105,12 +115,14 @@ class GameEngine {
         price: sp.price,
         basePrice: pd.basePrice,
         difficulty: state?.difficulty ?? GameDifficulty.normal,
+        segmentSensitivity: segSensitivity,
       );
       if (sp.productId == specialId) demand *= kDailySpecialBoost;
       demand *= seasonCategoryMultiplier(season, pd.category);
       totalDemand += demand;
       totalRevenue += demand *
           sp.price *
+          segAovMult *
           (1.0 + campaignAOV + upgradeAOV + perks.avgOrderBoost + comboAOV);
     }
     final avgDemand = totalDemand / activeMenu.length;
@@ -124,7 +136,12 @@ class GameEngine {
         timeMult *
         brandMult *
         compPressure *
-        (1.0 + campaignBoost + upgradeBoost + perks.customerBoost + comboBoost);
+        (1.0 +
+            campaignBoost +
+            upgradeBoost +
+            perks.customerBoost +
+            comboBoost +
+            prestigeBonus);
     final actualCustomers = rawCustomers.clamp(0.0, capacity.toDouble());
 
     final actualRevenue =
@@ -226,6 +243,7 @@ class GameEngine {
       if (customers <= 0) continue;
 
       final activeMenu = shop.menu.where((p) => p.isActive).toList();
+      final segSensitivity = segmentPriceSensitivity(shop.personality);
       final weights = <String, double>{};
       double totalW = 0;
       for (final sp in activeMenu) {
@@ -235,6 +253,7 @@ class GameEngine {
           price: sp.price,
           basePrice: pd.basePrice,
           difficulty: state.difficulty,
+          segmentSensitivity: segSensitivity,
         );
         weights[sp.productId] = w;
         totalW += w;
@@ -473,12 +492,32 @@ class GameEngine {
           shopId: shop.id,
         ));
       }
+      if (shop.employees.isNotEmpty && shop.morale < 0.45) {
+        alerts.add(ShopAlert(
+          level: AlertLevel.warn,
+          message:
+              '${shop.displayName}: Team überlastet — niedrige Moral. Stelle Personal ein oder entlaste die Schichten.',
+          shopId: shop.id,
+        ));
+      }
     }
     if (state.cash >= 0 && dailyCostTotal > 0 && state.cash < dailyCostTotal * 2) {
       alerts.add(const ShopAlert(
         level: AlertLevel.warn,
         message: 'Liquidität niedrig — die Kasse reicht nur wenige Tage.',
       ));
+    }
+    // Hohe Zutateninflation ohne aktive Preisbindung → Tipp zur Absicherung.
+    if (state.shops.isNotEmpty &&
+        state.supplyContractUntilDay < state.currentDay) {
+      final index = ingredientPriceIndex(state.currentDay);
+      if (index >= 1.08) {
+        alerts.add(ShopAlert(
+          level: AlertLevel.warn,
+          message:
+              'Zutatenpreise +${((index - 1) * 100).round()} % — eine Preisbindung (Finanzen-Tab) schützt deine Marge.',
+        ));
+      }
     }
     return alerts;
   }
@@ -491,9 +530,12 @@ class GameEngine {
     required double price,
     required double basePrice,
     GameDifficulty difficulty = GameDifficulty.normal,
+    double segmentSensitivity = 1.0,
   }) {
     if (price <= 0) return 0;
-    final sensitivity = difficulty.modifiers.customerPriceSensitivityMultiplier;
+    final sensitivity =
+        difficulty.modifiers.customerPriceSensitivityMultiplier *
+            segmentSensitivity;
     final ratio = price / basePrice;
 
     if (ratio <= 1.0) {
@@ -526,6 +568,24 @@ class GameEngine {
     return double.parse(bestPrice.clamp(0.5, 99.0).toStringAsFixed(2));
   }
 
+  /// Durchschnittlicher Döner-Preis des Spielers über alle Filialen (aktive
+  /// Produkte der Kategorie Döner). `null`, wenn (noch) kein Döner im Sortiment.
+  /// Basis für den teilbaren „Döner-Index"-Vergleich gegen [kNationalAvgDoenerPrice].
+  static double? playerAvgDoenerPrice(GameState state) {
+    double sum = 0;
+    int n = 0;
+    for (final shop in state.shops) {
+      for (final sp in shop.menu.where((p) => p.isActive)) {
+        final pd = _productData(sp.productId);
+        if (pd == null || pd.category != ProductCategory.doener) continue;
+        sum += sp.price;
+        n++;
+      }
+    }
+    if (n == 0) return null;
+    return sum / n;
+  }
+
   // ──────────────────────────────────────────────────────────────────────────
   // ── Tageskosten für einen Shop ───────────────────────────────────────────
   // ──────────────────────────────────────────────────────────────────────────
@@ -535,6 +595,158 @@ class GameEngine {
     final breakdown =
         calculateDailyCostsBreakdown(shop, day: day, state: state);
     return breakdown.total;
+  }
+
+  /// Zutaten-Preisindex: simuliert Inflation + Rohstoff-Zyklen über die Zeit
+  /// (die spielbare Seite der „warum ist Döner so teuer"-Debatte).
+  /// Deterministisch aus dem Spieltag — kein Save-State, voll reproduzierbar.
+  /// Bewegt sich in einem moderaten Band, damit die Balance nicht kippt; die
+  /// ersten 7 Tage bleiben als Schonfrist neutral.
+  static double ingredientPriceIndex(int day) {
+    if (day <= 7) return 1.0;
+    final d = (day - 7).toDouble();
+    // Langsame Inflation: bis maximal +15 %.
+    final drift = (d / 365.0 * 0.12).clamp(0.0, 0.15);
+    // Rohstoff-Zyklus: sanfte Welle (~45-Tage-Periode, ±5 %).
+    final cycle = 0.05 * sin(d / 45.0 * 2 * pi);
+    return (1.0 + drift + cycle).clamp(0.90, 1.22);
+  }
+
+  /// Tatsächlich wirksamer Zutaten-Preisindex: Liegt ein aktiver
+  /// Einkaufsvertrag vor (Preisbindung), gilt der eingefrorene Index, sonst der
+  /// Marktindex aus [ingredientPriceIndex].
+  static double effectiveIngredientIndex(GameState? state, int day) {
+    if (state != null &&
+        state.supplyContractUntilDay > 0 &&
+        day <= state.supplyContractUntilDay) {
+      return state.supplyContractIndex;
+    }
+    return ingredientPriceIndex(day);
+  }
+
+  /// Wählbare Laufzeiten für einen Einkaufsvertrag (Tage).
+  static const List<int> kSupplyContractDurations = [14, 30, 60];
+
+  /// Geschätzte tägliche Zutaten-Ausgaben über alle Filialen (für Gebühr/UI).
+  static double estimatedDailyIngredientSpend(GameState state) {
+    double sum = 0;
+    for (final shop in state.shops) {
+      sum += calculateDailyCostsBreakdown(shop,
+              day: state.currentDay, state: state)
+          .ingredients;
+    }
+    return sum;
+  }
+
+  /// Einmalige Gebühr, um den Zutaten-Preisindex für [days] Tage einzufrieren.
+  /// Prämie auf die erwarteten Ausgaben; längere Bindung = etwas günstiger.
+  static double supplyContractFee(GameState state, int days) {
+    final daily = estimatedDailyIngredientSpend(state);
+    final premium = days >= 60
+        ? 0.05
+        : days >= 30
+            ? 0.06
+            : 0.07;
+    return (daily * days * premium).clamp(200.0, double.infinity);
+  }
+
+  /// Schließt einen Einkaufsvertrag ab: friert den aktuellen Marktindex für
+  /// [days] Tage ein. Ohne Effekt bei zu wenig Cash oder ungültiger Laufzeit.
+  static GameState signSupplyContract(GameState state, int days) {
+    if (days <= 0) return state;
+    final fee = supplyContractFee(state, days);
+    if (state.cash < fee) return state;
+    final lockedIndex = ingredientPriceIndex(state.currentDay);
+    return _trackInvestment(state, fee).copyWith(
+      cash: state.cash - fee,
+      supplyContractUntilDay: state.currentDay + days,
+      supplyContractIndex: lockedIndex,
+    );
+  }
+
+  // ── Prestige / Franchise (New-Game+) ───────────────────────────────────────
+
+  /// Gesamtumsatz für einen Prestige-Punkt (= eine Franchise-Schwelle).
+  static const double kPrestigeRevenuePerPoint = 1000000.0;
+
+  /// Prestige-Punkte, die eine Neugründung beim aktuellen Stand einbrächte.
+  static int prestigePointsEarned(GameState state) {
+    return (state.totalRevenue / kPrestigeRevenuePerPoint)
+        .floor()
+        .clamp(0, 9999);
+  }
+
+  /// Ob eine Franchise-Neugründung möglich ist (Mindest-Gesamtumsatz erreicht).
+  static bool canFoundFranchise(GameState state) =>
+      prestigePointsEarned(state) >= 1;
+
+  /// Dauerhafter Kundenstrom-Bonus aus akkumulierten Prestige-Punkten (0..0.30).
+  static double prestigeCustomerBonus(GameState state) =>
+      (state.prestigePoints * 0.02).clamp(0.0, 0.30);
+
+  /// Startkapital inkl. Prestige-Zuschlag (je Punkt +10.000 €).
+  static double prestigeStartCash(int prestigePoints) =>
+      kStartingCash + prestigePoints * 10000.0;
+
+  /// Gründet ein Franchise neu: setzt das Spiel zurück, behält aber die
+  /// akkumulierten (+ neu verdienten) Prestige-Punkte und startet mit höherem
+  /// Kapital. Ohne Effekt, wenn die Schwelle nicht erreicht ist.
+  static GameState foundFranchise(GameState state) {
+    if (!canFoundFranchise(state)) return state;
+    final newPoints = state.prestigePoints + prestigePointsEarned(state);
+    return GameState.initial(
+      companyName: state.companyName,
+      founderName: state.founderName,
+      startCash: prestigeStartCash(newPoints),
+      difficulty: state.difficulty,
+      tutorialEnabled: false,
+      prestigePoints: newPoints,
+    );
+  }
+
+  // ── Konkurrenz-Übernahme (Buyout) ───────────────────────────────────────────
+
+  /// Kaufpreis für die Übernahme eines Konkurrenten — skaliert mit Filialzahl,
+  /// Reputation und Marktanteil.
+  static double competitorBuyoutCost(Competitor c) {
+    final strength =
+        c.shopCount * (0.5 + c.reputation / 5.0) * (1.0 + c.marketShare);
+    return (8000.0 * strength).clamp(5000.0, 500000.0);
+  }
+
+  /// Ob der Spieler den Konkurrenten übernehmen kann (eigene Filiale in der
+  /// Stadt + genug Cash).
+  static bool canBuyoutCompetitor(GameState state, Competitor c) =>
+      state.hasShopIn(c.cityId) && state.cash >= competitorBuyoutCost(c);
+
+  /// Übernimmt einen Konkurrenten: entfernt ihn, zieht den Kaufpreis ab und gibt
+  /// einen Marken- und Reputationsschub in der betroffenen Stadt.
+  static GameState buyoutCompetitor(GameState state, String competitorId) {
+    Competitor? target;
+    for (final c in state.competitors) {
+      if (c.id == competitorId) {
+        target = c;
+        break;
+      }
+    }
+    if (target == null || !canBuyoutCompetitor(state, target)) return state;
+    final cost = competitorBuyoutCost(target);
+    final cityId = target.cityId;
+    final remaining =
+        state.competitors.where((c) => c.id != competitorId).toList();
+    final boostedShops = state.shops.map((s) {
+      if (s.cityId != cityId) return s;
+      return s.copyWith(reputation: (s.reputation + 0.15).clamp(0.5, 5.0));
+    }).toList();
+    final newBrand = state.brand.copyWith(
+      brandAwareness: (state.brand.brandAwareness + 1.5).clamp(0.0, 100.0),
+    );
+    return _trackInvestment(state, cost).copyWith(
+      cash: state.cash - cost,
+      competitors: remaining,
+      shops: boostedShops,
+      brand: newBrand,
+    );
   }
 
   static ShopCostBreakdown calculateDailyCostsBreakdown(Shop shop,
@@ -564,11 +776,14 @@ class GameEngine {
     final activeMenu = shop.menu.where((p) => p.isActive).toList();
     final ingredientRatio = _weightedIngredientRatio(activeMenu);
     final qualityMult = _menuIngredientQualityMult(shop, state);
+    final effectiveDay = day ?? shop.dayOpened;
+    final inflation = effectiveIngredientIndex(state, effectiveDay);
     final ingredients = revenue *
         ingredientRatio *
         (1 - ingredientSaving) *
         qualityMult *
-        pressure;
+        pressure *
+        inflation;
 
     // Liefer-Provision (Lieferando etc.) — nie negativ, immer <= Umsatz
     final deliveryCommission = _deliveryCommissionCost(shop, revenue, state)
@@ -618,6 +833,9 @@ class GameEngine {
       totalCustomers += customers;
 
       final newRep = _updateReputation(shop, stateWithComp);
+      final dayStats =
+          calculateShopStats(shop, day: today, state: stateWithComp);
+      final newMorale = updateShopMorale(shop, dayStats);
       final updatedEmployees = shop.employees.map((emp) {
         final newDays = emp.daysEmployed + 1;
         // Erfahrungs-Wachstum: difficulty-basiertes Intervall.
@@ -640,6 +858,7 @@ class GameEngine {
         reputation: newRep,
         employees: updatedEmployees,
         activeCampaigns: activeNow,
+        morale: newMorale,
       );
     }).toList();
 
@@ -1204,6 +1423,42 @@ class GameEngine {
     return state.copyWith(shops: updatedShops);
   }
 
+  /// Schickt einen Mitarbeiter auf einen bezahlten Kurs: hebt die gewählte
+  /// Fähigkeit um eine Stufe an, sofern Cash reicht und das Maximum (10) noch
+  /// nicht erreicht ist. Ohne Effekt, wenn etwas davon nicht zutrifft.
+  static GameState trainEmployee(
+    GameState state,
+    String shopId,
+    String employeeId,
+    EmployeeSkill skill,
+  ) {
+    Employee? emp;
+    for (final s in state.shops) {
+      if (s.id != shopId) continue;
+      for (final e in s.employees) {
+        if (e.id == employeeId) emp = e;
+      }
+    }
+    if (emp == null || !HrEngine.canTrain(emp, skill)) return state;
+
+    final cost = HrEngine.trainingCost(state, emp, skill);
+    if (state.cash < cost) return state;
+
+    final trained = HrEngine.applyTraining(emp, skill);
+    final updatedShops = state.shops.map((s) {
+      if (s.id != shopId) return s;
+      return s.copyWith(
+        employees:
+            s.employees.map((e) => e.id == employeeId ? trained : e).toList(),
+      );
+    }).toList();
+
+    return _trackInvestment(state, cost).copyWith(
+      cash: state.cash - cost,
+      shops: updatedShops,
+    );
+  }
+
   static GameState updateProductPrice(
     GameState state,
     String shopId,
@@ -1298,7 +1553,30 @@ class GameEngine {
       score += 0.18 * emp.qualityFactor * adjustedTeam;
       score += 0.08 * emp.friendlinessFactor;
     }
+    // Team-Moral moduliert die Personal-Leistung (×1.0 bei neutraler Moral 0.75).
+    score *= (0.85 + 0.20 * shop.morale);
     return score.clamp(0.55, 2.4);
+  }
+
+  /// Aktualisiert die Team-Moral einer Filiale für den Folgetag.
+  /// Überlastung (Kapazitätsgrenze) drückt die Moral, moderate Auslastung lässt
+  /// sie sich erholen. Mentor hebt, Hitzkopf senkt leicht. Ohne Personal
+  /// bleibt die Moral neutral.
+  static double updateShopMorale(Shop shop, ShopDayStats stats) {
+    if (shop.employees.isEmpty) return 0.75;
+    double m = shop.morale;
+    if (stats.isCapacityLimited) {
+      m -= 0.04; // Dauerstress → Burnout-Tendenz
+    } else {
+      m += 0.03; // Personal bewältigt die Nachfrage → Erholung
+    }
+    if (shop.employees.any((e) => e.hasTrait(PersonalityTrait.mentor))) {
+      m += 0.01;
+    }
+    if (shop.employees.any((e) => e.hasTrait(PersonalityTrait.hothead))) {
+      m -= 0.01;
+    }
+    return m.clamp(0.2, 1.0);
   }
 
   /// Kapazität: Personal + Equipment.
@@ -1315,7 +1593,33 @@ class GameEngine {
       cap += eq.capacityBonus;
     }
     cap += _globalSpiessCapacityFor(state);
-    return cap;
+    // Schicht-Ausrichtung auf die Stoßzeit erhöht die effektive Kapazität.
+    return (cap * shiftCapacityMultiplier(shop)).round();
+  }
+
+  /// Stoßzeit-Schicht eines Standorts (null = gleichmäßige Nachfrage, daher
+  /// kein gezielter Schicht-Bonus möglich).
+  static EmployeeShift? peakShiftForPersonality(LocationPersonality p) {
+    switch (p) {
+      case LocationPersonality.business:
+        return EmployeeShift.mittag;
+      case LocationPersonality.university:
+      case LocationPersonality.residential:
+      case LocationPersonality.nightlife:
+        return EmployeeShift.abend;
+      case LocationPersonality.touristic:
+      case LocationPersonality.transit:
+        return null;
+    }
+  }
+
+  /// Kapazitäts-Multiplikator durch Schicht-Ausrichtung (1.0..1.15). Neutral,
+  /// wenn kein Personal, keine Stoßzeit oder alle Mitarbeiter „ganztags".
+  static double shiftCapacityMultiplier(Shop shop) {
+    final peak = peakShiftForPersonality(shop.personality);
+    if (peak == null || shop.employees.isEmpty) return 1.0;
+    final aligned = shop.employees.where((e) => e.shift == peak).length;
+    return 1.0 + (aligned / shop.employees.length) * 0.15;
   }
 
   static String? _activeGlobalSpiessUpgradeId(GameState? state) {

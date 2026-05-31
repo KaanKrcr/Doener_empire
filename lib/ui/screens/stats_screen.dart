@@ -863,15 +863,24 @@ class _CityHeader extends StatelessWidget {
   }
 }
 
-class _CompetitorRow extends StatelessWidget {
+class _CompetitorRow extends ConsumerWidget {
   final Competitor competitor;
   const _CompetitorRow({required this.competitor});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final game = ref.watch(gameProvider);
+    final inPlayerCity =
+        game != null && game.hasShopIn(competitor.cityId);
+    final cost = GameEngine.competitorBuyoutCost(competitor);
+    final canAfford = game != null && game.cash >= cost;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
         children: [
           Container(
             width: 36,
@@ -945,6 +954,30 @@ class _CompetitorRow extends StatelessWidget {
               ),
             ],
           ),
+        ],
+      ),
+          if (inPlayerCity)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: canAfford
+                      ? () => ref
+                          .read(gameProvider.notifier)
+                          .buyoutCompetitor(competitor.id)
+                      : null,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.gold,
+                    side: BorderSide(color: AppColors.gold.withAlpha(120)),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  icon: const Icon(Icons.handshake_rounded, size: 16),
+                  label: Text(
+                      'Übernehmen · ${(cost / 1000).toStringAsFixed(0)}k €'),
+                ),
+              ),
+            ),
         ],
       ),
     );

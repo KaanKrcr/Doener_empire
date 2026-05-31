@@ -1280,6 +1280,135 @@ IconData _marketingCampaignIcon(String id) {
 
 // ── STRATEGIE-TAB ─────────────────────────────────────────────────────────────
 
+/// Prestige & Franchise-Neugründung (New-Game+).
+class _PrestigeCard extends ConsumerWidget {
+  final GameState game;
+  const _PrestigeCard({required this.game});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final points = game.prestigePoints;
+    final bonusPct = (GameEngine.prestigeCustomerBonus(game) * 100).round();
+    final earnable = GameEngine.prestigePointsEarned(game);
+    final canFranchise = GameEngine.canFoundFranchise(game);
+    final progress =
+        (game.totalRevenue % GameEngine.kPrestigeRevenuePerPoint) /
+            GameEngine.kPrestigeRevenuePerPoint;
+    final nextStartCash =
+        GameEngine.prestigeStartCash(points + (earnable > 0 ? earnable : 1));
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.gold.withAlpha(40),
+            AppColors.secondary.withAlpha(25),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.gold.withAlpha(80)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('🏆', style: TextStyle(fontSize: 24)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Prestige-Stufe $points',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      '+$bonusPct % Dauerkundschaft in allen Filialen',
+                      style: const TextStyle(
+                          fontSize: 12, color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            canFranchise
+                ? 'Jetzt verdienbar: $earnable Prestige-Punkt${earnable == 1 ? "" : "e"} · Neustart-Kapital ${_fmt.format(nextStartCash)} €'
+                : 'Fortschritt bis zum nächsten Prestige-Punkt (1 Mio € Gesamtumsatz):',
+            style: const TextStyle(
+                fontSize: 12, color: AppColors.textMuted, height: 1.35),
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: progress.clamp(0.0, 1.0),
+              minHeight: 8,
+              backgroundColor: AppColors.bg,
+              color: AppColors.gold,
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed:
+                  canFranchise ? () => _confirm(context, ref, earnable) : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.gold,
+                foregroundColor: AppColors.bg,
+              ),
+              icon: const Icon(Icons.restart_alt_rounded, size: 18),
+              label: Text(canFranchise
+                  ? 'Franchise gründen (Neustart)'
+                  : 'Ab 1 Mio € Gesamtumsatz'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirm(BuildContext context, WidgetRef ref, int earnable) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.bgCard,
+        title: const Text('Franchise gründen?'),
+        content: Text(
+          'Dein aktuelles Imperium wird komplett zurückgesetzt (Filialen, Städte, '
+          'Kapital, Fortschritt).\n\nDu erhältst dafür $earnable Prestige-Punkt'
+          '${earnable == 1 ? "" : "e"} dauerhaft gutgeschrieben — mehr Dauerkundschaft '
+          'und höheres Startkapital in jedem neuen Spiel.',
+          style: const TextStyle(height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Abbrechen'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.gold),
+            onPressed: () {
+              Navigator.pop(ctx);
+              ref.read(gameProvider.notifier).foundFranchise();
+            },
+            child: const Text('Gründen'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _StrategieTab extends ConsumerWidget {
   final GameState game;
   const _StrategieTab({required this.game});
@@ -1298,6 +1427,12 @@ class _StrategieTab extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
+        // ── Prestige / Franchise (New-Game+) ──────────────────────────────
+        _buildSectionHeader(Icons.emoji_events_rounded, 'PRESTIGE & FRANCHISE'),
+        const SizedBox(height: 10),
+        _PrestigeCard(game: game),
+        const SizedBox(height: 28),
+
         // ── Preisstrategie ────────────────────────────────────────────────
         _buildSectionHeader(Icons.groups_rounded, 'HR-ABTEILUNG'),
         const SizedBox(height: 10),
