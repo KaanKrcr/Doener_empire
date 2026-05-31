@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.12.0-internal - 2026-05-31
+
+### Economy / City-System
+
+- Regional-Synergie: Filialen in mehreren Städten desselben Bundeslands
+  verstärken sich gegenseitig (+3 % Kundenstrom je weiterer Stadt im selben
+  Bundesland, max +9 %). Belohnt regionale Expansion. Rein additiv und
+  default-neutral (eine Stadt pro Bundesland → kein Effekt) → kein Nerf für
+  bestehende Spielstände, keine Save-Änderung, keine UI-Änderung.
+
+### Geprüft
+
+- `flutter analyze` ohne Findings
+- `flutter test`: 175 Tests erfolgreich
+
 ## 1.11.0-internal - 2026-05-31
 
 ### Economy / Shop-System

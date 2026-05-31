@@ -98,6 +98,9 @@ class GameEngine {
     final prestigeBonus = state == null ? 0.0 : prestigeCustomerBonus(state);
     // Stammkunden: treuer Kundenstamm aus dauerhaft hoher Reputation (0..+10%)
     final regularsBonus = shop.regulars * 0.20;
+    // Regional-Synergie: Präsenz in mehreren Städten desselben Bundeslands
+    // (0 = neutral; +3% je weiterer Stadt im selben Bundesland, max +9%).
+    final regionSynergy = _regionSynergyBonus(shop, state);
 
     // Tagesspecial: ein Produkt pro Tag mit erhöhter Nachfrage
     final specialId = dailySpecialProductId(effectiveDay);
@@ -144,7 +147,8 @@ class GameEngine {
             perks.customerBoost +
             comboBoost +
             prestigeBonus +
-            regularsBonus);
+            regularsBonus +
+            regionSynergy);
     final actualCustomers = rawCustomers.clamp(0.0, capacity.toDouble());
 
     final actualRevenue =
@@ -1605,6 +1609,28 @@ class GameEngine {
     final rate = hasCharmer ? 0.10 : 0.07;
     final next = shop.regulars + (target - shop.regulars) * rate;
     return next.clamp(0.0, kMaxRegulars);
+  }
+
+  /// Bundesland einer Stadt (oder null, wenn unbekannt).
+  static String? _cityStateFor(String cityId) {
+    for (final c in kAllCities) {
+      if (c.id == cityId) return c.state;
+    }
+    return null;
+  }
+
+  /// Regional-Synergie-Bonus für eine Filiale: +3 % Kundenstrom je *weiterer*
+  /// Stadt mit eigener Präsenz im selben Bundesland (max +9 %). 0, wenn nur eine
+  /// Stadt im Bundesland besetzt ist oder kein State verfügbar.
+  static double _regionSynergyBonus(Shop shop, GameState? state) {
+    if (state == null) return 0.0;
+    final shopState = _cityStateFor(shop.cityId);
+    if (shopState == null) return 0.0;
+    final cities = <String>{};
+    for (final s in state.shops) {
+      if (_cityStateFor(s.cityId) == shopState) cities.add(s.cityId);
+    }
+    return ((cities.length - 1).clamp(0, 3)) * 0.03;
   }
 
   /// Kapazität: Personal + Equipment.
