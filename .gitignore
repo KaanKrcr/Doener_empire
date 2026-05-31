@@ -43,3 +43,10 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Lokale Debug-/Automatisierungs-Artefakte (nicht versionieren)
+/screen*.png
+/ui*.xml
+/claude_*.txt
+/claude_*.diff
+/*.patch
