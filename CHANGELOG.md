@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.13.0-internal - 2026-05-31
+
+### Konkurrenzsystem
+
+- Konkurrenz-Neueintritt: Erfolgreiche Märkte (Spieler präsent, unter der
+  natürlichen Sättigung der Stadt) ziehen mit der Zeit neue Konkurrenz an —
+  das Gegenstück zum Marktaustritt. Verhindert, dass Märkte dauerhaft veröden,
+  und hält den langfristigen Wettbewerb lebendig. Pro Stadt auf die
+  Stadtgrößen-Obergrenze (1/2/3/4) gedeckelt, difficulty-skaliert, nur in
+  Städten mit eigener Filiale. Keine Save-Änderung, keine UI-Änderung.
+
+### Geprüft
+
+- `flutter analyze` ohne Findings
+- `flutter test`: 178 Tests erfolgreich
+
 ## 1.12.0-internal - 2026-05-31
 
 ### Economy / City-System

@@ -92,6 +92,21 @@ class CompetitorEngine {
       survivors.add(c);
     }
 
+    // Markteintritt: erfolgreiche Märkte (Spieler präsent, unter natürlicher
+    // Sättigung) ziehen neue Konkurrenz an — Gegenstück zum Marktaustritt.
+    for (final cityId in state.shops.map((s) => s.cityId).toSet()) {
+      final cap = _naturalCompetitorCap(cityId);
+      final countInCity = survivors.where((c) => c.cityId == cityId).length;
+      if (countInCity >= cap) continue;
+      final chance = (0.02 * aggressiveness).clamp(0.01, 0.06);
+      if (_rng.nextDouble() < chance) {
+        survivors.add(CompetitorFactory.create(
+          id: 'comp_${cityId}_${DateTime.now().microsecondsSinceEpoch}',
+          cityId: cityId,
+        ));
+      }
+    }
+
     // Marktanteile neu berechnen pro Stadt
     final byCity = <String, List<Competitor>>{};
     for (final c in survivors) {
@@ -114,6 +129,25 @@ class CompetitorEngine {
   /// schrumpfen/ausscheiden.
   static bool _isStruggling(Competitor c) =>
       c.reputation < 2.6 && c.marketShare < 0.06;
+
+  /// Natürliche Konkurrenz-Obergrenze einer Stadt (nach Stadtgröße). Begrenzt
+  /// den Markteintritt, damit Städte nicht überfüllt werden.
+  static int _naturalCompetitorCap(String cityId) {
+    final city = kAllCities.firstWhere(
+      (c) => c.id == cityId,
+      orElse: () => kAllCities.first,
+    );
+    switch (city.tier) {
+      case CityTier.klein:
+        return 1;
+      case CityTier.mittel:
+        return 2;
+      case CityTier.gross:
+        return 3;
+      case CityTier.metropole:
+        return 4;
+    }
+  }
 
   static bool _maybeDeclineOrExit(
     Competitor c,
