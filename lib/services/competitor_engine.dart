@@ -75,16 +75,61 @@ class CompetitorEngine {
       return c;
     }).toList();
 
+    // Marktaustritt: dauerhaft schwache Konkurrenten schrumpfen und verlassen
+    // ggf. den Markt. Der letzte Wettbewerber einer Stadt bleibt erhalten,
+    // damit kein Markt komplett verödet.
+    final cityCounts = <String, int>{};
+    for (final c in updated) {
+      cityCounts.update(c.cityId, (v) => v + 1, ifAbsent: () => 1);
+    }
+    final survivors = <Competitor>[];
+    for (final c in updated) {
+      final lastInCity = (cityCounts[c.cityId] ?? 1) <= 1;
+      if (_maybeDeclineOrExit(c, aggressiveness, lastInCity)) {
+        cityCounts[c.cityId] = (cityCounts[c.cityId] ?? 1) - 1;
+        continue; // hat den Markt verlassen
+      }
+      survivors.add(c);
+    }
+
     // Marktanteile neu berechnen pro Stadt
     final byCity = <String, List<Competitor>>{};
-    for (final c in updated) {
+    for (final c in survivors) {
       byCity.putIfAbsent(c.cityId, () => []).add(c);
     }
     byCity.forEach((cityId, list) {
       _recomputeMarketShares(list, state, cityId);
     });
 
-    return updated;
+    return survivors;
+  }
+
+  /// Schwache Konkurrenten (niedrige Reputation UND Marktanteil) schrumpfen
+  /// nach und nach: Erst verlieren sie Filialen, dann verlassen sie den Markt.
+  /// Liefert `true`, wenn der Konkurrent ausgeschieden ist.
+  /// Difficulty-skaliert (aggressivere Märkte = zähere Konkurrenz) und der
+  /// letzte Wettbewerber einer Stadt scheidet nie durch Schwäche aus.
+  /// Ein Konkurrent gilt als strauchelnd, wenn Reputation UND Marktanteil
+  /// dauerhaft niedrig sind. Solche Ketten expandieren nicht und können
+  /// schrumpfen/ausscheiden.
+  static bool _isStruggling(Competitor c) =>
+      c.reputation < 2.6 && c.marketShare < 0.06;
+
+  static bool _maybeDeclineOrExit(
+    Competitor c,
+    double aggressiveness,
+    bool lastInCity,
+  ) {
+    if (!_isStruggling(c)) return false;
+    final chance = (0.06 / aggressiveness).clamp(0.02, 0.12);
+    if (_rng.nextDouble() > chance) return false;
+    if (c.shopCount > 1) {
+      c.shopCount -= 1; // Kontraktion statt sofortigem Aus
+      c.reputation = (c.reputation - 0.05).clamp(1.0, 5.0);
+      return false;
+    }
+    if (lastInCity) return false; // letzten Wettbewerber nicht entfernen
+    return true; // Marktaustritt
   }
 
   /// Wie stark drückt die Konkurrenz auf eine Spieler-Filiale in dieser Stadt?
@@ -141,8 +186,8 @@ class CompetitorEngine {
     final expansionChance = (0.30 * aggressiveness).clamp(0.15, 0.55);
     final priceChance =
         (0.30 + (aggressiveness - 1.0) * 0.10).clamp(0.20, 0.50);
-    if (r < expansionChance && c.shopCount < 5) {
-      // Expansion
+    if (r < expansionChance && c.shopCount < 5 && !_isStruggling(c)) {
+      // Expansion (strauchelnde Ketten expandieren nicht)
       c.shopCount = (c.shopCount + 1).clamp(1, 5);
       c.reputation = (c.reputation - 0.05).clamp(1.0, 5.0); // dilution
     } else if (r < expansionChance + priceChance) {

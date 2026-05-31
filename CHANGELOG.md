@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.10.0-internal - 2026-05-31
+
+### Konkurrenzsystem
+
+- Marktaustritt (Decline & Exit): Dauerhaft schwache Konkurrenten (niedrige
+  Reputation UND niedriger Marktanteil) schrumpfen schrittweise — sie verlieren
+  zuerst Filialen und verlassen schließlich den Markt. Strauchelnde Ketten
+  expandieren nicht mehr. Difficulty-skaliert (aggressivere Märkte = zähere
+  Konkurrenz); der letzte Wettbewerber einer Stadt scheidet nie durch Schwäche
+  aus, damit kein Markt verödet. Symmetrisch zur Konkurrenz-Übernahme. Nutzt nur
+  vorhandene Felder — keine Save-Änderung, sichtbar über die bestehende
+  Konkurrenz-Liste.
+
+### Tests
+
+- Regressionstest, der die City-Map-Ökonomik (`LocationEngine`/`CityMapLocation`)
+  gegen die kanonische Filialöffnungs-Formel (footTraffic/Miete/Kaution) sperrt.
+
+### Geprüft
+
+- `flutter analyze` ohne Findings
+- `flutter test`: 164 Tests erfolgreich
+
 ## 1.9.1-internal - 2026-05-31
 
 ### Tutorial überarbeitet (weniger blockierend)
