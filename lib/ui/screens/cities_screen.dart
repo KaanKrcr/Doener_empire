@@ -9,6 +9,7 @@ import '../../core/theme.dart';
 import '../../models/city_model.dart';
 import '../../models/game_state.dart';
 import '../../providers/game_provider.dart';
+import '../widgets/premium_mobile_ui.dart';
 
 final _fmt = NumberFormat('#,##0', 'de_DE');
 
@@ -35,6 +36,9 @@ class _CitiesScreenState extends ConsumerState<CitiesScreen> {
   Widget build(BuildContext context) {
     final game = ref.watch(gameProvider)!;
     final selectedCity = _resolveSelectedCity(game);
+    final unlockedCount = kAllCities
+        .where((city) => game.unlockedCityIds.contains(city.id))
+        .length;
     final selectedCityPressure = game
         .competitorsIn(selectedCity.id)
         .fold<double>(0, (sum, competitor) => sum + competitor.marketShare)
@@ -45,12 +49,32 @@ class _CitiesScreenState extends ConsumerState<CitiesScreen> {
       appBar: AppBar(
         title: const Text('Staedtekarte'),
         automaticallyImplyLeading: false,
+        toolbarHeight: 52,
       ),
       body: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
         child: Column(
           children: [
-            _TopOpsStrip(game: game),
+            PremiumMetricStrip(
+              dense: true,
+              items: [
+                PremiumMetricData(
+                  label: 'Cash',
+                  value: '${_fmt.format(game.cash)} EUR',
+                  color: AppColors.primary,
+                ),
+                PremiumMetricData(
+                  label: 'Gesamtumsatz',
+                  value: '${_fmt.format(game.totalRevenue)} EUR',
+                  color: AppColors.accent,
+                ),
+                PremiumMetricData(
+                  label: 'Staedte offen',
+                  value: '$unlockedCount / ${kAllCities.length}',
+                  color: AppColors.secondary,
+                ),
+              ],
+            ),
             const SizedBox(height: 12),
             Expanded(
               child: _CityStage(
@@ -70,22 +94,41 @@ class _CitiesScreenState extends ConsumerState<CitiesScreen> {
                   .slideY(begin: 0.03, end: 0, curve: Curves.easeOutCubic),
             ),
             const SizedBox(height: 12),
-            _CityDecisionSheet(
-              city: selectedCity,
-              status: _CityStatus(
-                isUnlocked: game.unlockedCityIds.contains(selectedCity.id),
-                canUnlock: game.totalRevenue >= selectedCity.unlockCost,
-                hasShop:
-                    game.shops.any((shop) => shop.cityId == selectedCity.id),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (child, animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0, 0.03),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: child,
+                  ),
+                );
+              },
+              child: _CityDecisionSheet(
+                key: ValueKey(selectedCity.id),
+                city: selectedCity,
+                status: _CityStatus(
+                  isUnlocked: game.unlockedCityIds.contains(selectedCity.id),
+                  canUnlock: game.totalRevenue >= selectedCity.unlockCost,
+                  hasShop:
+                      game.shops.any((shop) => shop.cityId == selectedCity.id),
+                ),
+                shopCount: game.shops
+                    .where((shop) => shop.cityId == selectedCity.id)
+                    .length,
+                availableCash: game.cash,
+                totalRevenue: game.totalRevenue,
+                competitionPressure: selectedCityPressure,
+                onUnlock: () =>
+                    _unlockCity(context, ref, selectedCity, game.cash),
+                onOpen: () => context.push('/city-map/${selectedCity.id}'),
               ),
-              shopCount: game.shops
-                  .where((shop) => shop.cityId == selectedCity.id)
-                  .length,
-              totalRevenue: game.totalRevenue,
-              competitionPressure: selectedCityPressure,
-              onUnlock: () =>
-                  _unlockCity(context, ref, selectedCity, game.cash),
-              onOpen: () => context.push('/city-map/${selectedCity.id}'),
             ),
           ],
         ),
@@ -148,84 +191,6 @@ class _CitiesScreenState extends ConsumerState<CitiesScreen> {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _TopOpsStrip extends StatelessWidget {
-  final GameState game;
-
-  const _TopOpsStrip({required this.game});
-
-  @override
-  Widget build(BuildContext context) {
-    final unlockedCount = kAllCities
-        .where((city) => game.unlockedCityIds.contains(city.id))
-        .length;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _TopMetric(
-              label: 'Cash',
-              value: '${_fmt.format(game.cash)} EUR',
-              color: AppColors.primary,
-            ),
-          ),
-          Expanded(
-            child: _TopMetric(
-              label: 'Gesamtumsatz',
-              value: '${_fmt.format(game.totalRevenue)} EUR',
-              color: AppColors.accent,
-            ),
-          ),
-          Expanded(
-            child: _TopMetric(
-              label: 'Staedte offen',
-              value: '$unlockedCount / ${kAllCities.length}',
-              color: AppColors.secondary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TopMetric extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color color;
-
-  const _TopMetric({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          value,
-          style:
-              AppText.display(size: 14, color: color, weight: FontWeight.w700),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
-        ),
-      ],
     );
   }
 }
@@ -310,7 +275,7 @@ class _CityStage extends StatelessWidget {
                       border: Border.all(color: AppColors.borderLight),
                     ),
                     child: const Text(
-                      'Deutschlandkarte · Standortauswahl',
+                      'Deutschlandkarte - Expansion',
                       style: TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 11,
@@ -496,15 +461,18 @@ class _CityDecisionSheet extends StatelessWidget {
   final CityData city;
   final _CityStatus status;
   final int shopCount;
+  final double availableCash;
   final double totalRevenue;
   final double competitionPressure;
   final VoidCallback onUnlock;
   final VoidCallback onOpen;
 
   const _CityDecisionSheet({
+    super.key,
     required this.city,
     required this.status,
     required this.shopCount,
+    required this.availableCash,
     required this.totalRevenue,
     required this.competitionPressure,
     required this.onUnlock,
@@ -515,18 +483,18 @@ class _CityDecisionSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final remainingRevenue =
         (city.unlockCost - totalRevenue).clamp(0, double.infinity).toDouble();
+    final missingCash =
+        (city.unlockCost - availableCash).clamp(0, double.infinity).toDouble();
+    final canAffordUnlock =
+        city.unlockCost == 0 || availableCash >= city.unlockCost;
+    final unlockProgress = city.unlockCost <= 0
+        ? 1.0
+        : (totalRevenue / city.unlockCost).clamp(0.0, 1.0);
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-      decoration: BoxDecoration(
-        color: AppColors.bgSurface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: status.isUnlocked
-              ? AppColors.border
-              : (status.canUnlock ? AppColors.secondary : AppColors.border),
-        ),
-      ),
+    return PremiumDecisionSheet(
+      borderColor: status.isUnlocked
+          ? AppColors.border
+          : (status.canUnlock ? AppColors.secondary : AppColors.border),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -542,7 +510,7 @@ class _CityDecisionSheet extends StatelessWidget {
                             AppText.display(size: 20, weight: FontWeight.w800)),
                     const SizedBox(height: 2),
                     Text(
-                      '${city.state} · ${city.tier.label}',
+                      '${city.state} - ${city.tier.label}',
                       style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 12,
@@ -571,51 +539,120 @@ class _CityDecisionSheet extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
+          const PremiumSectionLabel(text: 'KERN-KPIS'),
+          const SizedBox(height: 6),
           Row(
             children: [
               Expanded(
-                child: _SheetMetric(
-                  label: 'Einwohner',
-                  value: _fmt.format(city.population),
-                  color: AppColors.textPrimary,
+                child: PremiumInlineMetric(
+                  data: PremiumMetricData(
+                    label: 'Einwohner',
+                    value: _fmt.format(city.population),
+                    color: AppColors.textPrimary,
+                  ),
                 ),
               ),
               Expanded(
-                child: _SheetMetric(
-                  label: 'Traffic-Base',
-                  value: _fmt.format(city.footTrafficBase),
-                  color: AppColors.accent,
+                child: PremiumInlineMetric(
+                  data: PremiumMetricData(
+                    label: 'Traffic-Base',
+                    value: _fmt.format(city.footTrafficBase),
+                    color: AppColors.accent,
+                  ),
                 ),
               ),
               Expanded(
-                child: _SheetMetric(
-                  label: 'Miete-Base',
-                  value: '${_fmt.format(city.rentBase)} EUR',
-                  color: AppColors.warning,
+                child: PremiumInlineMetric(
+                  data: PremiumMetricData(
+                    label: 'Miete-Base',
+                    value: '${_fmt.format(city.rentBase)} EUR',
+                    color: AppColors.warning,
+                  ),
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 8),
+          const PremiumSectionLabel(text: 'RISIKO & STATUS'),
           const SizedBox(height: 6),
-          _SheetMetric(
-            label: 'Konkurrenzdruck',
-            value: _pressureLabel(competitionPressure),
-            color: competitionPressure >= 0.50
-                ? AppColors.danger
-                : (competitionPressure >= 0.30
-                    ? AppColors.warning
-                    : AppColors.accent),
+          Row(
+            children: [
+              Expanded(
+                child: PremiumInlineMetric(
+                  data: PremiumMetricData(
+                    label: 'Konkurrenzdruck',
+                    value: _pressureLabel(competitionPressure),
+                    color: competitionPressure >= 0.50
+                        ? AppColors.danger
+                        : (competitionPressure >= 0.30
+                            ? AppColors.warning
+                            : AppColors.accent),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: PremiumInlineMetric(
+                  data: PremiumMetricData(
+                    label: 'Freischaltung',
+                    value: status.isUnlocked
+                        ? 'Aktiv'
+                        : '${(unlockProgress * 100).round()}%',
+                    color: status.isUnlocked
+                        ? AppColors.accent
+                        : (status.canUnlock
+                            ? AppColors.secondary
+                            : AppColors.textSecondary),
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 10),
-          Text(
-            _recommendationLine(remainingRevenue),
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 12,
-              height: 1.3,
+          const SizedBox(height: 8),
+          const PremiumSectionLabel(text: 'PRIORITAET JETZT'),
+          const SizedBox(height: 6),
+          PremiumStatusHint(
+            tone: _priorityTone(canAffordUnlock, remainingRevenue),
+            text: _priorityLine(canAffordUnlock, remainingRevenue),
+          ),
+          const SizedBox(height: 8),
+          const PremiumSectionLabel(text: 'KONTEXT'),
+          const SizedBox(height: 4),
+          PremiumDecisionLine(text: _recommendationLine(remainingRevenue)),
+          if (!status.isUnlocked && status.canUnlock) ...[
+            const SizedBox(height: 10),
+            PremiumStatusHint(
+              tone: canAffordUnlock
+                  ? PremiumStatusTone.success
+                  : PremiumStatusTone.danger,
+              text: canAffordUnlock
+                  ? 'Kapital gedeckt: Freischaltung sofort moeglich.'
+                  : 'Kapital fehlt: ${_fmt.format(missingCash)} EUR.',
             ),
-          ),
+          ],
+          if (!status.isUnlocked) ...[
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                minHeight: 8,
+                value: unlockProgress,
+                backgroundColor: AppColors.bgCard,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  status.canUnlock ? AppColors.secondary : AppColors.primary,
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Freischaltfortschritt: ${(unlockProgress * 100).round()}%',
+              style: const TextStyle(
+                color: AppColors.textMuted,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
@@ -638,7 +675,7 @@ class _CityDecisionSheet extends StatelessWidget {
     if (city.unlockCost == 0 || status.canUnlock) {
       return city.unlockCost == 0
           ? 'Stadt aktivieren'
-          : 'Stadt freischalten · ${_fmt.format(city.unlockCost)} EUR';
+          : 'Stadt freischalten - ${_fmt.format(city.unlockCost)} EUR';
     }
     return 'Noch ${_fmt.format(remainingRevenue)} EUR Umsatz noetig';
   }
@@ -668,41 +705,33 @@ class _CityDecisionSheet extends StatelessWidget {
     if (pressure >= 0.30) return 'Mittel ($pct%)';
     return 'Niedrig ($pct%)';
   }
-}
 
-class _SheetMetric extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color color;
+  PremiumStatusTone _priorityTone(
+      bool canAffordUnlock, double remainingRevenue) {
+    if (status.isUnlocked) {
+      return competitionPressure >= 0.50
+          ? PremiumStatusTone.warning
+          : PremiumStatusTone.success;
+    }
+    if (status.canUnlock && canAffordUnlock) return PremiumStatusTone.success;
+    if (status.canUnlock && !canAffordUnlock) return PremiumStatusTone.warning;
+    return remainingRevenue <= city.unlockCost * 0.20
+        ? PremiumStatusTone.warning
+        : PremiumStatusTone.danger;
+  }
 
-  const _SheetMetric({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          value,
-          style: TextStyle(
-            color: color,
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppColors.textMuted,
-            fontSize: 10,
-          ),
-        ),
-      ],
-    );
+  String _priorityLine(bool canAffordUnlock, double remainingRevenue) {
+    if (status.isUnlocked) {
+      return competitionPressure >= 0.50
+          ? 'Prioritaet jetzt: in dieser Stadt Wettbewerbsdruck aktiv managen.'
+          : 'Prioritaet jetzt: Standortwahl fuer naechste Filiale vorbereiten.';
+    }
+    if (status.canUnlock && canAffordUnlock) {
+      return 'Prioritaet jetzt: Stadt freischalten und ersten Standort sichern.';
+    }
+    if (status.canUnlock && !canAffordUnlock) {
+      return 'Prioritaet jetzt: Cash-Luecke schliessen, dann sofort freischalten.';
+    }
+    return 'Prioritaet jetzt: noch ${_fmt.format(remainingRevenue)} EUR Umsatz bis Freischaltung.';
   }
 }

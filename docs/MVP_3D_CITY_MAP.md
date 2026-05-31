@@ -24,3 +24,9 @@ Döner Empire bekommt eine Coffee-Inc.-2-inspirierte City-Map-Ebene, ohne die be
 - Konkurrenz-Hotspots sichtbar machen
 - Marktanteilszonen pro Stadtteil einfärben
 - Standort-spezifische Balancing-Tabelle erweitern
+
+## Zusätzliche Screenshots
+- `docs/assets/screenshots/screen_premium_overview.png`
+- `docs/assets/screenshots/screen_city_map_focus.png`
+- `docs/assets/screenshots/screen_hotspot_detail_focus.png`
+- `docs/assets/screenshots/screen_bottom_sheet_focus.png`

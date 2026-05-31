@@ -13,6 +13,8 @@ class CityMapView extends StatelessWidget {
   final List<Shop> shops;
   final CityMapLocation? selected;
   final ValueChanged<CityMapLocation> onSelect;
+  final bool fillParent;
+  final bool showDetailChips;
 
   const CityMapView({
     super.key,
@@ -21,44 +23,52 @@ class CityMapView extends StatelessWidget {
     required this.shops,
     required this.selected,
     required this.onSelect,
+    this.fillParent = false,
+    this.showDetailChips = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: 1.15,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final size = Size(constraints.maxWidth, constraints.maxHeight);
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(28),
-            child: Stack(
-              children: [
-                Positioned.fill(child: CustomPaint(painter: _CityMapPainter())),
-                for (final location in locations)
-                  _HotspotButton(
-                    city: city,
-                    location: location,
-                    ownedShopCount: shops
-                        .where((shop) =>
-                            shop.cityId == city.id &&
-                            shop.locationName == location.template.name)
-                        .length,
-                    isSelected: selected?.id == location.id,
-                    size: size,
-                    onTap: () => onSelect(location),
-                  ),
-                Positioned(
-                  left: 16,
-                  top: 16,
-                  child: _CityBadge(city: city),
+    final content = LayoutBuilder(
+      builder: (context, constraints) {
+        final size = Size(constraints.maxWidth, constraints.maxHeight);
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: Stack(
+            children: [
+              Positioned.fill(child: CustomPaint(painter: _CityMapPainter())),
+              for (final location in locations)
+                _HotspotButton(
+                  city: city,
+                  location: location,
+                  ownedShopCount: shops
+                      .where((shop) =>
+                          shop.cityId == city.id &&
+                          shop.locationName == location.template.name)
+                      .length,
+                  isSelected: selected?.id == location.id,
+                  size: size,
+                  showDetailChips: showDetailChips,
+                  onTap: () => onSelect(location),
                 ),
-              ],
-            ),
-          );
-        },
-      ),
+              Positioned(
+                left: 16,
+                top: 16,
+                child: _CityBadge(city: city),
+              ),
+              const Positioned(
+                left: 16,
+                bottom: 16,
+                child: _MapLegend(),
+              ),
+            ],
+          ),
+        );
+      },
     );
+
+    if (fillParent) return content;
+    return AspectRatio(aspectRatio: 1.15, child: content);
   }
 }
 
@@ -108,6 +118,7 @@ class _HotspotButton extends StatelessWidget {
   final int ownedShopCount;
   final bool isSelected;
   final Size size;
+  final bool showDetailChips;
   final VoidCallback onTap;
 
   const _HotspotButton({
@@ -116,6 +127,7 @@ class _HotspotButton extends StatelessWidget {
     required this.ownedShopCount,
     required this.isSelected,
     required this.size,
+    required this.showDetailChips,
     required this.onTap,
   });
 
@@ -124,6 +136,7 @@ class _HotspotButton extends StatelessWidget {
     final left = location.mapPosition.dx * size.width;
     final top = location.mapPosition.dy * size.height;
     final score = location.attractivenessScore(city).round();
+    final isOwned = ownedShopCount > 0;
     final color = ownedShopCount > 0
         ? AppColors.accent
         : isSelected
@@ -131,8 +144,8 @@ class _HotspotButton extends StatelessWidget {
             : AppColors.primary;
 
     return Positioned(
-      left: left - 34,
-      top: top - 44,
+      left: left - 44,
+      top: top - 46,
       child: GestureDetector(
         onTap: onTap,
         child: AnimatedScale(
@@ -142,34 +155,107 @@ class _HotspotButton extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 68,
-                padding: const EdgeInsets.symmetric(vertical: 6),
                 decoration: BoxDecoration(
-                  color: AppColors.bgCard.withAlpha(238),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: color, width: isSelected ? 2 : 1),
+                  borderRadius: BorderRadius.circular(18),
                   boxShadow: [
-                    BoxShadow(
-                      color: color.withAlpha(70),
-                      blurRadius: 18,
-                      offset: const Offset(0, 8),
-                    ),
+                    if (isSelected)
+                      BoxShadow(
+                        color: color.withAlpha(70),
+                        blurRadius: 20,
+                        spreadRadius: 2,
+                      ),
                   ],
                 ),
-                child: Column(
-                  children: [
-                    Text(location.icon, style: const TextStyle(fontSize: 22)),
-                    Text(
-                      ownedShopCount > 0 ? 'x$ownedShopCount' : '$score',
-                      style: TextStyle(
-                        color: color,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
+                child: Container(
+                  width: 76,
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.bgCard.withAlpha(238),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: color, width: isSelected ? 2 : 1),
+                    boxShadow: [
+                      BoxShadow(
+                        color: color.withAlpha(70),
+                        blurRadius: 18,
+                        offset: const Offset(0, 8),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Text(location.icon, style: const TextStyle(fontSize: 22)),
+                      if (isSelected || isOwned)
+                        Text(
+                          isOwned ? 'x$ownedShopCount' : '$score',
+                          style: TextStyle(
+                            color: color,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
+              if (isSelected && showDetailChips) ...[
+                const SizedBox(height: 4),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.bg.withAlpha(220),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.borderLight),
+                  ),
+                  child: Text(
+                    location.label,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.bg.withAlpha(220),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.borderLight),
+                  ),
+                  child: Text(
+                    isOwned
+                        ? 'Eigene Filiale aktiv'
+                        : 'Freier Spot - Score $score',
+                    style: TextStyle(
+                      color:
+                          isOwned ? AppColors.accent : AppColors.textSecondary,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.bg.withAlpha(220),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.borderLight),
+                  ),
+                  child: Text(
+                    'T ${location.footTrafficFor(city)}  M ${location.weeklyRentFor(city).round()}',
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
               CustomPaint(
                 size: const Size(22, 12),
                 painter: _PinPainter(color),
@@ -178,6 +264,78 @@ class _HotspotButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _MapLegend extends StatelessWidget {
+  const _MapLegend();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.bg.withAlpha(220),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.borderLight),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _LegendRow(
+            color: AppColors.accent,
+            label: 'Eigene Filiale',
+          ),
+          SizedBox(height: 4),
+          _LegendRow(
+            color: AppColors.primary,
+            label: 'Freier Standort',
+          ),
+          SizedBox(height: 4),
+          _LegendRow(
+            color: AppColors.gold,
+            label: 'Selektierter Spot',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LegendRow extends StatelessWidget {
+  final Color color;
+  final String label;
+
+  const _LegendRow({
+    required this.color,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: color,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 }

@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,11 +6,15 @@ import 'package:uuid/uuid.dart';
 
 import '../../core/constants.dart';
 import '../../core/theme.dart';
+import '../../models/city_map_model.dart';
 import '../../models/city_model.dart';
 import '../../models/shop_model.dart';
 import '../../models/time_profile_model.dart';
 import '../../providers/game_provider.dart';
+import '../../services/location_engine.dart';
 import '../main_scaffold.dart';
+import '../widgets/city_map_view.dart';
+import '../widgets/premium_mobile_ui.dart';
 
 final _fmt = NumberFormat('#,##0', 'de_DE');
 const _uuid = Uuid();
@@ -33,23 +35,11 @@ class OpenShopScreen extends ConsumerStatefulWidget {
 
 class _OpenShopScreenState extends ConsumerState<OpenShopScreen> {
   final _nameCtrl = TextEditingController();
-  int _selectedLocation = 0;
+  String? _selectedLocationId;
   bool _loading = false;
 
   CityData get city =>
       kAllCities.firstWhere((entry) => entry.id == widget.cityId);
-
-  List<LocationTemplate> get locations =>
-      kLocationTemplates[city.tier] ?? kLocationTemplates[CityTier.klein]!;
-
-  LocationTemplate get selectedLocation => locations[_selectedLocation];
-
-  int get footTraffic =>
-      (city.footTrafficBase * selectedLocation.footTrafficFactor).round();
-
-  double get weeklyRent => city.rentBase * selectedLocation.rentFactor;
-
-  double get deposit => weeklyRent * 2;
 
   @override
   void initState() {
@@ -57,16 +47,6 @@ class _OpenShopScreenState extends ConsumerState<OpenShopScreen> {
     final game = ref.read(gameProvider);
     if (game != null) {
       _nameCtrl.text = game.companyName;
-    }
-    final initialLocationName = widget.initialLocationName;
-    if (initialLocationName != null) {
-      final index = locations.indexWhere(
-        (location) =>
-            location.name.toLowerCase() == initialLocationName.toLowerCase(),
-      );
-      if (index >= 0) {
-        _selectedLocation = index;
-      }
     }
   }
 
@@ -76,8 +56,10 @@ class _OpenShopScreenState extends ConsumerState<OpenShopScreen> {
     super.dispose();
   }
 
-  void _open() {
+  void _open(CityMapLocation location) {
     final game = ref.read(gameProvider)!;
+    final deposit = location.depositFor(city);
+
     final typedName = _nameCtrl.text.trim();
     final resolvedBranchName = typedName.isEmpty ? game.companyName : typedName;
     final customName =
@@ -101,14 +83,14 @@ class _OpenShopScreenState extends ConsumerState<OpenShopScreen> {
       name: game.companyName,
       customName: customName,
       cityId: widget.cityId,
-      locationName: selectedLocation.name,
-      footTraffic: footTraffic,
-      weeklyRent: weeklyRent,
+      locationName: location.template.name,
+      footTraffic: location.footTrafficFor(city),
+      weeklyRent: location.weeklyRentFor(city),
       menu: const [],
       equipment: const [],
       employees: const [],
       dayOpened: game.currentDay,
-      personality: selectedLocation.personality,
+      personality: location.template.personality,
     );
 
     ref.read(gameProvider.notifier).openShop(shop);
@@ -125,6 +107,18 @@ class _OpenShopScreenState extends ConsumerState<OpenShopScreen> {
         .fold<double>(0, (sum, competitor) => sum + competitor.marketShare)
         .clamp(0.0, 0.95);
 
+    final locations = LocationEngine.locationsFor(city);
+    if (locations.isEmpty) {
+      return const Scaffold(
+        body: Center(child: Text('Keine Standorte verfuegbar.')),
+      );
+    }
+
+    final selected = _resolveSelectedLocation(locations);
+    final footTraffic = selected.footTrafficFor(city);
+    final weeklyRent = selected.weeklyRentFor(city);
+    final deposit = selected.depositFor(city);
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
@@ -135,49 +129,94 @@ class _OpenShopScreenState extends ConsumerState<OpenShopScreen> {
         backgroundColor: AppColors.bg,
         appBar: AppBar(
           title: Text('Filiale in ${city.name}'),
+          toolbarHeight: 52,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_ios_new),
             onPressed: _goBackToCityMap,
           ),
         ),
         body: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
           child: Column(
             children: [
-              _OpenShopTopStrip(
-                city: city,
-                cash: game.cash,
-                cityShopCount: cityShops.length,
-                competitionPressure: cityCompetitionPressure,
+              PremiumMetricStrip(
+                dense: true,
+                items: [
+                  PremiumMetricData(
+                    label: city.state,
+                    value: city.name,
+                    color: AppColors.textPrimary,
+                  ),
+                  PremiumMetricData(
+                    label: 'Cash',
+                    value: '${_fmt.format(game.cash)} EUR',
+                    color: AppColors.primary,
+                  ),
+                  PremiumMetricData(
+                    label: 'Druck',
+                    value: _pressurePct(cityCompetitionPressure),
+                    color: _pressureColor(cityCompetitionPressure),
+                  ),
+                  PremiumMetricData(
+                    label: 'Filialen',
+                    value: '${cityShops.length}',
+                    color: AppColors.accent,
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
               Expanded(
-                child: _OpenShopStage(
-                  locations: locations,
-                  selectedIndex: _selectedLocation,
-                  ownShopCounts: {
-                    for (final location in locations)
-                      location.name: cityShops
-                          .where((shop) => shop.locationName == location.name)
-                          .length,
-                  },
-                  onSelect: (index) =>
-                      setState(() => _selectedLocation = index),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(2),
+                    child: CityMapView(
+                      city: city,
+                      locations: locations,
+                      shops: cityShops,
+                      selected: selected,
+                      fillParent: true,
+                      showDetailChips: true,
+                      onSelect: (location) =>
+                          setState(() => _selectedLocationId = location.id),
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
-              _OpenDecisionSheet(
-                city: city,
-                location: selectedLocation,
-                branchNameCtrl: _nameCtrl,
-                footTraffic: footTraffic,
-                weeklyRent: weeklyRent,
-                deposit: deposit,
-                cashAfter: game.cash - deposit,
-                competitionPressure: cityCompetitionPressure,
-                loading: _loading,
-                onOpen: _open,
-                onBack: _goBackToCityMap,
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 220),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                transitionBuilder: (child, animation) {
+                  return FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0, 0.03),
+                        end: Offset.zero,
+                      ).animate(animation),
+                      child: child,
+                    ),
+                  );
+                },
+                child: _OpenDecisionSheet(
+                  key: ValueKey(selected.id),
+                  city: city,
+                  location: selected,
+                  branchNameCtrl: _nameCtrl,
+                  footTraffic: footTraffic,
+                  weeklyRent: weeklyRent,
+                  deposit: deposit,
+                  cashAfter: game.cash - deposit,
+                  competitionPressure: cityCompetitionPressure,
+                  loading: _loading,
+                  onOpen: () => _open(selected),
+                  onBack: _goBackToCityMap,
+                ),
               ),
             ],
           ),
@@ -186,66 +225,39 @@ class _OpenShopScreenState extends ConsumerState<OpenShopScreen> {
     );
   }
 
+  CityMapLocation _resolveSelectedLocation(List<CityMapLocation> locations) {
+    final fallback = locations.first;
+    final selectedId = _selectedLocationId;
+    if (selectedId != null) {
+      return locations.firstWhere(
+        (entry) => entry.id == selectedId,
+        orElse: () => fallback,
+      );
+    }
+
+    final initialName = widget.initialLocationName;
+    if (initialName != null) {
+      final match = locations.where((entry) {
+        return entry.label.toLowerCase() == initialName.toLowerCase() ||
+            entry.template.name.toLowerCase() == initialName.toLowerCase();
+      });
+      if (match.isNotEmpty) {
+        final resolved = match.first;
+        _selectedLocationId = resolved.id;
+        return resolved;
+      }
+    }
+
+    _selectedLocationId = fallback.id;
+    return fallback;
+  }
+
   void _goBackToCityMap() {
     ref.read(navIndexProvider.notifier).state = kTabCities;
     context.go('/city-map/${widget.cityId}');
   }
-}
 
-class _OpenShopTopStrip extends StatelessWidget {
-  final CityData city;
-  final double cash;
-  final int cityShopCount;
-  final double competitionPressure;
-
-  const _OpenShopTopStrip({
-    required this.city,
-    required this.cash,
-    required this.cityShopCount,
-    required this.competitionPressure,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _TopMetric(
-              label: city.state,
-              value: city.name,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          Expanded(
-            child: _TopMetric(
-              label: 'Cash',
-              value: '${_fmt.format(cash)} EUR',
-              color: AppColors.primary,
-            ),
-          ),
-          Expanded(
-            child: _TopMetric(
-              label: 'Druck',
-              value: _pressureLabel(competitionPressure),
-              color: _pressureColor(competitionPressure),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _pressureLabel(double pressure) {
-    final pct = (pressure * 100).round();
-    return '$pct%';
-  }
+  String _pressurePct(double pressure) => '${(pressure * 100).round()}%';
 
   Color _pressureColor(double pressure) {
     if (pressure >= 0.50) return AppColors.danger;
@@ -254,287 +266,9 @@ class _OpenShopTopStrip extends StatelessWidget {
   }
 }
 
-class _TopMetric extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color color;
-
-  const _TopMetric({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          value,
-          style:
-              AppText.display(size: 14, color: color, weight: FontWeight.w700),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ],
-    );
-  }
-}
-
-class _OpenShopStage extends StatelessWidget {
-  final List<LocationTemplate> locations;
-  final int selectedIndex;
-  final Map<String, int> ownShopCounts;
-  final ValueChanged<int> onSelect;
-
-  const _OpenShopStage({
-    required this.locations,
-    required this.selectedIndex,
-    required this.ownShopCounts,
-    required this.onSelect,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final size = Size(constraints.maxWidth, constraints.maxHeight);
-            return Stack(
-              children: [
-                const Positioned.fill(child: _OpenMapBackdrop()),
-                for (int i = 0; i < locations.length; i++)
-                  _HotspotMarker(
-                    location: locations[i],
-                    selected: i == selectedIndex,
-                    ownCount: ownShopCounts[locations[i].name] ?? 0,
-                    position: _markerPosition(i, locations.length),
-                    size: size,
-                    onTap: () => onSelect(i),
-                  ),
-                Positioned(
-                  left: 12,
-                  top: 12,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: AppColors.bg.withAlpha(214),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: AppColors.borderLight),
-                    ),
-                    child: const Text(
-                      'Standort waehlen',
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  Offset _markerPosition(int index, int total) {
-    if (total <= 1) {
-      return const Offset(0.5, 0.5);
-    }
-    const predefined = [
-      Offset(0.20, 0.30),
-      Offset(0.44, 0.24),
-      Offset(0.70, 0.40),
-      Offset(0.56, 0.70),
-      Offset(0.30, 0.62),
-      Offset(0.80, 0.64),
-    ];
-    return index < predefined.length
-        ? predefined[index]
-        : const Offset(0.5, 0.5);
-  }
-}
-
-class _OpenMapBackdrop extends StatelessWidget {
-  const _OpenMapBackdrop();
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF15120F), Color(0xFF221911), Color(0xFF302216)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: CustomPaint(painter: _OpenRoadPainter()),
-    );
-  }
-}
-
-class _OpenRoadPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final roadShadow = Paint()
-      ..color = Colors.black.withAlpha(86)
-      ..strokeWidth = 22
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
-    final road = Paint()
-      ..color = const Color(0xFF574331)
-      ..strokeWidth = 16
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
-    final roadLine = Paint()
-      ..color = AppColors.cream.withAlpha(118)
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
-    final pathA = Path()
-      ..moveTo(-0.12 * size.width, 0.75 * size.height)
-      ..lineTo(0.28 * size.width, 0.53 * size.height)
-      ..lineTo(0.62 * size.width, 0.62 * size.height)
-      ..lineTo(1.05 * size.width, 0.37 * size.height);
-
-    final pathB = Path()
-      ..moveTo(0.12 * size.width, -0.08 * size.height)
-      ..lineTo(0.34 * size.width, 0.32 * size.height)
-      ..lineTo(0.42 * size.width, 1.05 * size.height);
-
-    canvas.drawPath(pathA.shift(const Offset(0, 4)), roadShadow);
-    canvas.drawPath(pathA, road);
-    canvas.drawPath(pathA, roadLine);
-
-    canvas.drawPath(pathB.shift(const Offset(0, 4)), roadShadow);
-    canvas.drawPath(pathB, road);
-    canvas.drawPath(pathB, roadLine);
-
-    final glow = Paint()
-      ..color = AppColors.primary.withAlpha(30)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 24);
-
-    canvas.drawCircle(
-      Offset(size.width * 0.76, size.height * 0.24),
-      math.min(size.width, size.height) * 0.16,
-      glow,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _HotspotMarker extends StatelessWidget {
-  final LocationTemplate location;
-  final bool selected;
-  final int ownCount;
-  final Offset position;
-  final Size size;
-  final VoidCallback onTap;
-
-  const _HotspotMarker({
-    required this.location,
-    required this.selected,
-    required this.ownCount,
-    required this.position,
-    required this.size,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final left = position.dx * size.width;
-    final top = position.dy * size.height;
-    final color = ownCount > 0
-        ? AppColors.accent
-        : (selected ? AppColors.secondary : AppColors.primary);
-
-    return Positioned(
-      left: left - 34,
-      top: top - 42,
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedScale(
-          scale: selected ? 1.08 : 1,
-          duration: const Duration(milliseconds: 160),
-          curve: Curves.easeOutCubic,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 68,
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.bgCard.withAlpha(236),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: color, width: selected ? 2 : 1),
-                  boxShadow: [
-                    BoxShadow(
-                      color: color.withAlpha(64),
-                      blurRadius: 14,
-                      offset: const Offset(0, 7),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Text(location.personality.emoji,
-                        style: const TextStyle(fontSize: 20)),
-                    Text(
-                      ownCount > 0 ? 'x$ownCount' : 'spot',
-                      style: TextStyle(
-                        color: color,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                location.name,
-                style: TextStyle(
-                  color: selected
-                      ? AppColors.textPrimary
-                      : AppColors.textSecondary,
-                  fontSize: 10,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _OpenDecisionSheet extends StatelessWidget {
   final CityData city;
-  final LocationTemplate location;
+  final CityMapLocation location;
   final TextEditingController branchNameCtrl;
   final int footTraffic;
   final double weeklyRent;
@@ -546,6 +280,7 @@ class _OpenDecisionSheet extends StatelessWidget {
   final VoidCallback onBack;
 
   const _OpenDecisionSheet({
+    super.key,
     required this.city,
     required this.location,
     required this.branchNameCtrl,
@@ -561,30 +296,29 @@ class _OpenDecisionSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-      decoration: BoxDecoration(
-        color: AppColors.bgSurface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.primary.withAlpha(92)),
-      ),
+    final canAfford = cashAfter >= 0;
+
+    return PremiumDecisionSheet(
+      borderColor: AppColors.primary.withAlpha(92),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            location.name,
+            location.label,
             style: AppText.display(size: 20, weight: FontWeight.w800),
           ),
           const SizedBox(height: 2),
           Text(
-            '${location.personality.label} · ${city.name}',
+            '${location.template.personality.label} - ${city.name}',
             style: const TextStyle(
               color: AppColors.textSecondary,
               fontSize: 12,
             ),
           ),
           const SizedBox(height: 10),
+          const PremiumSectionLabel(text: 'SETUP'),
+          const SizedBox(height: 6),
           TextFormField(
             controller: branchNameCtrl,
             decoration: const InputDecoration(
@@ -595,20 +329,26 @@ class _OpenDecisionSheet extends StatelessWidget {
             textCapitalization: TextCapitalization.words,
           ),
           const SizedBox(height: 10),
+          const PremiumSectionLabel(text: 'KERN-KPIS'),
+          const SizedBox(height: 6),
           Row(
             children: [
               Expanded(
-                child: _DecisionMetric(
-                  label: 'Traffic',
-                  value: '${_fmt.format(footTraffic)} / Tag',
-                  color: AppColors.accent,
+                child: PremiumInlineMetric(
+                  data: PremiumMetricData(
+                    label: 'Traffic',
+                    value: '${_fmt.format(footTraffic)} / Tag',
+                    color: AppColors.accent,
+                  ),
                 ),
               ),
               Expanded(
-                child: _DecisionMetric(
-                  label: 'Miete',
-                  value: '${_fmt.format(weeklyRent)} EUR',
-                  color: AppColors.warning,
+                child: PremiumInlineMetric(
+                  data: PremiumMetricData(
+                    label: 'Miete',
+                    value: '${_fmt.format(weeklyRent)} EUR',
+                    color: AppColors.warning,
+                  ),
                 ),
               ),
             ],
@@ -617,41 +357,79 @@ class _OpenDecisionSheet extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: _DecisionMetric(
-                  label: 'Kaution',
-                  value: '${_fmt.format(deposit)} EUR',
-                  color: AppColors.danger,
+                child: PremiumInlineMetric(
+                  data: PremiumMetricData(
+                    label: 'Kaution',
+                    value: '${_fmt.format(deposit)} EUR',
+                    color: AppColors.danger,
+                  ),
                 ),
               ),
               Expanded(
-                child: _DecisionMetric(
-                  label: 'Cash danach',
-                  value: '${_fmt.format(cashAfter)} EUR',
-                  color: cashAfter >= 0 ? AppColors.success : AppColors.danger,
+                child: PremiumInlineMetric(
+                  data: PremiumMetricData(
+                    label: 'Cash danach',
+                    value: '${_fmt.format(cashAfter)} EUR',
+                    color:
+                        cashAfter >= 0 ? AppColors.success : AppColors.danger,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          _DecisionMetric(
-            label: 'Konkurrenzdruck',
-            value: _pressureLabel(competitionPressure),
-            color: _pressureColor(competitionPressure),
+          const SizedBox(height: 8),
+          const PremiumSectionLabel(text: 'RISIKO & FIT'),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(
+                child: PremiumInlineMetric(
+                  data: PremiumMetricData(
+                    label: 'Konkurrenzdruck',
+                    value: _pressureLabel(competitionPressure),
+                    color: _pressureColor(competitionPressure),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: PremiumInlineMetric(
+                  data: PremiumMetricData(
+                    label: 'Standortfit',
+                    value: _fitLabel(footTraffic, weeklyRent),
+                    color: _fitColor(footTraffic, weeklyRent),
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 10),
-          Text(
-            _recommendation(location.personality),
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 12,
-              height: 1.3,
-            ),
+          const SizedBox(height: 8),
+          PremiumStatusHint(
+            tone: canAfford
+                ? PremiumStatusTone.success
+                : PremiumStatusTone.danger,
+            text: canAfford
+                ? 'Kaution gedeckt: Eroeffnung sofort moeglich.'
+                : 'Kaution fehlt: ${_fmt.format(-cashAfter)} EUR.',
+          ),
+          const SizedBox(height: 8),
+          const PremiumSectionLabel(text: 'PRIORITAET JETZT'),
+          const SizedBox(height: 6),
+          PremiumStatusHint(
+            tone: _priorityTone(footTraffic, weeklyRent, competitionPressure),
+            text: _priorityLine(footTraffic, weeklyRent, competitionPressure),
+          ),
+          const SizedBox(height: 8),
+          const PremiumSectionLabel(text: 'KONTEXT'),
+          const SizedBox(height: 4),
+          PremiumDecisionLine(
+            text: _recommendation(
+                location.template.personality, competitionPressure),
           ),
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: loading ? null : onOpen,
+              onPressed: loading || !canAfford ? null : onOpen,
               child: loading
                   ? const SizedBox(
                       width: 18,
@@ -661,7 +439,11 @@ class _OpenDecisionSheet extends StatelessWidget {
                         color: Colors.white,
                       ),
                     )
-                  : const Text('Filiale eroeffnen'),
+                  : Text(
+                      canAfford
+                          ? 'Filiale eroeffnen'
+                          : 'Zu wenig Kapital fuer Kaution',
+                    ),
             ),
           ),
           const SizedBox(height: 8),
@@ -677,7 +459,64 @@ class _OpenDecisionSheet extends StatelessWidget {
     );
   }
 
-  String _recommendation(LocationPersonality personality) {
+  String _pressureLabel(double pressure) {
+    final pct = (pressure * 100).round();
+    if (pressure >= 0.50) return 'Hoch ($pct%)';
+    if (pressure >= 0.30) return 'Mittel ($pct%)';
+    return 'Niedrig ($pct%)';
+  }
+
+  Color _pressureColor(double pressure) {
+    if (pressure >= 0.50) return AppColors.danger;
+    if (pressure >= 0.30) return AppColors.warning;
+    return AppColors.accent;
+  }
+
+  String _fitLabel(int footTraffic, double weeklyRent) {
+    final ratio = footTraffic / weeklyRent;
+    if (ratio >= 1.9) return 'Sehr stark';
+    if (ratio >= 1.4) return 'Stark';
+    if (ratio >= 1.0) return 'Solide';
+    return 'Riskant';
+  }
+
+  Color _fitColor(int footTraffic, double weeklyRent) {
+    final ratio = footTraffic / weeklyRent;
+    if (ratio >= 1.4) return AppColors.accent;
+    if (ratio >= 1.0) return AppColors.warning;
+    return AppColors.danger;
+  }
+
+  PremiumStatusTone _priorityTone(
+    int footTraffic,
+    double weeklyRent,
+    double competitionPressure,
+  ) {
+    final ratio = footTraffic / weeklyRent;
+    if (ratio < 1.0) return PremiumStatusTone.danger;
+    if (competitionPressure >= 0.50) return PremiumStatusTone.warning;
+    return PremiumStatusTone.success;
+  }
+
+  String _priorityLine(
+    int footTraffic,
+    double weeklyRent,
+    double competitionPressure,
+  ) {
+    final ratio = footTraffic / weeklyRent;
+    if (ratio < 1.0) {
+      return 'Prioritaet jetzt: nur mit Effizienz-Fokus und diszipliniertem Preislevel starten.';
+    }
+    if (competitionPressure >= 0.50) {
+      return 'Prioritaet jetzt: hoher Druck - mit klarer Positionierung und Tempo eroefnen.';
+    }
+    return 'Prioritaet jetzt: Lage passt - jetzt schnell eroefnen und Bewertungen sichern.';
+  }
+
+  String _recommendation(
+    LocationPersonality personality,
+    double competitionPressure,
+  ) {
     switch (personality) {
       case LocationPersonality.business:
         return competitionPressure >= 0.45
@@ -694,59 +533,5 @@ class _OpenDecisionSheet extends StatelessWidget {
       case LocationPersonality.transit:
         return 'Transit braucht Tempo: kurze Wartezeit ist wichtiger als Produktbreite.';
     }
-  }
-
-  String _pressureLabel(double pressure) {
-    final pct = (pressure * 100).round();
-    if (pressure >= 0.50) return 'Hoch ($pct%)';
-    if (pressure >= 0.30) return 'Mittel ($pct%)';
-    return 'Niedrig ($pct%)';
-  }
-
-  Color _pressureColor(double pressure) {
-    if (pressure >= 0.50) return AppColors.danger;
-    if (pressure >= 0.30) return AppColors.warning;
-    return AppColors.accent;
-  }
-}
-
-class _DecisionMetric extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color color;
-
-  const _DecisionMetric({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          value,
-          style: TextStyle(
-            color: color,
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppColors.textMuted,
-            fontSize: 10,
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ],
-    );
   }
 }
