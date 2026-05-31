@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.11.0-internal - 2026-05-31
+
+### Economy / Shop-System
+
+- Stammkunden / Loyalität: Filialen mit *dauerhaft* hoher Reputation bauen über
+  die Zeit einen treuen Kundenstamm auf (Zeit-Integral der Reputation, nicht nur
+  Momentaufnahme) und erhalten dafür einen stabilen Kundenstrom-Bonus (bis
+  +10 %). Niedrige Reputation oder geschlossene Filialen bauen den Stamm wieder
+  ab; charmante Mitarbeiter beschleunigen den Aufbau. Neues `Shop.regulars`
+  (0..0,5, Default 0 = balance-neutral) — speicherkompatibel, keine UI-Änderung.
+
+### Geprüft
+
+- `flutter analyze` ohne Findings
+- `flutter test`: 171 Tests erfolgreich
+
 ## 1.10.0-internal - 2026-05-31
 
 ### Konkurrenzsystem

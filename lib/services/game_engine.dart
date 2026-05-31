@@ -96,6 +96,8 @@ class GameEngine {
 
     // Dauerhafter Prestige-Bonus aus früheren Franchise-Neugründungen
     final prestigeBonus = state == null ? 0.0 : prestigeCustomerBonus(state);
+    // Stammkunden: treuer Kundenstamm aus dauerhaft hoher Reputation (0..+10%)
+    final regularsBonus = shop.regulars * 0.20;
 
     // Tagesspecial: ein Produkt pro Tag mit erhöhter Nachfrage
     final specialId = dailySpecialProductId(effectiveDay);
@@ -141,7 +143,8 @@ class GameEngine {
             upgradeBoost +
             perks.customerBoost +
             comboBoost +
-            prestigeBonus);
+            prestigeBonus +
+            regularsBonus);
     final actualCustomers = rawCustomers.clamp(0.0, capacity.toDouble());
 
     final actualRevenue =
@@ -836,6 +839,7 @@ class GameEngine {
       final dayStats =
           calculateShopStats(shop, day: today, state: stateWithComp);
       final newMorale = updateShopMorale(shop, dayStats);
+      final newRegulars = updateRegulars(shop);
       final updatedEmployees = shop.employees.map((emp) {
         final newDays = emp.daysEmployed + 1;
         // Erfahrungs-Wachstum: difficulty-basiertes Intervall.
@@ -859,6 +863,7 @@ class GameEngine {
         employees: updatedEmployees,
         activeCampaigns: activeNow,
         morale: newMorale,
+        regulars: newRegulars,
       );
     }).toList();
 
@@ -1577,6 +1582,29 @@ class GameEngine {
       m -= 0.01;
     }
     return m.clamp(0.2, 1.0);
+  }
+
+  /// Maximaler Stammkunden-Anteil einer Filiale.
+  static const double kMaxRegulars = 0.5;
+
+  /// Aktualisiert den Stammkunden-Anteil für den Folgetag.
+  /// Dauerhaft hohe Reputation baut über die Zeit einen treuen Kundenstamm auf
+  /// (Zeit-Integral der Reputation, nicht nur Momentaufnahme); niedrige
+  /// Reputation oder geschlossene Filialen lassen ihn schrumpfen. Charmante
+  /// Mitarbeiter beschleunigen den Aufbau. Bewegt sich in [0, kMaxRegulars];
+  /// Default 0.0 bleibt balance-neutral für Alt-Saves.
+  static double updateRegulars(Shop shop) {
+    if (!shop.isOpen) {
+      return (shop.regulars - 0.02).clamp(0.0, kMaxRegulars);
+    }
+    // Zielwert steigt ab Reputation 3.0 und ist bei 5.0 voll ausgeschöpft.
+    final target =
+        (((shop.reputation - 3.0) / 2.0).clamp(0.0, 1.0)) * kMaxRegulars;
+    final hasCharmer =
+        shop.employees.any((e) => e.hasTrait(PersonalityTrait.charmer));
+    final rate = hasCharmer ? 0.10 : 0.07;
+    final next = shop.regulars + (target - shop.regulars) * rate;
+    return next.clamp(0.0, kMaxRegulars);
   }
 
   /// Kapazität: Personal + Equipment.

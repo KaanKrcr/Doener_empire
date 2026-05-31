@@ -25,6 +25,7 @@ class Shop {
   final String? originalCompetitorName; // ehemals welcher Konkurrent
   final bool wasAcquired; // stammt aus einer Übernahme
   final double morale; // Team-Moral 0.2..1.0 (0.75 = neutral)
+  final double regulars; // Stammkunden-Anteil 0..0.5 (0 = neutral)
 
   const Shop({
     required this.id,
@@ -47,6 +48,7 @@ class Shop {
     this.originalCompetitorName,
     this.wasAcquired = false,
     this.morale = 0.75,
+    this.regulars = 0.0,
   });
 
   bool hasUpgrade(String upgradeId) => upgradeIds.contains(upgradeId);
@@ -91,6 +93,7 @@ class Shop {
     bool clearOriginalCompetitorName = false,
     bool? wasAcquired,
     double? morale,
+    double? regulars,
   }) {
     return Shop(
       id: id,
@@ -115,6 +118,7 @@ class Shop {
           : (originalCompetitorName ?? this.originalCompetitorName),
       wasAcquired: wasAcquired ?? this.wasAcquired,
       morale: morale ?? this.morale,
+      regulars: regulars ?? this.regulars,
     );
   }
 
@@ -139,6 +143,7 @@ class Shop {
         'originalCompetitorName': originalCompetitorName,
         'wasAcquired': wasAcquired,
         'morale': morale,
+        'regulars': regulars,
       };
 
   factory Shop.fromJson(Map<String, dynamic> j) => Shop(
@@ -174,5 +179,6 @@ class Shop {
         originalCompetitorName: j['originalCompetitorName'] as String?,
         wasAcquired: j['wasAcquired'] as bool? ?? false,
         morale: (j['morale'] as num?)?.toDouble() ?? 0.75,
+        regulars: (j['regulars'] as num?)?.toDouble() ?? 0.0,
       );
 }
