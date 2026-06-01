@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <!-- Diese Datei spiegelt die UnityEngine-freien Skripte aus unity/Assets/Scripts,
+         damit die Spiellogik ohne Unity per `dotnet test` verifizierbar ist. -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\unity\Assets\Scripts\Core\**\*.cs" LinkBase="Linked\Core" />
+    <Compile Include="..\..\unity\Assets\Scripts\Models\**\*.cs" LinkBase="Linked\Models" />
+    <Compile Include="..\..\unity\Assets\Scripts\Data\**\*.cs" LinkBase="Linked\Data" />
+  </ItemGroup>
+
+</Project>
