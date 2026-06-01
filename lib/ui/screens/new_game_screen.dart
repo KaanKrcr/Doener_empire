@@ -6,6 +6,7 @@ import '../../models/difficulty_model.dart';
 import '../../models/scenario_model.dart';
 import '../../core/theme.dart';
 import '../../providers/game_provider.dart';
+import '../widgets/premium_mobile_ui.dart';
 
 class NewGameScreen extends ConsumerStatefulWidget {
   const NewGameScreen({super.key});
@@ -160,13 +161,7 @@ class _NewGameScreenState extends ConsumerState<NewGameScreen> {
 
               const _SectionLabel('Tutorial / Onboarding'),
               const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppColors.bgCard,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.border),
-                ),
+              PremiumDecisionSheet(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -209,58 +204,27 @@ class _NewGameScreenState extends ConsumerState<NewGameScreen> {
               const SizedBox(height: 24),
 
               // Startkapital Info
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.bgCard,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppColors.gold.withAlpha((0.15 * 255).round()),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.account_balance_wallet_outlined,
-                          color: AppColors.gold),
+              PremiumMetricStrip(
+                items: [
+                  PremiumMetricData(
+                    label: 'STARTKAPITAL',
+                    value:
+                        '${NumberFormat('#,##0', 'de_DE').format(_scenario.startCash)} €',
+                    color: AppColors.gold,
+                  ),
+                  if (_scenario.startingLoan > 0)
+                    PremiumMetricData(
+                      label: 'STARTKREDIT',
+                      value:
+                          '${NumberFormat('#,##0', 'de_DE').format(_scenario.startingLoan)} €',
+                      color: AppColors.danger,
                     ),
-                    const SizedBox(width: 16),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Startkapital',
-                            style: TextStyle(
-                                fontSize: 12, color: AppColors.textMuted)),
-                        Text(
-                            '${NumberFormat('#,##0', 'de_DE').format(_scenario.startCash)} €',
-                            style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.gold)),
-                        if (_scenario.startingLoan > 0)
-                          Text(
-                            'inkl. ${NumberFormat('#,##0', 'de_DE').format(_scenario.startingLoan)} € Startkredit',
-                            style: const TextStyle(
-                                fontSize: 11, color: AppColors.danger),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
+                ],
               ),
               const SizedBox(height: 16),
 
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.bgCard,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: const Column(
+              const PremiumDecisionSheet(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Du startest in',
@@ -465,6 +429,13 @@ class _DifficultyTile extends StatelessWidget {
                       height: 1.35,
                     ),
                   ),
+                  if (selected) ...[
+                    const SizedBox(height: 10),
+                    PremiumStatusHint(
+                      text: _consequenceText(difficulty),
+                      tone: _consequenceTone(difficulty),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -472,5 +443,31 @@ class _DifficultyTile extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Konkrete Konsequenzen der Stufe, abgeleitet aus den Modifikatoren.
+  String _consequenceText(GameDifficulty d) {
+    final m = d.modifiers;
+    String pct(double v) {
+      final diff = ((v - 1.0) * 100).round();
+      if (diff == 0) return '±0%';
+      return diff > 0 ? '+$diff%' : '$diff%';
+    }
+
+    return 'Konkurrenz ${pct(m.competitorAggressivenessMultiplier)}  ·  '
+        'Preis-Druck ${pct(m.customerPriceSensitivityMultiplier)}  ·  '
+        'Fortschritt ${pct(m.progressSpeedMultiplier)}';
+  }
+
+  PremiumStatusTone _consequenceTone(GameDifficulty d) {
+    switch (d) {
+      case GameDifficulty.easy:
+      case GameDifficulty.normal:
+        return PremiumStatusTone.success;
+      case GameDifficulty.hard:
+        return PremiumStatusTone.warning;
+      case GameDifficulty.impossible:
+        return PremiumStatusTone.danger;
+    }
   }
 }

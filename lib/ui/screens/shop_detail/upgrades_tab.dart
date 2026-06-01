@@ -37,13 +37,8 @@ class _UpgradesTab extends ConsumerWidget {
       children: [
         // ─ Aktive Shop-Upgrades ─────────────────────────────────────────
         if (ownedShop.isNotEmpty) ...[
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppColors.accent.withAlpha(20),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.accent.withAlpha(80)),
-            ),
+          PremiumDecisionSheet(
+            borderColor: AppColors.accent.withAlpha(130),
             child: Row(
               children: [
                 const Icon(Icons.check_circle_outline,
@@ -77,13 +72,8 @@ class _UpgradesTab extends ConsumerWidget {
 
         // ─ Aktive Konzern-Upgrades (Info-Banner) ─────────────────────────
         if (activeGlobal.isNotEmpty) ...[
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.secondary.withAlpha(18),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.secondary.withAlpha(60)),
-            ),
+          PremiumDecisionSheet(
+            borderColor: AppColors.secondary.withAlpha(130),
             child: Row(
               children: [
                 const Text('🏢', style: TextStyle(fontSize: 18)),
@@ -108,15 +98,7 @@ class _UpgradesTab extends ConsumerWidget {
           if (byCategory[cat] != null) ...[
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Text(
-                cat.label.toUpperCase(),
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textMuted,
-                  letterSpacing: 2,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
+              child: PremiumSectionLabel(text: cat.label.toUpperCase()),
             ),
             for (final u in byCategory[cat]!) ...[
               _UpgradeCard(
@@ -163,15 +145,8 @@ class _UpgradeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: owned ? AppColors.accent.withAlpha(120) : AppColors.border,
-        ),
-      ),
+    return PremiumDecisionSheet(
+      borderColor: owned ? AppColors.accent.withAlpha(130) : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

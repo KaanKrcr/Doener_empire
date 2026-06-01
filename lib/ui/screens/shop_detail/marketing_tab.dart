@@ -22,15 +22,7 @@ class _MarketingTab extends ConsumerWidget {
       children: [
         // Aktive Kampagnen
         if (active.isNotEmpty) ...[
-          const Text(
-            'LAUFENDE KAMPAGNEN',
-            style: TextStyle(
-              fontSize: 11,
-              color: AppColors.textMuted,
-              letterSpacing: 2,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+          const PremiumSectionLabel(text: 'LAUFENDE KAMPAGNEN'),
           const SizedBox(height: 8),
           for (final ac in active) ...[
             _ActiveCampaignCard(active: ac, currentDay: currentDay),
@@ -39,15 +31,7 @@ class _MarketingTab extends ConsumerWidget {
           const SizedBox(height: 16),
         ],
 
-        const Text(
-          'VERFÜGBARE KAMPAGNEN',
-          style: TextStyle(
-            fontSize: 11,
-            color: AppColors.textMuted,
-            letterSpacing: 2,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
+        const PremiumSectionLabel(text: 'VERFÜGBARE KAMPAGNEN'),
         const SizedBox(height: 8),
         for (final c in kAllCampaigns) ...[
           _CampaignCard(
@@ -91,13 +75,8 @@ class _ActiveCampaignCard extends StatelessWidget {
     final remaining = active.remainingDays(currentDay);
     final progress = active.progress(currentDay);
 
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.accent.withAlpha(20),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.accent.withAlpha(80)),
-      ),
+    return PremiumDecisionSheet(
+      borderColor: AppColors.accent.withAlpha(130),
       child: Column(
         children: [
           Row(
@@ -165,13 +144,7 @@ class _CampaignCard extends StatelessWidget {
       MarketingRisk.high => 'riskant',
     };
 
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-      ),
+    return PremiumDecisionSheet(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

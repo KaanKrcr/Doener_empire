@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../../core/theme.dart';
 import '../../models/game_state.dart';
 import '../../providers/game_provider.dart';
+import '../widgets/premium_mobile_ui.dart';
 
 final _fmt = NumberFormat('#,##0', 'de_DE');
 final _fmt2 = NumberFormat('#,##0.00', 'de_DE');
@@ -76,14 +77,7 @@ class BankScreen extends ConsumerWidget {
 
           // Aktive Kredite
           if (activeLoans.isNotEmpty) ...[
-            const Text(
-              'LAUFENDE KREDITE',
-              style: TextStyle(
-                  fontSize: 11,
-                  color: AppColors.warning,
-                  letterSpacing: 2,
-                  fontWeight: FontWeight.w700),
-            ),
+            const PremiumSectionLabel(text: 'LAUFENDE KREDITE'),
             const SizedBox(height: 8),
             for (final loan in activeLoans)
               _ActiveLoanCard(
@@ -122,27 +116,15 @@ class BankScreen extends ConsumerWidget {
           ],
 
           // Kredit aufnehmen
-          const Text(
-            'KREDIT AUFNEHMEN',
-            style: TextStyle(
-                fontSize: 11,
-                color: AppColors.textMuted,
-                letterSpacing: 2,
-                fontWeight: FontWeight.w700),
-          ),
+          const PremiumSectionLabel(text: 'KREDIT AUFNEHMEN'),
           const SizedBox(height: 8),
           for (final opt in _loanOptions)
-            Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.bgCard,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: PremiumDecisionSheet(
+                child: Row(
+                  children: [
+                    Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -178,6 +160,7 @@ class BankScreen extends ConsumerWidget {
                 ],
               ),
             ),
+          ),
 
           const SizedBox(height: 8),
           const Center(
@@ -266,15 +249,11 @@ class _ActiveLoanCard extends StatelessWidget {
     final canPayoff = cash >= earlyPayoff;
     final canPartial = cash >= 100;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.warning.withAlpha(80)),
-      ),
-      child: Column(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: PremiumDecisionSheet(
+        borderColor: AppColors.warning.withAlpha(130),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -394,6 +373,7 @@ class _ActiveLoanCard extends StatelessWidget {
             ],
           ),
         ],
+        ),
       ),
     );
   }

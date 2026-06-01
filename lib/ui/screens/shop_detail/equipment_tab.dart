@@ -68,14 +68,7 @@ class _EquipCategoryHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      label,
-      style: const TextStyle(
-          fontSize: 11,
-          color: AppColors.textMuted,
-          letterSpacing: 2,
-          fontWeight: FontWeight.w600),
-    );
+    return PremiumSectionLabel(text: label);
   }
 }
 
@@ -94,17 +87,8 @@ class _EquipmentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isOwned
-              ? AppColors.accent.withAlpha((0.5 * 255).round())
-              : AppColors.border,
-        ),
-      ),
+    return PremiumDecisionSheet(
+      borderColor: isOwned ? AppColors.accent.withAlpha(130) : null,
       child: Row(
         children: [
           Text(eq.emoji, style: const TextStyle(fontSize: 28)),

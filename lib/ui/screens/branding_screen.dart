@@ -6,6 +6,7 @@ import '../../models/branding_model.dart';
 import '../../models/achievement_model.dart';
 import '../../providers/game_provider.dart';
 import '../widgets/pressable.dart';
+import '../widgets/premium_mobile_ui.dart';
 
 /// Marken-Anpassung: kosmetische Themen, die über Trophäen freigeschaltet werden.
 class BrandingScreen extends ConsumerWidget {
@@ -32,13 +33,7 @@ class BrandingScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
         children: [
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppColors.bgCard,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.border),
-            ),
+          PremiumDecisionSheet(
             child: Row(
               children: [
                 const Text('🎨', style: TextStyle(fontSize: 20)),

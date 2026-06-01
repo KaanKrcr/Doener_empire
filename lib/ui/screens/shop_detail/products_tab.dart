@@ -19,25 +19,12 @@ class _ProductsTab extends ConsumerWidget {
         ],
         // Gesperrte Produkte (brauchen Equipment)
         const SizedBox(height: 8),
-        const Text(
-          'WEITERE PRODUKTE',
-          style: TextStyle(
-              fontSize: 11,
-              color: AppColors.textMuted,
-              letterSpacing: 2,
-              fontWeight: FontWeight.w600),
-        ),
+        const PremiumSectionLabel(text: 'WEITERE PRODUKTE'),
         const SizedBox(height: 8),
         for (final pd in kAllProducts.where(
           (p) => !shop.menu.any((sp) => sp.productId == p.id),
         )) ...[
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppColors.bgCard,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.border),
-            ),
+          PremiumDecisionSheet(
             child: Row(
               children: [
                 Text(pd.emoji, style: const TextStyle(fontSize: 28)),
@@ -149,13 +136,8 @@ class _ProductTileState extends ConsumerState<_ProductTile> {
     // Demand-Stufen für Anzeige
     final (demandLabel, demandColor) = _demandStatus(demand, priceRatio);
 
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-      ),
+    return PremiumDecisionSheet(
+      borderColor: margin > 0 ? null : AppColors.danger.withAlpha(130),
       child: Column(
         children: [
           // ── Kopfzeile: Emoji + Name + Marge ─────────────────────────────
@@ -308,6 +290,13 @@ class _ProductTileState extends ConsumerState<_ProductTile> {
               ],
             ),
           ),
+          if (margin <= 0) ...[
+            const SizedBox(height: 10),
+            const PremiumStatusHint(
+              text: 'Verlustmarge — der Preis deckt die Zutatenkosten nicht.',
+              tone: PremiumStatusTone.danger,
+            ),
+          ],
         ],
       ),
     );
@@ -350,13 +339,7 @@ class _CustomerMixCard extends StatelessWidget {
             ? 'Preisunempfindlich — Premiumpreise gehen hier gut durch.'
             : 'Ausgewogene Kundschaft — fairer Preis funktioniert am besten.';
 
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-      ),
+    return PremiumDecisionSheet(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
