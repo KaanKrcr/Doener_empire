@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme.dart';
 import '../../services/game_engine.dart';
+import 'premium_mobile_ui.dart';
 
 final _fmt = NumberFormat('#,##0', 'de_DE');
 
@@ -41,7 +42,7 @@ class WeeklyReportDialog extends StatelessWidget {
                 decoration: const BoxDecoration(gradient: AppGradients.gold),
                 child: Column(
                   children: [
-                    Text('📅 WOCHENBILANZ',
+                    Text('📈 WOCHENBILANZ',
                         style: AppText.label(color: AppColors.bg, size: 11)),
                     const SizedBox(height: 4),
                     Text(
@@ -58,27 +59,28 @@ class WeeklyReportDialog extends StatelessWidget {
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   children: [
-                    Row(
-                      children: [
-                        _Stat(
+                    PremiumMetricStrip(
+                      items: [
+                        PremiumMetricData(
                           label: 'Umsatz',
                           value: '${_fmt.format(report.revenue)} €',
                           color: AppColors.success,
                         ),
-                        _Stat(
+                        PremiumMetricData(
                           label: 'Gewinn',
                           value:
-                              '${positive ? "+" : ""}${_fmt.format(report.profit)} €',
-                          color: positive ? AppColors.success : AppColors.danger,
+                              '${positive ? '+' : ''}${_fmt.format(report.profit)} €',
+                          color:
+                              positive ? AppColors.success : AppColors.danger,
                         ),
-                        _Stat(
+                        PremiumMetricData(
                           label: 'Kunden',
                           value: _fmt.format(report.customers),
                           color: AppColors.accent,
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
                     _Row(
                       icon: Icons.emoji_events_rounded,
                       color: AppColors.gold,
@@ -86,7 +88,7 @@ class WeeklyReportDialog extends StatelessWidget {
                       value:
                           'Tag ${report.bestDay} (${_fmt.format(report.bestDayRevenue)} €)',
                     ),
-                    const Divider(color: AppColors.border, height: 22),
+                    const SizedBox(height: 8),
                     _Row(
                       icon: growthUp
                           ? Icons.trending_up_rounded
@@ -94,7 +96,16 @@ class WeeklyReportDialog extends StatelessWidget {
                       color: growthUp ? AppColors.success : AppColors.danger,
                       label: 'Gewinn ggü. Vorwoche',
                       value:
-                          '${growthUp ? "+" : ""}${growth.toStringAsFixed(0)} %',
+                          '${growthUp ? '+' : ''}${growth.toStringAsFixed(0)} %',
+                    ),
+                    const SizedBox(height: 12),
+                    PremiumStatusHint(
+                      text: growthUp
+                          ? 'Trend positiv. Halte Servicequalität und Nachfrage im Gleichgewicht.'
+                          : 'Trend negativ. Prüfe Preise, Personal und Auslastung deiner Kernfilialen.',
+                      tone: growthUp
+                          ? PremiumStatusTone.success
+                          : PremiumStatusTone.warning,
                     ),
                     const SizedBox(height: 18),
                     SizedBox(
@@ -112,30 +123,9 @@ class WeeklyReportDialog extends StatelessWidget {
         ),
       ),
     ).animate().fadeIn(duration: 220.ms).scale(
-        begin: const Offset(0.95, 0.95), end: const Offset(1, 1));
-  }
-}
-
-class _Stat extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color color;
-  const _Stat({required this.label, required this.value, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        children: [
-          Text(value,
-              style: AppText.display(
-                  size: 16, weight: FontWeight.w800, color: color)),
-          const SizedBox(height: 2),
-          Text(label,
-              style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
-        ],
-      ),
-    );
+          begin: const Offset(0.95, 0.95),
+          end: const Offset(1, 1),
+        );
   }
 }
 
@@ -153,19 +143,22 @@ class _Row extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: color),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(label,
-              style: const TextStyle(
-                  fontSize: 13, color: AppColors.textSecondary)),
-        ),
-        Text(value,
-            style: TextStyle(
-                fontSize: 13, fontWeight: FontWeight.w800, color: color)),
-      ],
+    return PremiumDecisionSheet(
+      borderColor: color.withAlpha(70),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(label,
+                style: const TextStyle(
+                    fontSize: 13, color: AppColors.textSecondary)),
+          ),
+          Text(value,
+              style: TextStyle(
+                  fontSize: 13, fontWeight: FontWeight.w800, color: color)),
+        ],
+      ),
     );
   }
 }

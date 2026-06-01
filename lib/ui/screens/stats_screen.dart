@@ -13,6 +13,7 @@ import '../../models/time_profile_model.dart';
 import '../../providers/game_provider.dart';
 import '../../services/game_engine.dart';
 import '../../services/review_util.dart';
+import '../widgets/premium_mobile_ui.dart';
 
 /// Statistik / Imperium-Übersicht.
 /// Zeigt: Markenbekanntheit, Konkurrenz, Achievements, Wochen-Charts.
@@ -28,6 +29,7 @@ class StatsScreen extends ConsumerWidget {
         body: Center(child: CircularProgressIndicator()),
       );
     }
+    final healthScore = GameEngine.healthScore(game);
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -49,11 +51,35 @@ class StatsScreen extends ConsumerWidget {
                 ),
               ),
             ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                child: PremiumMetricStrip(
+                  items: [
+                    PremiumMetricData(
+                      label: 'Filialen',
+                      value: '${game.shops.length}',
+                      color: AppColors.accent,
+                    ),
+                    PremiumMetricData(
+                      label: 'Konkurrenz',
+                      value: '${game.competitors.length}',
+                      color: AppColors.danger,
+                    ),
+                    PremiumMetricData(
+                      label: 'Health',
+                      value: '${healthScore.score.toStringAsFixed(0)}/100',
+                      color: AppColors.success,
+                    ),
+                  ],
+                ),
+              ),
+            ),
 
             // Brand-Awareness Card
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                 child: _BrandCard(game: game),
               ),
             ),
@@ -62,7 +88,7 @@ class StatsScreen extends ConsumerWidget {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                child: _HealthCard(health: GameEngine.healthScore(game)),
+                child: _HealthCard(health: healthScore),
               ),
             ),
 
@@ -144,13 +170,8 @@ class _HealthCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
-      ),
+    return PremiumDecisionSheet(
+      borderColor: _color.withAlpha(110),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -190,8 +211,7 @@ class _HealthCard extends StatelessWidget {
               const Padding(
                 padding: EdgeInsets.only(bottom: 6, left: 2),
                 child: Text('/ 100',
-                    style:
-                        TextStyle(fontSize: 13, color: AppColors.textMuted)),
+                    style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
               ),
             ],
           ),
@@ -204,6 +224,15 @@ class _HealthCard extends StatelessWidget {
               backgroundColor: AppColors.bg.withValues(alpha: 0.5),
               valueColor: AlwaysStoppedAnimation(_color),
             ),
+          ),
+          const SizedBox(height: 10),
+          PremiumStatusHint(
+            text: health.score >= 62
+                ? 'Stabiles Profil. Baue Marktanteile gezielt in Kernstädten aus.'
+                : 'Achte auf schwache Filialen, Margen und Servicequalität.',
+            tone: health.score >= 62
+                ? PremiumStatusTone.success
+                : PremiumStatusTone.warning,
           ),
         ],
       ),
@@ -337,13 +366,7 @@ class _TimeHeatmapCard extends StatelessWidget {
     final hours = GameEngine.hourlyCustomerCurve(shop, game.currentDay);
     final maxV = hours.isEmpty ? 1.0 : hours.reduce((a, b) => a > b ? a : b);
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
-      ),
+    return PremiumDecisionSheet(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -623,7 +646,9 @@ class _ReviewRow extends StatelessWidget {
           children: [
             for (var s = 0; s < 5; s++)
               Icon(
-                s < review.stars ? Icons.star_rounded : Icons.star_outline_rounded,
+                s < review.stars
+                    ? Icons.star_rounded
+                    : Icons.star_outline_rounded,
                 size: 14,
                 color: AppColors.gold,
               ),
@@ -633,8 +658,8 @@ class _ReviewRow extends StatelessWidget {
                 '${review.author} · ${review.shopName}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                    fontSize: 10, color: AppColors.textMuted),
+                style:
+                    const TextStyle(fontSize: 10, color: AppColors.textMuted),
               ),
             ),
           ],
@@ -659,8 +684,7 @@ class _MarketShareCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cityIds =
-        game.shops.map((s) => s.cityId).toSet().toList();
+    final cityIds = game.shops.map((s) => s.cityId).toSet().toList();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -810,13 +834,11 @@ class _CompetitorsCard extends StatelessWidget {
           const SizedBox(height: 12),
           if (competitors.isEmpty)
             const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12),
-              child: Text(
-                'Noch keine Konkurrenz erkundet.\nEröffne Filialen um den Markt zu lernen.',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textMuted,
-                ),
+              padding: EdgeInsets.only(bottom: 8),
+              child: PremiumStatusHint(
+                text:
+                    'Noch keine Konkurrenz sichtbar. Eröffne Filialen in weiteren Städten für Marktvergleich.',
+                tone: PremiumStatusTone.warning,
               ),
             )
           else
@@ -870,8 +892,7 @@ class _CompetitorRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final game = ref.watch(gameProvider);
-    final inPlayerCity =
-        game != null && game.hasShopIn(competitor.cityId);
+    final inPlayerCity = game != null && game.hasShopIn(competitor.cityId);
     final cost = GameEngine.competitorBuyoutCost(competitor);
     final canAfford = game != null && game.cash >= cost;
 
@@ -881,81 +902,81 @@ class _CompetitorRow extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: AppColors.bgSurface,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Center(
-              child: Text(
-                competitor.personality.emoji,
-                style: const TextStyle(fontSize: 18),
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  competitor.name,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                Text(
-                  competitor.personality.tagline,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: AppColors.textMuted,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  competitor.shortStatus(),
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Row(
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.bgSurface,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Center(
+                  child: Text(
+                    competitor.personality.emoji,
+                    style: const TextStyle(fontSize: 18),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      competitor.name,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      competitor.personality.tagline,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: AppColors.textMuted,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      competitor.shortStatus(),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  const Icon(Icons.star, size: 11, color: AppColors.cream),
-                  const SizedBox(width: 2),
+                  Row(
+                    children: [
+                      const Icon(Icons.star, size: 11, color: AppColors.cream),
+                      const SizedBox(width: 2),
+                      Text(
+                        competitor.reputation.toStringAsFixed(1),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.cream,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
                   Text(
-                    competitor.reputation.toStringAsFixed(1),
+                    '${(competitor.marketShare * 100).toStringAsFixed(0)}% Markt',
                     style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.cream,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 10,
+                      color: AppColors.textMuted,
                     ),
                   ),
                 ],
               ),
-              Text(
-                '${(competitor.marketShare * 100).toStringAsFixed(0)}% Markt',
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: AppColors.textMuted,
-                ),
-              ),
             ],
           ),
-        ],
-      ),
           if (inPlayerCity)
             Padding(
               padding: const EdgeInsets.only(top: 8),
@@ -978,6 +999,23 @@ class _CompetitorRow extends ConsumerWidget {
                 ),
               ),
             ),
+          if (inPlayerCity && !canAfford)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: PremiumStatusHint(
+                text: 'Nicht genug Kapital für eine Übernahme.',
+                tone: PremiumStatusTone.warning,
+              ),
+            ),
+          if (!inPlayerCity)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: PremiumStatusHint(
+                text:
+                    'Keine eigene Filiale in dieser Stadt. Erst Standort aufbauen, dann übernehmen.',
+                tone: PremiumStatusTone.danger,
+              ),
+            ),
         ],
       ),
     );
@@ -994,13 +1032,7 @@ class _CityRepCard extends StatelessWidget {
     final entries = reps.entries.toList();
     entries.sort((a, b) => b.value.compareTo(a.value));
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
-      ),
+    return PremiumDecisionSheet(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

@@ -109,8 +109,30 @@ class _OpenShopScreenState extends ConsumerState<OpenShopScreen> {
 
     final locations = LocationEngine.locationsFor(city);
     if (locations.isEmpty) {
-      return const Scaffold(
-        body: Center(child: Text('Keine Standorte verfügbar.')),
+      return Scaffold(
+        backgroundColor: AppColors.bg,
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: PremiumDecisionSheet(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const PremiumStatusHint(
+                    text:
+                        'Keine Standorte verfügbar. Wähle eine andere Stadt oder prüfe den Fortschritt.',
+                    tone: PremiumStatusTone.warning,
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: () => context.go('/cities'),
+                    child: const Text('Zu den Städten'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       );
     }
 

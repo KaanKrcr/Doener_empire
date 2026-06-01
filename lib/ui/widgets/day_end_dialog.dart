@@ -11,13 +11,14 @@ import '../../providers/game_provider.dart';
 import '../../services/game_engine.dart';
 import 'animated_money.dart';
 import 'confetti_overlay.dart';
+import 'premium_mobile_ui.dart';
 
 final _fmt = NumberFormat('#,##0', 'de_DE');
 
 const _kWeekdays = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
 /// Dialog der nach dem Tag-Ende erscheint und das Ergebnis zusammenfasst.
-/// Bei Event: zeigt Event-Karte mit Auswahl. Bei Mission: zeigt zusätzlich
+/// Bei Event: zeigt Event-Karte mit Auswahl. Bei Mission: zeigt zusÃ¤tzlich
 /// Mission-Complete-Animation.
 class DayEndDialog extends ConsumerWidget {
   final DayEndResult result;
@@ -79,7 +80,7 @@ class DayEndDialog extends ConsumerWidget {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
-                                'TAG ${r.day}  ·  $weekday',
+                                'TAG ${r.day}  Â·  $weekday',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 11,
@@ -89,7 +90,7 @@ class DayEndDialog extends ConsumerWidget {
                               ),
                             ),
                             Text(
-                              isGoodDay ? '😊' : '😬',
+                              isGoodDay ? 'ðŸ˜Š' : 'ðŸ˜¬',
                               style: const TextStyle(fontSize: 28),
                             ).animate().scale(
                                   delay: 120.ms,
@@ -126,39 +127,44 @@ class DayEndDialog extends ConsumerWidget {
                     ),
                   ),
 
-                  // Zahlen-Aufschlüsselung
+                  // Tageswerte
                   Padding(
                     padding: const EdgeInsets.all(20),
                     child: Column(
                       children: [
-                        _SummaryRow(
-                          label: 'Umsatz',
-                          value: '+${_fmt.format(r.revenue)} €',
-                          color: AppColors.success,
-                          icon: Icons.trending_up,
-                        )
-                            .animate()
-                            .fadeIn(delay: 320.ms)
-                            .slideX(begin: -0.1, end: 0),
-                        _SummaryRow(
-                          label: 'Kosten',
-                          value: '-${_fmt.format(r.costs)} €',
-                          color: AppColors.danger,
-                          icon: Icons.trending_down,
-                        )
-                            .animate()
-                            .fadeIn(delay: 400.ms)
-                            .slideX(begin: -0.1, end: 0),
-                        _SummaryRow(
-                          label: 'Kunden bedient',
-                          value: _fmt.format(r.customers),
-                          color: AppColors.accent,
-                          icon: Icons.people_alt_rounded,
-                        )
-                            .animate()
-                            .fadeIn(delay: 480.ms)
-                            .slideX(begin: -0.1, end: 0),
-                        const Divider(color: AppColors.border, height: 24),
+                        const Align(
+                          alignment: Alignment.centerLeft,
+                          child: PremiumSectionLabel(text: 'TAGESWERTE'),
+                        ),
+                        const SizedBox(height: 6),
+                        PremiumMetricStrip(
+                          items: [
+                            PremiumMetricData(
+                              label: 'UMSATZ',
+                              value: '+${_fmt.format(r.revenue)} €',
+                              color: AppColors.success,
+                            ),
+                            PremiumMetricData(
+                              label: 'KOSTEN',
+                              value: '-${_fmt.format(r.costs)} €',
+                              color: AppColors.danger,
+                            ),
+                            PremiumMetricData(
+                              label: 'KUNDEN',
+                              value: _fmt.format(r.customers),
+                              color: AppColors.accent,
+                            ),
+                          ],
+                        ).animate().fadeIn(delay: 320.ms),
+                        const SizedBox(height: 8),
+                        PremiumStatusHint(
+                          text:
+                              'Profit heute: ${r.profit >= 0 ? '+' : ''}${_fmt.format(r.profit)} €',
+                          tone: r.profit >= 0
+                              ? PremiumStatusTone.success
+                              : PremiumStatusTone.danger,
+                        ).animate().fadeIn(delay: 420.ms),
+                        const SizedBox(height: 12),
                         _InsightCard(insights: insights),
                         if (r.missionCompleted != null) ...[
                           const SizedBox(height: 10),
@@ -172,7 +178,7 @@ class DayEndDialog extends ConsumerWidget {
                             ),
                             child: Row(
                               children: [
-                                const Text('🏆',
+                                const Text('ðŸ†',
                                     style: TextStyle(fontSize: 24)),
                                 const SizedBox(width: 10),
                                 Expanded(
@@ -181,7 +187,7 @@ class DayEndDialog extends ConsumerWidget {
                                         CrossAxisAlignment.start,
                                     children: [
                                       const Text(
-                                        'AUFTRAG ERFÜLLT!',
+                                        'AUFTRAG ERFÃœLLT!',
                                         style: TextStyle(
                                           fontSize: 10,
                                           color: AppColors.gold,
@@ -201,7 +207,7 @@ class DayEndDialog extends ConsumerWidget {
                                   ),
                                 ),
                                 Text(
-                                  '+${_fmt.format(r.missionCompleted!.cashReward)} €',
+                                  '+${_fmt.format(r.missionCompleted!.cashReward)} â‚¬',
                                   style: const TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w800,
@@ -235,7 +241,7 @@ class DayEndDialog extends ConsumerWidget {
                                           CrossAxisAlignment.start,
                                       children: [
                                         const Text(
-                                          'TROPHÄE!',
+                                          'TROPHÃ„E!',
                                           style: TextStyle(
                                             fontSize: 9,
                                             color: AppColors.secondary,
@@ -272,7 +278,7 @@ class DayEndDialog extends ConsumerWidget {
                           child: ElevatedButton.icon(
                             onPressed: () {
                               Navigator.of(context).pop();
-                              // Wenn Event vorhanden → Event-Dialog direkt zeigen
+                              // Wenn Event vorhanden â†’ Event-Dialog direkt zeigen
                               if (r.event != null) {
                                 Future.microtask(() {
                                   if (context.mounted) {
@@ -288,7 +294,7 @@ class DayEndDialog extends ConsumerWidget {
                                 size: 18),
                             label: Text(r.event != null
                                 ? 'Ereignis ansehen'
-                                : 'Weiter zum nächsten Tag'),
+                                : 'Weiter zum nÃ¤chsten Tag'),
                           ),
                         ),
                       ],
@@ -315,7 +321,7 @@ class DayEndDialog extends ConsumerWidget {
       insights.add(
         _InsightLine(
           text:
-              'Verlusttag: Kosten lagen ${_fmt.format(r.costs - r.revenue)} EUR über dem Umsatz.',
+              'Verlusttag: Kosten lagen ${_fmt.format(r.costs - r.revenue)} EUR Ã¼ber dem Umsatz.',
           tone: _InsightTone.danger,
         ),
       );
@@ -359,7 +365,7 @@ class DayEndDialog extends ConsumerWidget {
         insights.add(
           _InsightLine(
             text:
-                'Kundenzahl fiel um ${delta.abs()} vs. gestern: Standortfit und Preis prüfen.',
+                'Kundenzahl fiel um ${delta.abs()} vs. gestern: Standortfit und Preis prÃ¼fen.',
             tone: _InsightTone.warning,
           ),
         );
@@ -375,7 +381,7 @@ class DayEndDialog extends ConsumerWidget {
       insights.add(
         const _InsightLine(
           text:
-              'Tag 1 Referenz: erst mit Tag 2 wird ein sauberer Trendvergleich möglich.',
+              'Tag 1 Referenz: erst mit Tag 2 wird ein sauberer Trendvergleich mÃ¶glich.',
           tone: _InsightTone.neutral,
         ),
       );
@@ -385,7 +391,7 @@ class DayEndDialog extends ConsumerWidget {
       insights.add(
         const _InsightLine(
           text:
-              'Nächster Schritt: erste Filiale eröffnen und dann Preise nachziehen.',
+              'NÃ¤chster Schritt: erste Filiale erÃ¶ffnen und dann Preise nachziehen.',
           tone: _InsightTone.neutral,
         ),
       );
@@ -410,8 +416,8 @@ class DayEndDialog extends ConsumerWidget {
       insights.add(
         _InsightLine(
           text: atEmployeeCap
-              ? 'Kapazitätslimit bei ${capacityShop.displayName}: $demandServedPct% der Nachfrage bedient. Personal-Cap erreicht → Filiale ausbauen.'
-              : 'Kapazitätslimit bei ${capacityShop.displayName}: $demandServedPct% der Nachfrage bedient. Mehr Personal oder Kapazitäts-Upgrades helfen.',
+              ? 'KapazitÃ¤tslimit bei ${capacityShop.displayName}: $demandServedPct% der Nachfrage bedient. Personal-Cap erreicht â†’ Filiale ausbauen.'
+              : 'KapazitÃ¤tslimit bei ${capacityShop.displayName}: $demandServedPct% der Nachfrage bedient. Mehr Personal oder KapazitÃ¤ts-Upgrades helfen.',
           tone: _InsightTone.warning,
         ),
       );
@@ -430,7 +436,7 @@ class DayEndDialog extends ConsumerWidget {
       insights.add(
         const _InsightLine(
           text:
-              'Expansion möglich: Cash reicht für eine zweite Filiale in ähnlicher Lage.',
+              'Expansion mÃ¶glich: Cash reicht fÃ¼r eine zweite Filiale in Ã¤hnlicher Lage.',
           tone: _InsightTone.success,
         ),
       );
@@ -448,54 +454,6 @@ class DayEndDialog extends ConsumerWidget {
   }
 }
 
-class _SummaryRow extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color color;
-  final IconData icon;
-  const _SummaryRow({
-    required this.label,
-    required this.value,
-    required this.color,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: color.withAlpha(30),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, size: 16, color: color),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(label,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textSecondary,
-                )),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: color,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _InsightCard extends StatelessWidget {
   final List<_InsightLine> insights;
 
@@ -503,51 +461,18 @@ class _InsightCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.bgSurface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
+    return PremiumDecisionSheet(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'TOP 3 INSIGHTS',
-            style: TextStyle(
-              fontSize: 10,
-              color: AppColors.textMuted,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.6,
-            ),
-          ),
+          const PremiumSectionLabel(text: 'TOP 3 INSIGHTS'),
           const SizedBox(height: 8),
           for (final insight in insights)
             Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    _iconForTone(insight.tone),
-                    size: 14,
-                    color: _colorForTone(insight.tone),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      insight.text,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                        height: 1.35,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
+              padding: const EdgeInsets.only(bottom: 8),
+              child: PremiumStatusHint(
+                text: insight.text,
+                tone: _statusToneFor(insight.tone),
               ),
             ),
         ],
@@ -555,29 +480,15 @@ class _InsightCard extends StatelessWidget {
     );
   }
 
-  IconData _iconForTone(_InsightTone tone) {
+  PremiumStatusTone _statusToneFor(_InsightTone tone) {
     switch (tone) {
       case _InsightTone.success:
-        return Icons.check_circle_outline;
+        return PremiumStatusTone.success;
       case _InsightTone.warning:
-        return Icons.warning_amber_rounded;
-      case _InsightTone.danger:
-        return Icons.error_outline_rounded;
       case _InsightTone.neutral:
-        return Icons.info_outline_rounded;
-    }
-  }
-
-  Color _colorForTone(_InsightTone tone) {
-    switch (tone) {
-      case _InsightTone.success:
-        return AppColors.success;
-      case _InsightTone.warning:
-        return AppColors.warning;
+        return PremiumStatusTone.warning;
       case _InsightTone.danger:
-        return AppColors.danger;
-      case _InsightTone.neutral:
-        return AppColors.textMuted;
+        return PremiumStatusTone.danger;
     }
   }
 }
@@ -599,15 +510,15 @@ enum _InsightTone {
   neutral,
 }
 
-// ── Event-Dialog ──────────────────────────────────────────────────────────
+// â”€â”€ Event-Dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class EventDialog extends ConsumerWidget {
   final GameEvent event;
   const EventDialog({super.key, required this.event});
 
-  /// Backwards-kompatible Signatur — `ref` wird ignoriert weil der Dialog
-  /// jetzt selbst ein ConsumerWidget ist und ref über `WidgetRef` im build
-  /// bekommt. Dadurch funktioniert der Pop-Context zuverlässig.
+  /// Backwards-kompatible Signatur â€” `ref` wird ignoriert weil der Dialog
+  /// jetzt selbst ein ConsumerWidget ist und ref Ã¼ber `WidgetRef` im build
+  /// bekommt. Dadurch funktioniert der Pop-Context zuverlÃ¤ssig.
   static Future<void> show(BuildContext context, GameEvent event,
       [WidgetRef? ref]) {
     return showDialog(
@@ -627,7 +538,7 @@ class EventDialog extends ConsumerWidget {
     };
     final categoryLabel = switch (event.category) {
       EventCategory.good => 'GUTE NACHRICHT',
-      EventCategory.bad => 'ÄRGER',
+      EventCategory.bad => 'Ã„RGER',
       EventCategory.neutral => 'EREIGNIS',
       EventCategory.opportunity => 'CHANCE',
     };
@@ -707,8 +618,8 @@ class EventDialog extends ConsumerWidget {
                     _ChoiceButton(
                       choice: c,
                       onTap: () {
-                        // Erst State anwenden (synchron), dann Dialog schließen,
-                        // dann Snackbar zeigen (außerhalb des Dialog-Contexts).
+                        // Erst State anwenden (synchron), dann Dialog schlieÃŸen,
+                        // dann Snackbar zeigen (auÃŸerhalb des Dialog-Contexts).
                         ref
                             .read(gameProvider.notifier)
                             .applyEventChoice(event, c);
@@ -742,7 +653,7 @@ class _ChoiceButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Material-Wrapper ist nötig damit InkWell-Taps registriert werden.
+    // Material-Wrapper ist nÃ¶tig damit InkWell-Taps registriert werden.
     return Material(
       color: AppColors.bgSurface,
       borderRadius: BorderRadius.circular(14),
@@ -777,7 +688,7 @@ class _ChoiceButton extends StatelessWidget {
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
-                    '-${_fmt.format(choice.cost!)} €',
+                    '-${_fmt.format(choice.cost!)} â‚¬',
                     style: const TextStyle(
                       fontSize: 11,
                       color: AppColors.danger,

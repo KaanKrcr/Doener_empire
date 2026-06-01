@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme.dart';
 import '../../models/stock_model.dart';
+import 'premium_mobile_ui.dart';
 
 final _fmt = NumberFormat('#,##0', 'de_DE');
 
@@ -75,34 +76,48 @@ class QuarterlyReportDialog extends StatelessWidget {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  _Row(
-                    label: 'Umsatz Q.',
-                    value: '${_fmt.format(report.revenue)} €',
-                    color: AppColors.success,
+                  PremiumMetricStrip(
+                    items: [
+                      PremiumMetricData(
+                        label: 'Umsatz Q.',
+                        value: '${_fmt.format(report.revenue)} €',
+                        color: AppColors.success,
+                      ),
+                      PremiumMetricData(
+                        label: 'Gewinn Q.',
+                        value: '${_fmt.format(report.profit)} €',
+                        color: AppColors.gold,
+                      ),
+                      PremiumMetricData(
+                        label: 'Kunden',
+                        value: _fmt.format(report.customers),
+                        color: AppColors.accent,
+                      ),
+                    ],
                   ),
-                  _Row(
-                    label: 'Gewinn Q.',
-                    value: '${_fmt.format(report.profit)} €',
-                    color: AppColors.gold,
-                  ),
+                  const SizedBox(height: 12),
                   _Row(
                     label: 'Analysten-Erwartung',
                     value: '${_fmt.format(report.expectation)} €',
                     color: AppColors.textSecondary,
                   ),
-                  _Row(
-                    label: 'Kunden Q.',
-                    value: _fmt.format(report.customers),
-                    color: AppColors.accent,
-                  ),
-                  const Divider(color: AppColors.border, height: 24),
+                  const SizedBox(height: 8),
                   _Row(
                     label: 'Aktienkurs',
                     value:
-                        '${report.priceMovePercent >= 0 ? "+" : ""}${report.priceMovePercent.toStringAsFixed(1)}%',
+                        '${report.priceMovePercent >= 0 ? '+' : ''}${report.priceMovePercent.toStringAsFixed(1)}%',
                     color: report.priceMovePercent >= 0
                         ? AppColors.success
                         : AppColors.danger,
+                  ),
+                  const SizedBox(height: 12),
+                  PremiumStatusHint(
+                    text: isGood
+                        ? 'Du liegst über den Erwartungen. Nutze den Rückenwind für Expansion mit Reserve.'
+                        : 'Du liegst unter Erwartung. Stabilisiere Margen und Kernfilialen vor weiteren Risiken.',
+                    tone: isGood
+                        ? PremiumStatusTone.success
+                        : PremiumStatusTone.warning,
                   ),
                   const SizedBox(height: 16),
                   SizedBox(
@@ -130,8 +145,10 @@ class _Row extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+    return PremiumDecisionSheet(
+      borderColor: color == AppColors.textSecondary
+          ? AppColors.border
+          : color.withAlpha(80),
       child: Row(
         children: [
           Expanded(

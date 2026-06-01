@@ -1,38 +1,5 @@
 part of '../shop_detail_screen.dart';
 
-class _ShopStat extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color color;
-
-  const _ShopStat({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: AppText.display(
-            size: 16,
-            weight: FontWeight.w800,
-            color: color,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
-        ),
-      ],
-    );
-  }
-}
-
 class _ShopExpansionCard extends ConsumerWidget {
   final Shop shop;
   final double cash;
@@ -68,110 +35,104 @@ class _ShopExpansionCard extends ConsumerWidget {
         ? shop.weeklyRent * (nextCfg.rentMultiplier / currentCfg.rentMultiplier)
         : shop.weeklyRent;
 
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'FILIALE AUSBAUEN',
-            style: TextStyle(
-              fontSize: 11,
-              color: AppColors.textMuted,
-              letterSpacing: 1.8,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            canLevelUp
-                ? '${currentTier.label} -> ${nextTier.label}'
-                : '${currentTier.label} (Maximalstufe)',
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            canLevelUp
-                ? 'Mehr Platz erlaubt mehr Personal, erhöht aber Fixkosten.'
-                : 'Maximale Filialgröße erreicht.',
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _ShopStat(
-                  label: 'Mitarbeiter-Cap',
-                  value: '$currentCap -> $nextCap',
-                  color: AppColors.accent,
-                ),
-              ),
-              Expanded(
-                child: _ShopStat(
-                  label: 'Kapazität',
-                  value:
-                      '${currentService.toStringAsFixed(2)}x -> ${nextService.toStringAsFixed(2)}x',
-                  color: AppColors.primary,
-                ),
-              ),
-              Expanded(
-                child: _ShopStat(
-                  label: 'Miete/Woche',
-                  value:
-                      '${_fmtInt.format(currentRent)} € -> ${_fmtInt.format(nextRent)} €',
-                  color: AppColors.warning,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: canLevelUp && canAfford
-                  ? () {
-                      ref.read(gameProvider.notifier).expandShop(shop.id);
-                    }
-                  : null,
-              icon: const Icon(Icons.store_mall_directory_outlined, size: 18),
-              label: Text(
-                canLevelUp
-                    ? 'Filiale ausbauen (${_fmtInt.format(expansionCost)} €)'
-                    : 'Maximale Filialgröße erreicht',
-              ),
-            ),
-          ),
-          if (canLevelUp && !canAfford) ...[
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+      child: PremiumDecisionSheet(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const PremiumSectionLabel(text: 'FILIALAUSBAU'),
             const SizedBox(height: 6),
             Text(
-              'Nicht genug Kapital: es fehlen ${_fmtInt.format(expansionCost - cash)} €.',
+              canLevelUp
+                  ? '${currentTier.label} -> ${nextTier.label}'
+                  : '${currentTier.label} (Maximalstufe)',
               style: const TextStyle(
-                fontSize: 11,
-                color: AppColors.warning,
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
               ),
             ),
+            const SizedBox(height: 4),
+            const PremiumDecisionLine(
+              text: 'Mehr Platz erlaubt mehr Personal, erhöht aber Fixkosten.',
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: PremiumInlineMetric(
+                    data: PremiumMetricData(
+                      label: 'MITARBEITER-CAP',
+                      value: '$currentCap -> $nextCap',
+                      color: AppColors.accent,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: PremiumInlineMetric(
+                    data: PremiumMetricData(
+                      label: 'KAPAZITÄT',
+                      value:
+                          '${currentService.toStringAsFixed(2)}x -> ${nextService.toStringAsFixed(2)}x',
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: PremiumInlineMetric(
+                    data: PremiumMetricData(
+                      label: 'MIETE/WOCHE',
+                      value:
+                          '${_fmtInt.format(currentRent)} € -> ${_fmtInt.format(nextRent)} €',
+                      color: AppColors.warning,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: canLevelUp && canAfford
+                    ? () {
+                        ref.read(gameProvider.notifier).expandShop(shop.id);
+                      }
+                    : null,
+                icon: const Icon(Icons.store_mall_directory_outlined, size: 18),
+                label: Text(
+                  canLevelUp
+                      ? 'Filiale ausbauen (${_fmtInt.format(expansionCost)} €)'
+                      : 'Maximale Filialgröße erreicht',
+                ),
+              ),
+            ),
+            if (!canLevelUp) ...[
+              const SizedBox(height: 8),
+              const PremiumStatusHint(
+                text: 'Maximale Filialgröße erreicht.',
+                tone: PremiumStatusTone.success,
+              ),
+            ] else if (!canAfford) ...[
+              const SizedBox(height: 8),
+              PremiumStatusHint(
+                text:
+                    'Nicht genug Kapital: es fehlen ${_fmtInt.format(expansionCost - cash)} €.',
+                tone: PremiumStatusTone.warning,
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
 }
 
 /// Banner über dem Shop-Header: zeigt Auslastung + Potenzial + verlorenen Umsatz.
-/// Spieler sieht sofort: "ich bin am Anschlag, brauche mehr Personal".
+/// Spieler sieht sofort: wo Kapazität verloren geht.
 class _CapacityBanner extends StatelessWidget {
   final ShopDayStats stats;
   final Shop shop;
@@ -189,86 +150,80 @@ class _CapacityBanner extends StatelessWidget {
     IconData icon;
     String label;
     String detail;
+    PremiumStatusTone tone;
 
     if (isLimited && atMaxEmployees) {
       color = AppColors.warning;
       icon = Icons.warning_amber_rounded;
       label = 'Personal-Cap erreicht';
+      tone = PremiumStatusTone.warning;
       detail =
           'Du bedienst nur ${util.toStringAsFixed(0)}% der Nachfrage. Geschätztes Umsatzpotenzial: ${_fmt.format(stats.lostRevenue)} €/Tag. Mehr Personal ist erst nach einem Filialausbau möglich.';
     } else if (isLimited) {
       color = AppColors.primary;
       icon = Icons.bolt_rounded;
       final extra = GameEngine.recommendedExtraEmployees(shop);
-      color = AppColors.primary;
+      tone = PremiumStatusTone.warning;
       label = 'Nachfrage nicht vollständig gedeckt';
       detail =
           'Du bedienst nur ${util.toStringAsFixed(0)}% der Nachfrage. Geschätztes Umsatzpotenzial: ${_fmt.format(stats.lostRevenue)} €/Tag. Stelle ~$extra weitere Mitarbeiter ein.';
     } else if (util > 80) {
       color = AppColors.gold;
       icon = Icons.local_fire_department_rounded;
+      tone = PremiumStatusTone.success;
       label = 'Volle Auslastung';
       detail =
           'Läuft optimal (${util.toStringAsFixed(0)}%). Bald wird mehr Personal nötig.';
     } else {
       color = AppColors.success;
       icon = Icons.check_circle_outline_rounded;
+      tone = PremiumStatusTone.success;
       label = 'Alles im grünen Bereich';
       detail =
-          'Aktuell ${util.toStringAsFixed(0)}% Auslastung - Personal reicht.';
+          'Aktuell ${util.toStringAsFixed(0)}% der Nachfrage bedient. Personal reicht.';
     }
 
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withAlpha(25),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withAlpha(90)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 22, color: color),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        label,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: PremiumDecisionSheet(
+        borderColor: color.withAlpha(130),
+        child: Row(
+          children: [
+            Icon(icon, size: 22, color: color),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          label,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: color,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '$empCount/$maxEmp 👥',
                         style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
                           color: color,
                         ),
                       ),
-                    ),
-                    Text(
-                      '$empCount/$maxEmp 👥',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: color,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  detail,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textSecondary,
-                    height: 1.3,
+                    ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 6),
+                  PremiumStatusHint(text: detail, tone: tone),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -8,6 +8,7 @@ import '../models/tutorial_model.dart';
 import '../providers/game_provider.dart';
 import '../services/sound_service.dart';
 import 'tutorial_navigation.dart';
+import 'widgets/premium_mobile_ui.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/cities_screen.dart';
 import 'screens/stats_screen.dart';
@@ -562,14 +563,14 @@ class _TutorialCard extends StatelessWidget {
   });
 
   BoxDecoration get _boxDeco => BoxDecoration(
-        color: AppColors.bgCard.withAlpha(252),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.primary.withAlpha(60)),
+        color: AppColors.bgSurface.withAlpha(248),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(40),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withAlpha(28),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
           ),
         ],
       );
@@ -695,6 +696,8 @@ class _TutorialCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
+          const PremiumSectionLabel(text: 'AUFGABE JETZT'),
+          const SizedBox(height: 4),
           Padding(
             padding: const EdgeInsets.only(right: 6),
             child: Text(
@@ -774,21 +777,13 @@ class _TutorialCard extends StatelessWidget {
               ],
             ],
           ),
-          const SizedBox(height: 6),
-          Padding(
-            padding: const EdgeInsets.only(right: 6),
-            child: Text(
-              step.hint,
-              style: const TextStyle(
-                color: AppColors.textMuted,
-                fontSize: 11,
-              ),
-            ),
+          const SizedBox(height: 8),
+          PremiumStatusHint(
+            text: step.hint,
+            tone: PremiumStatusTone.warning,
           ),
         ],
       ),
     );
   }
 }
-
-

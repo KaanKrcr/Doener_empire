@@ -15,6 +15,7 @@ import '../../models/time_profile_model.dart';
 import '../../providers/game_provider.dart';
 import '../../services/game_engine.dart';
 import '../../services/hr_engine.dart';
+import '../widgets/premium_mobile_ui.dart';
 
 part 'shop_detail/products_tab.dart';
 part 'shop_detail/equipment_tab.dart';
@@ -97,7 +98,7 @@ class _ShopDetailScreenState extends ConsumerState<ShopDetailScreen>
           icon: const Icon(Icons.arrow_back_ios_new),
           onPressed: () {
             // Falls Stack vorhanden (z.B. von Dashboard via push), poppen.
-            // Sonst sauber zurück zum MainScaffold.
+            // Sonst sauber zurÃ¼ck zum MainScaffold.
             if (context.canPop()) {
               context.pop();
             } else {
@@ -108,7 +109,7 @@ class _ShopDetailScreenState extends ConsumerState<ShopDetailScreen>
       ),
       body: Column(
         children: [
-          // ── Auslastungs-Banner ───────────────────────────────────────
+          // â”€â”€ Auslastungs-Banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           if (stats.actualCustomers > 0)
             _CapacityBanner(
               stats: stats,
@@ -127,7 +128,7 @@ class _ShopDetailScreenState extends ConsumerState<ShopDetailScreen>
                   border: Border.all(color: AppColors.secondary.withAlpha(70)),
                 ),
                 child: Text(
-                  'Übernommen · ${currentShop.acquiredHint}',
+                  'Ãœbernommen Â· ${currentShop.acquiredHint}',
                   style: const TextStyle(
                     fontSize: 11,
                     color: AppColors.secondary,
@@ -136,68 +137,52 @@ class _ShopDetailScreenState extends ConsumerState<ShopDetailScreen>
                 ),
               ),
             ),
-          // ── Shop-Stats Header ─────────────────────────────────────────
-          Container(
-            margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.bgCard,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
-            ),
+          // â”€â”€ Shop-Stats Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: _ShopStat(
-                        label: 'Umsatz/Tag',
-                        value: '+${_fmt.format(revenue)} €',
-                        color: AppColors.success,
-                      ),
+                const PremiumSectionLabel(text: 'FILIALE HEUTE'),
+                const SizedBox(height: 6),
+                PremiumMetricStrip(
+                  items: [
+                    PremiumMetricData(
+                      label: 'UMSATZ/TAG',
+                      value: '+${_fmt.format(revenue)} €',
+                      color: AppColors.success,
                     ),
-                    Expanded(
-                      child: _ShopStat(
-                        label: 'Kosten/Tag',
-                        value: '-${_fmt.format(costs)} €',
-                        color: AppColors.danger,
-                      ),
+                    PremiumMetricData(
+                      label: 'KOSTEN/TAG',
+                      value: '-${_fmt.format(costs)} €',
+                      color: AppColors.danger,
                     ),
-                    Expanded(
-                      child: _ShopStat(
-                        label: 'Profit/Tag',
-                        value:
-                            '${profit >= 0 ? "+" : ""}${_fmt.format(profit)} €',
-                        color:
-                            profit >= 0 ? AppColors.success : AppColors.danger,
-                      ),
+                    PremiumMetricData(
+                      label: 'PROFIT/TAG',
+                      value:
+                          '${profit >= 0 ? '+' : ''}${_fmt.format(profit)} €',
+                      color: profit >= 0 ? AppColors.success : AppColors.danger,
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _ShopStat(
-                        label: 'Kunden/Tag',
-                        value: _fmtInt.format(customers),
-                        color: AppColors.accent,
-                      ),
+                const SizedBox(height: 8),
+                PremiumMetricStrip(
+                  dense: true,
+                  items: [
+                    PremiumMetricData(
+                      label: 'KUNDEN',
+                      value: _fmtInt.format(customers),
+                      color: AppColors.accent,
                     ),
-                    Expanded(
-                      child: _ShopStat(
-                        label: 'Reputation',
-                        value:
-                            '${currentShop.reputation.toStringAsFixed(1)} / 5',
-                        color: AppColors.gold,
-                      ),
+                    PremiumMetricData(
+                      label: 'RUF',
+                      value: '${currentShop.reputation.toStringAsFixed(1)} / 5',
+                      color: AppColors.gold,
                     ),
-                    Expanded(
-                      child: _ShopStat(
-                        label: 'Wochentag',
-                        value: _weekdayLabel(today),
-                        color: AppColors.textSecondary,
-                      ),
+                    PremiumMetricData(
+                      label: 'TAG',
+                      value: _weekdayLabel(today),
+                      color: AppColors.textSecondary,
                     ),
                   ],
                 ),
@@ -211,30 +196,38 @@ class _ShopDetailScreenState extends ConsumerState<ShopDetailScreen>
             cash: game.cash,
           ),
 
-          Container(
-            margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            decoration: BoxDecoration(
-              color: AppColors.bgCard,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: TabBar(
-              controller: _tabs,
-              indicatorColor: AppColors.primary,
-              dividerColor: Colors.transparent,
-              labelColor: AppColors.primary,
-              unselectedLabelColor: AppColors.textMuted,
-              isScrollable: true,
-              tabs: const [
-                Tab(text: 'Sortiment'),
-                Tab(text: 'Equipment'),
-                Tab(text: 'Personal'),
-                Tab(text: 'Marketing'),
-                Tab(text: 'Ausstattung'),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const PremiumSectionLabel(text: 'BEREICHE'),
+                const SizedBox(height: 6),
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.bgCard,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: TabBar(
+                    controller: _tabs,
+                    indicatorColor: AppColors.primary,
+                    dividerColor: Colors.transparent,
+                    labelColor: AppColors.primary,
+                    unselectedLabelColor: AppColors.textMuted,
+                    isScrollable: true,
+                    tabs: const [
+                      Tab(text: 'Sortiment'),
+                      Tab(text: 'Equipment'),
+                      Tab(text: 'Personal'),
+                      Tab(text: 'Marketing'),
+                      Tab(text: 'Ausstattung'),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
-
           Expanded(
             child: TabBarView(
               controller: _tabs,

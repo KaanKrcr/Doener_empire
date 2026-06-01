@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -9,6 +9,7 @@ import '../../models/product_model.dart';
 import '../../models/shop_model.dart';
 import '../../providers/game_provider.dart';
 import '../../services/game_engine.dart';
+import '../widgets/premium_mobile_ui.dart';
 
 final _fmt = NumberFormat('#,##0', 'de_DE');
 
@@ -42,6 +43,32 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          PremiumMetricStrip(
+            items: [
+              PremiumMetricData(
+                label: 'Cash',
+                value: '${_fmt.format(game.cash)} €',
+                color: AppColors.accent,
+              ),
+              PremiumMetricData(
+                label: 'Profit heute',
+                value:
+                    '${dailyProfit >= 0 ? '+' : ''}${_fmt.format(dailyProfit)} €',
+                color: dailyProfit >= 0 ? AppColors.success : AppColors.danger,
+              ),
+              PremiumMetricData(
+                label: 'Kredite',
+                value: game.activeLoansTotal > 0
+                    ? '${_fmt.format(game.activeLoansTotal)} €'
+                    : 'Keine',
+                color: game.activeLoansTotal > 0
+                    ? AppColors.warning
+                    : AppColors.textSecondary,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
           // Übersicht
           const _Section('HEUTE'),
           const SizedBox(height: 8),
@@ -159,11 +186,11 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
           const _Section('FILIALEN'),
           const SizedBox(height: 8),
           if (game.shops.isEmpty)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Text('Noch keine Filialen',
-                    style: TextStyle(color: AppColors.textMuted)),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: PremiumStatusHint(
+                text: 'Noch keine Filialen. Eröffne zuerst einen Standort.',
+                tone: PremiumStatusTone.warning,
               ),
             )
           else
@@ -1110,7 +1137,8 @@ class _ShopRankingCard extends StatelessWidget {
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(4),
                       child: LinearProgressIndicator(
-                        value: (ranking[i].profit.abs() / maxAbs).clamp(0.0, 1.0),
+                        value:
+                            (ranking[i].profit.abs() / maxAbs).clamp(0.0, 1.0),
                         minHeight: 5,
                         backgroundColor: AppColors.bg.withValues(alpha: 0.5),
                         color: ranking[i].profit >= 0
@@ -1145,13 +1173,14 @@ class _ProductProfitCard extends StatelessWidget {
         child: const Text(
           'Noch keine Verkäufe heute. Sobald Kunden kommen, siehst du hier, '
           'welches Gericht am meisten Gewinn bringt.',
-          style: TextStyle(fontSize: 12.5, color: AppColors.textMuted, height: 1.4),
+          style: TextStyle(
+              fontSize: 12.5, color: AppColors.textMuted, height: 1.4),
         ),
       );
     }
 
-    final maxProfit = products.fold<double>(
-        0, (m, p) => p.profit > m ? p.profit : m);
+    final maxProfit =
+        products.fold<double>(0, (m, p) => p.profit > m ? p.profit : m);
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -1197,7 +1226,8 @@ class _ProductProfitRow extends StatelessWidget {
         category: ProductCategory.beilage,
       ),
     );
-    final barFrac = maxProfit > 0 ? (data.profit / maxProfit).clamp(0.0, 1.0) : 0.0;
+    final barFrac =
+        maxProfit > 0 ? (data.profit / maxProfit).clamp(0.0, 1.0) : 0.0;
     final marginPct = (data.margin * 100).round();
 
     return Padding(
@@ -1260,7 +1290,8 @@ class _ProductProfitRow extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 '${data.units.round()} Stk · $marginPct% Marge',
-                style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
+                style:
+                    const TextStyle(fontSize: 10, color: AppColors.textMuted),
               ),
             ],
           ),
@@ -1276,15 +1307,7 @@ class _Section extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontSize: 11,
-        color: AppColors.textMuted,
-        letterSpacing: 2,
-        fontWeight: FontWeight.w700,
-      ),
-    );
+    return PremiumSectionLabel(text: text);
   }
 }
 
@@ -1305,39 +1328,34 @@ class _FinanceRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: bold ? color.withAlpha(80) : AppColors.border,
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: bold ? 15 : 13,
-                fontWeight: bold ? FontWeight.w800 : FontWeight.w500,
-                color: AppColors.textPrimary,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: PremiumDecisionSheet(
+        borderColor: bold ? color.withAlpha(100) : AppColors.border,
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: color),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: bold ? 15 : 13,
+                  fontWeight: bold ? FontWeight.w800 : FontWeight.w500,
+                  color: AppColors.textPrimary,
+                ),
               ),
             ),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: bold ? 16 : 14,
-              fontWeight: FontWeight.w800,
-              color: color,
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: bold ? 16 : 14,
+                fontWeight: FontWeight.w800,
+                color: color,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

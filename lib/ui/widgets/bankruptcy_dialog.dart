@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import '../../core/theme.dart';
 import '../../models/game_state.dart';
 import '../../providers/game_provider.dart';
+import 'premium_mobile_ui.dart';
 
 final _fmt = NumberFormat('#,##0', 'de_DE');
 const _uuid = Uuid();
@@ -82,13 +83,10 @@ class BankruptcyDialog extends ConsumerWidget {
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   children: [
-                    const Text(
-                      'Du musst handeln, sonst ist Schluss. Drei Optionen:',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                      ),
+                    const PremiumStatusHint(
+                      text:
+                          'Treffe jetzt eine Entscheidung, um das Unternehmen zu stabilisieren.',
+                      tone: PremiumStatusTone.danger,
                     ),
                     const SizedBox(height: 16),
 
@@ -97,7 +95,7 @@ class BankruptcyDialog extends ConsumerWidget {
                       emoji: '🏦',
                       title: 'Notkredit aufnehmen',
                       subtitle:
-                          '20.000 € sofort  ·  12% Zinsen  ·  180 Tage Laufzeit',
+                          '20.000 € sofort · 12 % Zinsen · 180 Tage Laufzeit',
                       color: AppColors.warning,
                       onTap: () {
                         final loan = Loan(
@@ -119,7 +117,7 @@ class BankruptcyDialog extends ConsumerWidget {
                         emoji: '🚪',
                         title: 'Filiale schließen',
                         subtitle:
-                            'Die schwächste Filiale aufgeben, Mietkaution zurück.',
+                            'Die schwächste Filiale aufgeben, Mietkaution zurückholen.',
                         color: AppColors.secondary,
                         onTap: () {
                           final worstShop = _findWorstShop(game);
@@ -137,7 +135,7 @@ class BankruptcyDialog extends ConsumerWidget {
                     _OptionTile(
                       emoji: '⚰️',
                       title: 'Insolvenz anmelden',
-                      subtitle: 'Game Over — neues Spiel starten.',
+                      subtitle: 'Game Over – neues Spiel starten.',
                       color: AppColors.danger,
                       onTap: () async {
                         await ref.read(gameProvider.notifier).deleteGame();
@@ -184,49 +182,41 @@ class _OptionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.bgSurface,
+    return InkWell(
+      onTap: onTap,
       borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: color.withAlpha(80)),
-          ),
-          child: Row(
-            children: [
-              Text(emoji, style: const TextStyle(fontSize: 26)),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: color,
-                      ),
+      child: PremiumDecisionSheet(
+        borderColor: color.withAlpha(90),
+        child: Row(
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 26)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: color,
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textMuted,
-                      ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textMuted,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              const Icon(Icons.chevron_right_rounded,
-                  color: AppColors.textMuted, size: 18),
-            ],
-          ),
+            ),
+            const Icon(Icons.chevron_right_rounded,
+                color: AppColors.textMuted, size: 18),
+          ],
         ),
       ),
     );

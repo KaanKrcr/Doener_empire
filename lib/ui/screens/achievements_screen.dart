@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme.dart';
 import '../../models/achievement_model.dart';
 import '../../providers/game_provider.dart';
+import '../widgets/premium_mobile_ui.dart';
 
 /// Vollständige Trophäen-Galerie — alle Achievements nach Tier gruppiert,
 /// freigeschaltet/gesperrt, mit Punkten und Gesamtfortschritt.
@@ -23,17 +24,18 @@ class AchievementsScreen extends ConsumerWidget {
     if (game == null) {
       return const Scaffold(
         backgroundColor: AppColors.bg,
-        body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        body:
+            Center(child: CircularProgressIndicator(color: AppColors.primary)),
       );
     }
 
     final unlocked = game.achievementIds.toSet();
     final total = kAllAchievements.length;
+    final lockedCount = (total - unlocked.length).clamp(0, total);
     final earnedPoints = kAllAchievements
         .where((a) => unlocked.contains(a.id))
         .fold(0, (s, a) => s + a.tier.points);
-    final maxPoints =
-        kAllAchievements.fold(0, (s, a) => s + a.tier.points);
+    final maxPoints = kAllAchievements.fold(0, (s, a) => s + a.tier.points);
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -47,6 +49,34 @@ class AchievementsScreen extends ConsumerWidget {
             earnedPoints: earnedPoints,
             maxPoints: maxPoints,
           ),
+          const SizedBox(height: 12),
+          PremiumMetricStrip(
+            items: [
+              PremiumMetricData(
+                label: 'Freigeschaltet',
+                value: '${unlocked.length}',
+                color: AppColors.success,
+              ),
+              PremiumMetricData(
+                label: 'Offen',
+                value: '$lockedCount',
+                color: AppColors.warning,
+              ),
+              PremiumMetricData(
+                label: 'Punkte',
+                value: '$earnedPoints',
+                color: AppColors.gold,
+              ),
+            ],
+          ),
+          if (unlocked.isEmpty) ...[
+            const SizedBox(height: 10),
+            const PremiumStatusHint(
+              text:
+                  'Noch keine Trophäen. Eröffne eine Filiale und schließe erste Ziele ab.',
+              tone: PremiumStatusTone.warning,
+            ),
+          ],
           const SizedBox(height: 18),
           for (final tier in AchievementTier.values) ...[
             _TierSection(
@@ -204,87 +234,83 @@ class _AchievementTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: unlocked ? color.withValues(alpha: 0.6) : AppColors.border,
-          width: unlocked ? 1.5 : 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: unlocked
-                  ? color.withValues(alpha: 0.18)
-                  : AppColors.bgSurface.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: PremiumDecisionSheet(
+        borderColor: unlocked ? color.withValues(alpha: 0.7) : AppColors.border,
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
                 color: unlocked
-                    ? color.withValues(alpha: 0.5)
-                    : AppColors.border,
+                    ? color.withValues(alpha: 0.18)
+                    : AppColors.bgSurface.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: unlocked
+                      ? color.withValues(alpha: 0.5)
+                      : AppColors.border,
+                ),
+              ),
+              child: Center(
+                child: unlocked
+                    ? Text(achievement.emoji,
+                        style: const TextStyle(fontSize: 24))
+                    : const Icon(Icons.lock_outline_rounded,
+                        size: 20, color: AppColors.textMuted),
               ),
             ),
-            child: Center(
-              child: unlocked
-                  ? Text(achievement.emoji,
-                      style: const TextStyle(fontSize: 24))
-                  : const Icon(Icons.lock_outline_rounded,
-                      size: 20, color: AppColors.textMuted),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    achievement.title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: unlocked
+                          ? AppColors.textPrimary
+                          : AppColors.textMuted,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    achievement.description,
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      color: AppColors.textMuted,
+                      height: 1.3,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  achievement.title,
+                  '+${achievement.tier.points}',
                   style: TextStyle(
                     fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color:
-                        unlocked ? AppColors.textPrimary : AppColors.textMuted,
+                    fontWeight: FontWeight.w900,
+                    color: unlocked ? color : AppColors.textMuted,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  achievement.description,
-                  style: const TextStyle(
-                    fontSize: 11.5,
-                    color: AppColors.textMuted,
-                    height: 1.3,
-                  ),
-                ),
+                if (unlocked)
+                  Icon(Icons.check_circle_rounded, size: 14, color: color)
+                else
+                  const Text('gesperrt',
+                      style:
+                          TextStyle(fontSize: 9, color: AppColors.textMuted)),
               ],
             ),
-          ),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '+${achievement.tier.points}',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w900,
-                  color: unlocked ? color : AppColors.textMuted,
-                ),
-              ),
-              if (unlocked)
-                Icon(Icons.check_circle_rounded, size: 14, color: color)
-              else
-                const Text('gesperrt',
-                    style: TextStyle(fontSize: 9, color: AppColors.textMuted)),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

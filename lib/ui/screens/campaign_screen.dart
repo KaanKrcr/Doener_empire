@@ -10,6 +10,7 @@ import '../../models/game_state.dart';
 import '../../providers/game_provider.dart';
 import '../../services/campaign_engine.dart';
 import '../widgets/confetti_overlay.dart';
+import '../widgets/premium_mobile_ui.dart';
 
 final _fmt = NumberFormat('#,##0', 'de_DE');
 
@@ -22,13 +23,15 @@ class CampaignScreen extends ConsumerWidget {
     if (game == null) {
       return const Scaffold(
         backgroundColor: AppColors.bg,
-        body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        body:
+            Center(child: CircularProgressIndicator(color: AppColors.primary)),
       );
     }
 
     final activeId = CampaignEngine.activeChapter(game)?.id;
     final doneCount = CampaignEngine.completedCount(game);
     final total = kCampaignChapters.length;
+    final openCount = (total - doneCount).clamp(0, total);
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -37,6 +40,26 @@ class CampaignScreen extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
         children: [
           _ProgressHeader(done: doneCount, total: total),
+          const SizedBox(height: 10),
+          PremiumMetricStrip(
+            items: [
+              PremiumMetricData(
+                label: 'Abgeschlossen',
+                value: '$doneCount',
+                color: AppColors.success,
+              ),
+              PremiumMetricData(
+                label: 'Offen',
+                value: '$openCount',
+                color: AppColors.warning,
+              ),
+              PremiumMetricData(
+                label: 'Aktiv',
+                value: activeId == null ? '–' : activeId.toUpperCase(),
+                color: AppColors.accent,
+              ),
+            ],
+          ),
           const SizedBox(height: 14),
           _ActivePerksCard(state: game),
           const SizedBox(height: 16),
@@ -127,7 +150,8 @@ class _ActivePerksCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final unlocked = kCampaignChapters
-        .where((c) => state.completedChapterIds.contains(c.id) && c.perk != null)
+        .where(
+            (c) => state.completedChapterIds.contains(c.id) && c.perk != null)
         .map((c) => c.perk!)
         .toList();
     final total = aggregateCampaignPerks(state.completedChapterIds);
@@ -143,13 +167,8 @@ class _ActivePerksCard extends StatelessWidget {
         ('Miete', '−${(total.rentSaving * 100).round()}%'),
     ];
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.secondary.withValues(alpha: 0.4)),
-      ),
+    return PremiumDecisionSheet(
+      borderColor: AppColors.secondary.withValues(alpha: 0.45),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -157,7 +176,8 @@ class _ActivePerksCard extends StatelessWidget {
             children: [
               const Text('⭐', style: TextStyle(fontSize: 18)),
               const SizedBox(width: 8),
-              Text('AKTIVE BONI', style: AppText.label(color: AppColors.secondary)),
+              Text('AKTIVE BONI',
+                  style: AppText.label(color: AppColors.secondary)),
               const Spacer(),
               Text(
                 '${unlocked.length} Perk${unlocked.length == 1 ? "" : "s"}',
@@ -171,14 +191,10 @@ class _ActivePerksCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           if (unlocked.isEmpty)
-            const Text(
-              'Noch keine Boni. Schließe Kapitel ab, um dauerhafte '
-              'Konzern-Vorteile freizuschalten.',
-              style: TextStyle(
-                fontSize: 12.5,
-                color: AppColors.textMuted,
-                height: 1.4,
-              ),
+            const PremiumStatusHint(
+              text:
+                  'Noch keine Boni. Schließe Kapitel ab, um dauerhafte Konzernvorteile freizuschalten.',
+              tone: PremiumStatusTone.warning,
             )
           else ...[
             // Summierte Gesamtwirkung als Stat-Kacheln
@@ -198,8 +214,8 @@ class _ActivePerksCard extends StatelessWidget {
               children: [
                 for (final p in unlocked)
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 9, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
                     decoration: BoxDecoration(
                       color: AppColors.secondary.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(9),
@@ -287,114 +303,110 @@ class _ChapterCard extends StatelessWidget {
             ? AppColors.primary
             : AppColors.textMuted;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: active ? AppColors.primary.withValues(alpha: 0.6) : AppColors.border,
-          width: active ? 1.5 : 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: accent.withValues(alpha: 0.5)),
-                ),
-                child: Center(
-                  child: done
-                      ? const Icon(Icons.check_rounded,
-                          color: AppColors.success, size: 24)
-                      : locked
-                          ? const Icon(Icons.lock_outline_rounded,
-                              color: AppColors.textMuted, size: 20)
-                          : Text(chapter.emoji,
-                              style: const TextStyle(fontSize: 22)),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'KAPITEL ${chapter.number}',
-                      style: AppText.label(color: accent, size: 10),
-                    ),
-                    Text(
-                      locked ? 'Noch gesperrt' : chapter.title,
-                      style: AppText.display(
-                        size: 16,
-                        weight: FontWeight.w700,
-                        color: locked
-                            ? AppColors.textMuted
-                            : AppColors.textPrimary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          if (!locked) ...[
-            const SizedBox(height: 12),
-            Text(
-              chapter.story,
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppColors.textSecondary,
-                height: 1.45,
-              ),
-            ),
-            const SizedBox(height: 14),
-            for (final obj in chapter.objectives)
-              _ObjectiveRow(
-                objective: obj,
-                state: state,
-                forceDone: done,
-              ),
-            const SizedBox(height: 10),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: PremiumDecisionSheet(
+        borderColor: active
+            ? AppColors.primary.withValues(alpha: 0.7)
+            : AppColors.border,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Row(
               children: [
-                const Icon(Icons.card_giftcard_rounded,
-                    size: 16, color: AppColors.gold),
-                const SizedBox(width: 6),
-                Text(
-                  '+${_fmt.format(chapter.cashReward)} €',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.gold,
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: accent.withValues(alpha: 0.5)),
+                  ),
+                  child: Center(
+                    child: done
+                        ? const Icon(Icons.check_rounded,
+                            color: AppColors.success, size: 24)
+                        : locked
+                            ? const Icon(Icons.lock_outline_rounded,
+                                color: AppColors.textMuted, size: 20)
+                            : Text(chapter.emoji,
+                                style: const TextStyle(fontSize: 22)),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    '· ${chapter.rewardLabel}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontSize: 11, color: AppColors.textMuted),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'KAPITEL ${chapter.number}',
+                        style: AppText.label(color: accent, size: 10),
+                      ),
+                      Text(
+                        locked ? 'Noch gesperrt' : chapter.title,
+                        style: AppText.display(
+                          size: 16,
+                          weight: FontWeight.w700,
+                          color: locked
+                              ? AppColors.textMuted
+                              : AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-            if (chapter.perk != null) ...[
-              const SizedBox(height: 8),
-              _PerkChip(perk: chapter.perk!, unlocked: done),
+            if (!locked) ...[
+              const SizedBox(height: 12),
+              Text(
+                chapter.story,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: 14),
+              for (final obj in chapter.objectives)
+                _ObjectiveRow(
+                  objective: obj,
+                  state: state,
+                  forceDone: done,
+                ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  const Icon(Icons.card_giftcard_rounded,
+                      size: 16, color: AppColors.gold),
+                  const SizedBox(width: 6),
+                  Text(
+                    '+${_fmt.format(chapter.cashReward)} €',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.gold,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '· ${chapter.rewardLabel}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 11, color: AppColors.textMuted),
+                    ),
+                  ),
+                ],
+              ),
+              if (chapter.perk != null) ...[
+                const SizedBox(height: 8),
+                _PerkChip(perk: chapter.perk!, unlocked: done),
+              ],
             ],
           ],
-        ],
+        ),
       ),
     );
   }

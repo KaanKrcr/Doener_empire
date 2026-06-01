@@ -17,18 +17,9 @@ class _EmployeesTab extends ConsumerWidget {
       padding: const EdgeInsets.all(16),
       children: [
         // ── HR-Manager Toggle ──────────────────────────────────────────
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color:
-                shop.autoHire ? AppColors.gold.withAlpha(25) : AppColors.bgCard,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: shop.autoHire
-                  ? AppColors.gold.withAlpha(80)
-                  : AppColors.border,
-            ),
-          ),
+        PremiumDecisionSheet(
+          borderColor:
+              shop.autoHire ? AppColors.gold.withAlpha(80) : AppColors.border,
           child: Row(
             children: [
               const Text('🧑‍💼', style: TextStyle(fontSize: 22)),
@@ -70,15 +61,9 @@ class _EmployeesTab extends ConsumerWidget {
         const SizedBox(height: 12),
 
         // ── Personal-Kapazitäts-Indikator ───────────────────────────────
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.bgCard,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: atMax ? AppColors.warning.withAlpha(80) : AppColors.border,
-            ),
-          ),
+        PremiumDecisionSheet(
+          borderColor:
+              atMax ? AppColors.warning.withAlpha(90) : AppColors.border,
           child: Row(
             children: [
               Icon(
@@ -138,14 +123,7 @@ class _EmployeesTab extends ConsumerWidget {
 
         // Aktuelle Mitarbeiter
         if (shop.employees.isNotEmpty) ...[
-          const Text(
-            'AKTUELLE MITARBEITER',
-            style: TextStyle(
-                fontSize: 11,
-                color: AppColors.textMuted,
-                letterSpacing: 2,
-                fontWeight: FontWeight.w700),
-          ),
+          const PremiumSectionLabel(text: 'AKTUELLE MITARBEITER'),
           const SizedBox(height: 8),
           for (final emp in shop.employees) ...[
             _EmployeeCard(
@@ -165,14 +143,7 @@ class _EmployeesTab extends ConsumerWidget {
         ],
 
         // Stellen ausschreiben
-        const Text(
-          'STELLENAUSSCHREIBUNG',
-          style: TextStyle(
-              fontSize: 11,
-              color: AppColors.textMuted,
-              letterSpacing: 2,
-              fontWeight: FontWeight.w700),
-        ),
+        const PremiumSectionLabel(text: 'STELLENAUSSCHREIBUNG'),
         const SizedBox(height: 8),
         for (final type in kEmployeeTypes) ...[
           _HireCard(

@@ -18,6 +18,7 @@ import '../../services/corporate_engine.dart';
 import '../../services/game_engine.dart';
 import '../../services/hr_engine.dart';
 import '../../models/upgrade_model.dart';
+import '../widgets/premium_mobile_ui.dart';
 
 final _fmt = NumberFormat('#,##0', 'de_DE');
 final _fmtPrice = NumberFormat('#,##0.00', 'de_DE');
@@ -94,11 +95,43 @@ class _CorporateScreenState extends ConsumerState<CorporateScreen>
                 ],
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+              child: PremiumMetricStrip(
+                dense: true,
+                items: [
+                  PremiumMetricData(
+                    label: 'Cash',
+                    value: '${_fmt.format(game.cash)} â‚¬',
+                    color: AppColors.accent,
+                  ),
+                  PremiumMetricData(
+                    label: 'Filialen',
+                    value: '${game.shops.length}',
+                    color: AppColors.success,
+                  ),
+                  PremiumMetricData(
+                    label: 'Konkurrenz',
+                    value: '${game.competitors.length}',
+                    color: AppColors.danger,
+                  ),
+                  PremiumMetricData(
+                    label: game.stocks.isPublic ? 'Aktie' : 'BÃ¶rse',
+                    value: game.stocks.isPublic
+                        ? '${_fmtPrice.format(game.stocks.sharePrice)} â‚¬'
+                        : 'Privat',
+                    color: game.stocks.isPublic
+                        ? AppColors.gold
+                        : AppColors.textSecondary,
+                  ),
+                ],
+              ),
+            ),
             Container(
               margin: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               decoration: BoxDecoration(
                 color: AppColors.bgCard,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: AppColors.border),
               ),
               child: TabBar(
@@ -227,13 +260,11 @@ class _StockTab extends ConsumerWidget {
                   ),
                 ] else
                   const Padding(
-                    padding: EdgeInsets.all(8),
-                    child: Text(
-                      'Voraussetzungen noch nicht erfüllt.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textMuted,
-                      ),
+                    padding: EdgeInsets.only(top: 8),
+                    child: PremiumStatusHint(
+                      text:
+                          'IPO noch gesperrt. Erreiche erst alle Anforderungen für einen Börsengang.',
+                      tone: PremiumStatusTone.warning,
                     ),
                   ),
               ],
@@ -434,27 +465,29 @@ class _MetricRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppColors.textSecondary,
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: PremiumDecisionSheet(
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ),
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -727,14 +760,12 @@ class _MATab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final competitors = game.competitors;
     if (competitors.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(40),
-          child: Text(
-            'Keine Konkurrenten erkundet.\nEröffne Filialen in mehr Städten.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.textMuted),
-          ),
+      return const Padding(
+        padding: EdgeInsets.all(20),
+        child: PremiumStatusHint(
+          text:
+              'Keine Konkurrenzdaten verfügbar. Eröffne Filialen in weiteren Städten für M&A-Optionen.',
+          tone: PremiumStatusTone.warning,
         ),
       );
     }
@@ -747,13 +778,10 @@ class _MATab extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        const Text(
-          'Konkurrenten aufkaufen - übernimm Marktanteile und Filialen.',
-          style: TextStyle(
-            fontSize: 12,
-            color: AppColors.textMuted,
-            height: 1.4,
-          ),
+        const PremiumStatusHint(
+          text:
+              'M&A stärkt Marktanteile und übernimmt Filialen. Prüfe Kaufpreis und Integrationsrisiko je Stadt.',
+          tone: PremiumStatusTone.warning,
         ),
         const SizedBox(height: 16),
         for (final entry in byCity.entries) ...[
@@ -808,73 +836,79 @@ class _AcquisitionCard extends ConsumerWidget {
     final price = CorporateEngine.acquisitionPrice(competitor);
     final canAfford = cash >= price;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Text(competitor.personality.emoji,
-                  style: const TextStyle(fontSize: 22)),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      competitor.name,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: PremiumDecisionSheet(
+        borderColor:
+            canAfford ? AppColors.gold.withAlpha(90) : AppColors.border,
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Text(competitor.personality.emoji,
+                    style: const TextStyle(fontSize: 22)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        competitor.name,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
-                    ),
-                    Text(
-                      '${competitor.shopCount} Filialen · ${competitor.reputation.toStringAsFixed(1)}★ · ${(competitor.marketShare * 100).toStringAsFixed(0)}% Markt',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textMuted,
+                      Text(
+                        '${competitor.shopCount} Filialen · ${competitor.reputation.toStringAsFixed(1)}★ · ${(competitor.marketShare * 100).toStringAsFixed(0)}% Markt',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textMuted,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Akquisitionspreis: ${_fmt.format(price)} €',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.gold,
+                    ],
                   ),
                 ),
-              ),
-              ElevatedButton.icon(
-                onPressed: canAfford
-                    ? () => _confirmAcquisition(context, ref, competitor)
-                    : null,
-                icon: const Icon(Icons.handshake, size: 14),
-                label: const Text('Übernehmen'),
-                style: ElevatedButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  textStyle: const TextStyle(fontSize: 12),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Akquisitionspreis: ${_fmt.format(price)} €',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.gold,
+                    ),
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: canAfford
+                      ? () => _confirmAcquisition(context, ref, competitor)
+                      : null,
+                  icon: const Icon(Icons.handshake, size: 14),
+                  label: const Text('Übernehmen'),
+                  style: ElevatedButton.styleFrom(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    textStyle: const TextStyle(fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+            if (!canAfford)
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: PremiumStatusHint(
+                  text: 'Nicht genug Kapital für diese Übernahme.',
+                  tone: PremiumStatusTone.warning,
                 ),
               ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1291,9 +1325,8 @@ class _PrestigeCard extends ConsumerWidget {
     final bonusPct = (GameEngine.prestigeCustomerBonus(game) * 100).round();
     final earnable = GameEngine.prestigePointsEarned(game);
     final canFranchise = GameEngine.canFoundFranchise(game);
-    final progress =
-        (game.totalRevenue % GameEngine.kPrestigeRevenuePerPoint) /
-            GameEngine.kPrestigeRevenuePerPoint;
+    final progress = (game.totalRevenue % GameEngine.kPrestigeRevenuePerPoint) /
+        GameEngine.kPrestigeRevenuePerPoint;
     final nextStartCash =
         GameEngine.prestigeStartCash(points + (earnable > 0 ? earnable : 1));
 
@@ -1451,7 +1484,8 @@ class _StrategieTab extends ConsumerWidget {
           child: Text(
             'Premium = teurere Zutaten, aber besserer Ruf. Günstig spart Kosten, '
             'kostet aber Reputation.',
-            style: TextStyle(color: AppColors.textMuted, fontSize: 12, height: 1.35),
+            style: TextStyle(
+                color: AppColors.textMuted, fontSize: 12, height: 1.35),
           ),
         ),
         for (final p in kAllProducts)
@@ -1471,7 +1505,8 @@ class _StrategieTab extends ConsumerWidget {
           child: Text(
             'Konzernweite Angebote. Wirken nur in Filialen, die alle nötigen '
             'Produkte führen. Kleine Tagespauschale, dafür mehr Kundschaft.',
-            style: TextStyle(color: AppColors.textMuted, fontSize: 12, height: 1.35),
+            style: TextStyle(
+                color: AppColors.textMuted, fontSize: 12, height: 1.35),
           ),
         ),
         for (final combo in kAllCombos)
@@ -1480,8 +1515,9 @@ class _StrategieTab extends ConsumerWidget {
             child: _ComboCard(
               combo: combo,
               active: game.activeComboIds.contains(combo.id),
-              supportingShops:
-                  shops.where((s) => GameEngine.shopSupportsCombo(s, combo)).length,
+              supportingShops: shops
+                  .where((s) => GameEngine.shopSupportsCombo(s, combo))
+                  .length,
               totalShops: shops.length,
               onToggle: () =>
                   ref.read(gameProvider.notifier).toggleCombo(combo.id),
@@ -1618,9 +1654,8 @@ class _QualityRow extends StatelessWidget {
                         q.emoji,
                         style: TextStyle(
                           fontSize: 13,
-                          color: q == quality
-                              ? Colors.white
-                              : AppColors.textMuted,
+                          color:
+                              q == quality ? Colors.white : AppColors.textMuted,
                         ),
                       ),
                     ),
@@ -1691,7 +1726,9 @@ class _ComboCard extends StatelessWidget {
                     Text(
                       combo.description,
                       style: const TextStyle(
-                          fontSize: 11, color: AppColors.textMuted, height: 1.3),
+                          fontSize: 11,
+                          color: AppColors.textMuted,
+                          height: 1.3),
                     ),
                   ],
                 ),
@@ -1742,8 +1779,9 @@ class _ComboCard extends StatelessWidget {
                       : 'Wirkt in $supportingShops/$totalShops Filialen',
                   style: TextStyle(
                     fontSize: 10.5,
-                    color:
-                        noShopSupports ? AppColors.warning : AppColors.textMuted,
+                    color: noShopSupports
+                        ? AppColors.warning
+                        : AppColors.textMuted,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
