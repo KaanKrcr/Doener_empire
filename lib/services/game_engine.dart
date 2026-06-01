@@ -25,6 +25,8 @@ import 'hr_engine.dart';
 /// Zentrale Spiellogik. Reine statische Methoden ohne Seiteneffekte —
 /// alles, was den Spielstand verändert, gibt ein neues [GameState] zurück.
 class GameEngine {
+  static const int kMaxShopExpansionLevel = 3;
+
   static const Map<String, double> _globalSpiessQualityBonus = {
     kGlobalSpiessBasicId: 0.15,
     kGlobalSpiessStandardId: 0.40,
@@ -88,7 +90,8 @@ class GameEngine {
     final upgradeAOV = _upgradeAvgOrderBoost(shop, state);
 
     // Dauerhafte Story-Kampagnen-Perks (konzernweit)
-    final perks = aggregateCampaignPerks(state?.completedChapterIds ?? const []);
+    final perks =
+        aggregateCampaignPerks(state?.completedChapterIds ?? const []);
 
     // Menü-Angebote/Kombos (nur wenn die Filiale die Produkte führt)
     final comboBoost = _comboCustomerBoost(shop, state);
@@ -190,20 +193,67 @@ class GameEngine {
   }
 
   static int maxEmployeesForShop(Shop shop) {
+    return employeeCapForTier(shop, shop.sizeTier);
+  }
+
+  static int employeeCapForTier(Shop shop, ShopSizeTier tier) {
+    final cityCap = _cityEmployeeCapForCity(shop.cityId);
+    final tierCap = _sizeConfigFor(tier).employeeCap;
+    return min(cityCap, tierCap);
+  }
+
+  static int employeeCapForLevel(Shop shop, int expansionLevel) {
+    final tier = ShopSizeTierX.fromLegacyExpansionLevel(expansionLevel);
+    return employeeCapForTier(shop, tier);
+  }
+
+  static int serviceCapacityBonusForLevel(int expansionLevel) {
+    final tier = ShopSizeTierX.fromLegacyExpansionLevel(expansionLevel);
+    final mult = _sizeConfigFor(tier).capacityMultiplier;
+    return ((mult - 1.0) * 100).round();
+  }
+
+  static double shopFixedCostMultiplierForLevel(int expansionLevel) {
+    final tier = ShopSizeTierX.fromLegacyExpansionLevel(expansionLevel);
+    return _sizeConfigFor(tier).rentMultiplier;
+  }
+
+  static double shopExpansionCost(Shop shop) {
+    final nextTier = shop.sizeTier.nextTier;
+    if (nextTier == null) return 0;
+    return _sizeConfigFor(nextTier).upgradeCost;
+  }
+
+  static bool canExpandShop(GameState state, Shop shop) {
+    if (shop.sizeTier.nextTier == null) return false;
+    return state.cash >= shopExpansionCost(shop);
+  }
+
+  static CityData _cityFor(String cityId) {
     final city = kAllCities.firstWhere(
-      (c) => c.id == shop.cityId,
+      (c) => c.id == cityId,
       orElse: () => kAllCities.first,
     );
-    switch (city.tier) {
-      case CityTier.klein:
-        return 3;
-      case CityTier.mittel:
-        return 5;
-      case CityTier.gross:
-        return 7;
-      case CityTier.metropole:
-        return 10;
-    }
+    return city;
+  }
+
+  static int _cityEmployeeCapForCity(String cityId) {
+    final city = _cityFor(cityId);
+    return _cityEmployeeCapForTier(city.tier);
+  }
+
+  static int _cityEmployeeCapForTier(CityTier tier) {
+    return switch (tier) {
+      CityTier.klein => 5,
+      CityTier.mittel => 8,
+      CityTier.gross => 10,
+      CityTier.metropole => 12,
+    };
+  }
+
+  static ShopSizeTierConfig _sizeConfigFor(ShopSizeTier tier) {
+    return kShopSizeTierConfig[tier] ??
+        kShopSizeTierConfig[ShopSizeTier.klein]!;
   }
 
   static bool isCapacityLimited(Shop shop, {int? day, GameState? state}) {
@@ -377,7 +427,9 @@ class GameEngine {
     final h = state.history;
     if (h.length < 7) return null;
     final last7 = h.sublist(h.length - 7);
-    final prev7 = h.length >= 14 ? h.sublist(h.length - 14, h.length - 7) : const <DailyRecord>[];
+    final prev7 = h.length >= 14
+        ? h.sublist(h.length - 14, h.length - 7)
+        : const <DailyRecord>[];
 
     final revenue = last7.fold<double>(0, (s, r) => s + r.revenue);
     final profit = last7.fold<double>(0, (s, r) => s + r.operatingProfit);
@@ -403,8 +455,7 @@ class GameEngine {
   /// Filialen nach geschätztem Tagesgewinn (Umsatz − Kosten), absteigend.
   static List<({Shop shop, double profit})> shopsByProfit(GameState state) {
     final list = state.shops.map((s) {
-      final rev =
-          calculateDailyRevenue(s, day: state.currentDay, state: state);
+      final rev = calculateDailyRevenue(s, day: state.currentDay, state: state);
       final cost = calculateDailyCosts(s, day: state.currentDay, state: state);
       return (shop: s, profit: rev - cost);
     }).toList();
@@ -508,7 +559,9 @@ class GameEngine {
         ));
       }
     }
-    if (state.cash >= 0 && dailyCostTotal > 0 && state.cash < dailyCostTotal * 2) {
+    if (state.cash >= 0 &&
+        dailyCostTotal > 0 &&
+        state.cash < dailyCostTotal * 2) {
       alerts.add(const ShopAlert(
         level: AlertLevel.warn,
         message: 'Liquidität niedrig — die Kasse reicht nur wenige Tage.',
@@ -598,7 +651,9 @@ class GameEngine {
   // ──────────────────────────────────────────────────────────────────────────
 
   static double calculateDailyCosts(Shop shop, {int? day, GameState? state}) {
-    if (shop.menu.isEmpty) return shop.dailyRent + _upgradeDailyCost(shop);
+    if (shop.menu.isEmpty) {
+      return shop.dailyRent + _upgradeDailyCost(shop);
+    }
     final breakdown =
         calculateDailyCostsBreakdown(shop, day: day, state: state);
     return breakdown.total;
@@ -716,9 +771,7 @@ class GameEngine {
   /// Kaufpreis für die Übernahme eines Konkurrenten — skaliert mit Filialzahl,
   /// Reputation und Marktanteil.
   static double competitorBuyoutCost(Competitor c) {
-    final strength =
-        c.shopCount * (0.5 + c.reputation / 5.0) * (1.0 + c.marketShare);
-    return (8000.0 * strength).clamp(5000.0, 500000.0);
+    return CorporateEngine.acquisitionPrice(c);
   }
 
   /// Ob der Spieler den Konkurrenten übernehmen kann (eigene Filiale in der
@@ -726,8 +779,9 @@ class GameEngine {
   static bool canBuyoutCompetitor(GameState state, Competitor c) =>
       state.hasShopIn(c.cityId) && state.cash >= competitorBuyoutCost(c);
 
-  /// Übernimmt einen Konkurrenten: entfernt ihn, zieht den Kaufpreis ab und gibt
-  /// einen Marken- und Reputationsschub in der betroffenen Stadt.
+  /// Übernimmt einen Konkurrenten: entfernt ihn, zieht den Kaufpreis ab,
+  /// übernimmt seine Filialen und gibt zusätzlich einen Marken- und
+  /// Reputationsschub in der betroffenen Stadt.
   static GameState buyoutCompetitor(GameState state, String competitorId) {
     Competitor? target;
     for (final c in state.competitors) {
@@ -739,6 +793,10 @@ class GameEngine {
     if (target == null || !canBuyoutCompetitor(state, target)) return state;
     final cost = competitorBuyoutCost(target);
     final cityId = target.cityId;
+    final acquiredShops = CorporateEngine.acquiredShopsFromCompetitor(
+      state,
+      target,
+    );
     final remaining =
         state.competitors.where((c) => c.id != competitorId).toList();
     final boostedShops = state.shops.map((s) {
@@ -748,10 +806,15 @@ class GameEngine {
     final newBrand = state.brand.copyWith(
       brandAwareness: (state.brand.brandAwareness + 1.5).clamp(0.0, 100.0),
     );
-    return _trackInvestment(state, cost).copyWith(
-      cash: state.cash - cost,
+    final acquiredState = CorporateEngine.acquireCompetitor(
+      state,
+      target,
+      priceOverride: cost,
+    );
+    if (acquiredState == state) return state;
+    return _trackInvestment(acquiredState, cost).copyWith(
       competitors: remaining,
-      shops: boostedShops,
+      shops: [...boostedShops, ...acquiredShops],
       brand: newBrand,
     );
   }
@@ -760,7 +823,8 @@ class GameEngine {
       {int? day, GameState? state}) {
     final pressure =
         state?.difficulty.modifiers.economicPressureMultiplier ?? 1.0;
-    final perks = aggregateCampaignPerks(state?.completedChapterIds ?? const []);
+    final perks =
+        aggregateCampaignPerks(state?.completedChapterIds ?? const []);
     final rent = shop.dailyRent * pressure * (1 - perks.rentSaving);
     final salaries =
         shop.employees.fold(0.0, (s, e) => s + e.salaryPerDay) * pressure;
@@ -1110,6 +1174,42 @@ class GameEngine {
       cash: state.cash - cost,
       shops: [...state.shops, newShop],
       competitors: newCompetitors,
+    );
+  }
+
+  static GameState expandShop(GameState state, String shopId) {
+    Shop? target;
+    for (final shop in state.shops) {
+      if (shop.id == shopId) {
+        target = shop;
+        break;
+      }
+    }
+    if (target == null) return state;
+    if (!canExpandShop(state, target)) return state;
+
+    final nextTier = target.sizeTier.nextTier;
+    if (nextTier == null) return state;
+
+    final cost = shopExpansionCost(target);
+    final fromCfg = _sizeConfigFor(target.sizeTier);
+    final toCfg = _sizeConfigFor(nextTier);
+    final rentFactor = toCfg.rentMultiplier / fromCfg.rentMultiplier;
+    final moraleAfterUpgrade =
+        (target.morale + toCfg.moraleDeltaOnUpgrade).clamp(0.2, 1.0);
+
+    final newShops = state.shops.map((shop) {
+      if (shop.id != shopId) return shop;
+      return shop.copyWith(
+        sizeTier: nextTier,
+        weeklyRent: shop.weeklyRent * rentFactor,
+        morale: moraleAfterUpgrade,
+      );
+    }).toList();
+
+    return _trackInvestment(state, cost).copyWith(
+      cash: state.cash - cost,
+      shops: newShops,
     );
   }
 
@@ -1646,6 +1746,7 @@ class GameEngine {
       final eq = kAllEquipment.firstWhere((e) => e.id == se.equipmentId);
       cap += eq.capacityBonus;
     }
+    cap = (cap * _sizeConfigFor(shop.sizeTier).capacityMultiplier).round();
     cap += _globalSpiessCapacityFor(state);
     // Schicht-Ausrichtung auf die Stoßzeit erhöht die effektive Kapazität.
     return (cap * shiftCapacityMultiplier(shop)).round();
@@ -1829,7 +1930,8 @@ class GameEngine {
 
   // ── Zutaten-Qualität ──────────────────────────────────────────────────────
 
-  static IngredientQuality productQualityOf(GameState? state, String productId) {
+  static IngredientQuality productQualityOf(
+      GameState? state, String productId) {
     if (state == null) return IngredientQuality.standard;
     return ingredientQualityFromName(state.productQuality[productId]);
   }

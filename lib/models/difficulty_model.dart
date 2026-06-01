@@ -29,14 +29,14 @@ class DifficultyModifiers {
 
 const Map<GameDifficulty, DifficultyModifiers> kDifficultyModifiers = {
   GameDifficulty.easy: DifficultyModifiers(
-    hrRecruitmentSpeedMultiplier: 1.40,
-    candidateQualityMultiplier: 1.20,
-    candidateSalaryMultiplier: 0.85,
-    competitorAggressivenessMultiplier: 0.75,
-    customerPriceSensitivityMultiplier: 0.75,
-    progressSpeedMultiplier: 1.25,
-    reputationPenaltyMultiplier: 0.75,
-    economicPressureMultiplier: 0.85,
+    hrRecruitmentSpeedMultiplier: 1.60,
+    candidateQualityMultiplier: 1.25,
+    candidateSalaryMultiplier: 0.80,
+    competitorAggressivenessMultiplier: 0.60,
+    customerPriceSensitivityMultiplier: 0.65,
+    progressSpeedMultiplier: 1.35,
+    reputationPenaltyMultiplier: 0.60,
+    economicPressureMultiplier: 0.75,
   ),
   GameDifficulty.normal: DifficultyModifiers(
     hrRecruitmentSpeedMultiplier: 1.00,
@@ -49,24 +49,24 @@ const Map<GameDifficulty, DifficultyModifiers> kDifficultyModifiers = {
     economicPressureMultiplier: 1.00,
   ),
   GameDifficulty.hard: DifficultyModifiers(
-    hrRecruitmentSpeedMultiplier: 0.78,
-    candidateQualityMultiplier: 0.88,
-    candidateSalaryMultiplier: 1.12,
-    competitorAggressivenessMultiplier: 1.20,
-    customerPriceSensitivityMultiplier: 1.15,
-    progressSpeedMultiplier: 0.90,
-    reputationPenaltyMultiplier: 1.18,
-    economicPressureMultiplier: 1.12,
+    hrRecruitmentSpeedMultiplier: 0.70,
+    candidateQualityMultiplier: 0.85,
+    candidateSalaryMultiplier: 1.20,
+    competitorAggressivenessMultiplier: 1.40,
+    customerPriceSensitivityMultiplier: 1.30,
+    progressSpeedMultiplier: 0.80,
+    reputationPenaltyMultiplier: 1.30,
+    economicPressureMultiplier: 1.25,
   ),
   GameDifficulty.impossible: DifficultyModifiers(
-    hrRecruitmentSpeedMultiplier: 0.62,
-    candidateQualityMultiplier: 0.78,
-    candidateSalaryMultiplier: 1.28,
-    competitorAggressivenessMultiplier: 1.45,
-    customerPriceSensitivityMultiplier: 1.32,
-    progressSpeedMultiplier: 0.75,
-    reputationPenaltyMultiplier: 1.40,
-    economicPressureMultiplier: 1.24,
+    hrRecruitmentSpeedMultiplier: 0.45,
+    candidateQualityMultiplier: 0.70,
+    candidateSalaryMultiplier: 1.45,
+    competitorAggressivenessMultiplier: 1.90,
+    customerPriceSensitivityMultiplier: 1.65,
+    progressSpeedMultiplier: 0.60,
+    reputationPenaltyMultiplier: 1.70,
+    economicPressureMultiplier: 1.55,
   ),
 };
 
@@ -91,13 +91,13 @@ extension GameDifficultyX on GameDifficulty {
   String get shortDescription {
     switch (this) {
       case GameDifficulty.easy:
-        return 'Aktive HR-Hilfe, günstige Talente und tolerantere Kundschaft.';
+        return 'Mehr Bewerber, billigere Löhne, verzeihende Kunden und schwächere Konkurrenz.';
       case GameDifficulty.normal:
         return 'Ausgewogenes Standard-Balancing.';
       case GameDifficulty.hard:
-        return 'Teurere Talente, aggressivere Konkurrenz und klarere Fehlerfolgen.';
+        return 'Teurere Löhne, preissensiblere Kunden und aktivere Konkurrenz.';
       case GameDifficulty.impossible:
-        return 'Hoher Druck, sehr preissensible Kunden und langsamer Fortschritt.';
+        return 'Harter Kostendruck, langsamer Fortschritt und aggressive Konkurrenz.';
     }
   }
 }

@@ -256,14 +256,30 @@ class CorporateEngine {
 
   /// Konkurrenten aufkaufen. Übernommen werden seine Filialen als
   /// (vereinfacht) Player-Shops mit Default-Werten.
-  static GameState acquireCompetitor(GameState state, Competitor c) {
-    final price = acquisitionPrice(c);
+  static GameState acquireCompetitor(
+    GameState state,
+    Competitor c, {
+    double? priceOverride,
+  }) {
+    final price = priceOverride ?? acquisitionPrice(c);
     if (state.cash < price) return state;
 
-    // Erzeuge Player-Shops aus dem Konkurrenten
+    final newShops = acquiredShopsFromCompetitor(state, c);
+
+    final newCompetitors =
+        state.competitors.where((x) => x.id != c.id).toList();
+
+    return state.copyWith(
+      cash: state.cash - price,
+      shops: [...state.shops, ...newShops],
+      competitors: newCompetitors,
+    );
+  }
+
+  static List<Shop> acquiredShopsFromCompetitor(GameState state, Competitor c) {
     final newShops = <Shop>[];
     final city = kAllCities.firstWhere(
-      (city) => city.id == c.cityId,
+      (entry) => entry.id == c.cityId,
       orElse: () => kAllCities.first,
     );
     final locTemplates = kLocationTemplates[city.tier]!;
@@ -287,22 +303,14 @@ class CorporateEngine {
             .toList(),
         equipment: const [],
         employees: const [],
-        reputation: c.reputation,
+        reputation: (c.reputation * 0.7).clamp(0.5, 5.0),
         dayOpened: state.currentDay,
         personality: loc.personality,
         originalCompetitorName: c.name,
         wasAcquired: true,
       ));
     }
-
-    final newCompetitors =
-        state.competitors.where((x) => x.id != c.id).toList();
-
-    return state.copyWith(
-      cash: state.cash - price,
-      shops: [...state.shops, ...newShops],
-      competitors: newCompetitors,
-    );
+    return newShops;
   }
 
   // ── Manager / Auto-Pricing ─────────────────────────────────────────────
@@ -367,9 +375,10 @@ class CorporateEngine {
         final baseMaxHires = hasLocalManager
             ? _kMaxAutoHiresPerShopPerDayWithManager
             : _kMaxAutoHiresPerShopPerDay;
-        final maxHiresToday = (baseMaxHires * hrMods.autoHireAggressivenessMultiplier)
-            .round()
-            .clamp(1, 6);
+        final maxHiresToday =
+            (baseMaxHires * hrMods.autoHireAggressivenessMultiplier)
+                .round()
+                .clamp(1, 6);
         final neededByCapacity = GameEngine.recommendedExtraEmployees(
           shop,
           day: workingState.currentDay,
@@ -434,7 +443,8 @@ class CorporateEngine {
 
     final affordableTop = <(Employee, double)>[];
     for (final cand in topCandidates) {
-      final fee = cand.salaryPerDay * _hireFeeMultiplier(
+      final fee = cand.salaryPerDay *
+          _hireFeeMultiplier(
             state,
             hasLocalManager: hasLocalManager,
             candidate: cand,
@@ -449,7 +459,8 @@ class CorporateEngine {
     }
 
     for (final cand in sorted) {
-      final fee = cand.salaryPerDay * _hireFeeMultiplier(
+      final fee = cand.salaryPerDay *
+          _hireFeeMultiplier(
             state,
             hasLocalManager: hasLocalManager,
             candidate: cand,
@@ -473,8 +484,7 @@ class CorporateEngine {
     final percentReserve = dailyCosts * _kReserveShareOfDailyCosts;
     final reserve =
         percentReserve > _kMinCashReserve ? percentReserve : _kMinCashReserve;
-    final difficultyMult =
-        _kAutoHireDifficultyReserve[state.difficulty] ?? 1.0;
+    final difficultyMult = _kAutoHireDifficultyReserve[state.difficulty] ?? 1.0;
     return reserve *
         state.difficulty.modifiers.economicPressureMultiplier *
         difficultyMult *
@@ -501,17 +511,21 @@ class CorporateEngine {
       CandidateOrigin.teamContact => 0.97,
       CandidateOrigin.regular => 1.00,
     };
-    final base =
-        _kBaseHireFeeMultiplier * hrRecruitingEffect * salaryEffect * candidatePremium;
+    final base = _kBaseHireFeeMultiplier *
+        hrRecruitingEffect *
+        salaryEffect *
+        candidatePremium;
 
     return (base - globalReduction - localReduction)
         .clamp(_kMinHireFeeMultiplier, 2.10);
   }
 
-  static double _autoHireCandidateScore(Employee candidate, String? preferredTypeId) {
-    final typeFit = preferredTypeId == null || candidate.typeId == preferredTypeId
-        ? 1.0
-        : 0.88;
+  static double _autoHireCandidateScore(
+      Employee candidate, String? preferredTypeId) {
+    final typeFit =
+        preferredTypeId == null || candidate.typeId == preferredTypeId
+            ? 1.0
+            : 0.88;
     final growthBonus = 1.0 + candidate.growthPotential * 0.25;
     final originBonus = switch (candidate.origin) {
       CandidateOrigin.topTalent => 1.10,

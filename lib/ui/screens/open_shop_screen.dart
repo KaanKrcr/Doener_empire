@@ -114,7 +114,12 @@ class _OpenShopScreenState extends ConsumerState<OpenShopScreen> {
       );
     }
 
-    final selected = _resolveSelectedLocation(locations);
+    final pinnedLocation = _resolvePinnedLocation(locations);
+    final locationSelectionLocked = pinnedLocation != null;
+    final selected = _resolveSelectedLocation(
+      locations,
+      pinnedLocation: pinnedLocation,
+    );
     final footTraffic = selected.footTrafficFor(city);
     final weeklyRent = selected.weeklyRentFor(city);
     final deposit = selected.depositFor(city);
@@ -165,27 +170,66 @@ class _OpenShopScreenState extends ConsumerState<OpenShopScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(2),
-                    child: CityMapView(
-                      city: city,
-                      locations: locations,
-                      shops: cityShops,
-                      selected: selected,
-                      fillParent: true,
-                      showDetailChips: true,
-                      onSelect: (location) =>
-                          setState(() => _selectedLocationId = location.id),
+              if (!locationSelectionLocked)
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(2),
+                      child: CityMapView(
+                        city: city,
+                        locations: locations,
+                        shops: cityShops,
+                        selected: selected,
+                        fillParent: true,
+                        showDetailChips: true,
+                        onSelect: (location) =>
+                            setState(() => _selectedLocationId = location.id),
+                      ),
                     ),
                   ),
+                )
+              else
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.bgCard,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Standort bestätigt',
+                        style: AppText.label(
+                          color: AppColors.textMuted,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${selected.label} · ${city.name}',
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Du vergibst jetzt nur noch den Filialnamen und bestätigst die Eröffnung.',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
               const SizedBox(height: 12),
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 220),
@@ -214,8 +258,9 @@ class _OpenShopScreenState extends ConsumerState<OpenShopScreen> {
                   cashAfter: game.cash - deposit,
                   competitionPressure: cityCompetitionPressure,
                   loading: _loading,
+                  locationSelectionLocked: locationSelectionLocked,
                   onOpen: () => _open(selected),
-                  onBack: _goBackToCityMap,
+                  onSecondaryAction: _goBackToCityMap,
                 ),
               ),
             ],
@@ -225,7 +270,32 @@ class _OpenShopScreenState extends ConsumerState<OpenShopScreen> {
     );
   }
 
-  CityMapLocation _resolveSelectedLocation(List<CityMapLocation> locations) {
+  CityMapLocation? _resolvePinnedLocation(List<CityMapLocation> locations) {
+    final initialName = widget.initialLocationName;
+    if (initialName == null || initialName.trim().isEmpty) {
+      return null;
+    }
+    for (final entry in locations) {
+      final isLabelMatch =
+          entry.label.toLowerCase() == initialName.toLowerCase();
+      final isTemplateMatch =
+          entry.template.name.toLowerCase() == initialName.toLowerCase();
+      if (isLabelMatch || isTemplateMatch) {
+        return entry;
+      }
+    }
+    return null;
+  }
+
+  CityMapLocation _resolveSelectedLocation(
+    List<CityMapLocation> locations, {
+    CityMapLocation? pinnedLocation,
+  }) {
+    if (pinnedLocation != null) {
+      _selectedLocationId = pinnedLocation.id;
+      return pinnedLocation;
+    }
+
     final fallback = locations.first;
     final selectedId = _selectedLocationId;
     if (selectedId != null) {
@@ -233,19 +303,6 @@ class _OpenShopScreenState extends ConsumerState<OpenShopScreen> {
         (entry) => entry.id == selectedId,
         orElse: () => fallback,
       );
-    }
-
-    final initialName = widget.initialLocationName;
-    if (initialName != null) {
-      final match = locations.where((entry) {
-        return entry.label.toLowerCase() == initialName.toLowerCase() ||
-            entry.template.name.toLowerCase() == initialName.toLowerCase();
-      });
-      if (match.isNotEmpty) {
-        final resolved = match.first;
-        _selectedLocationId = resolved.id;
-        return resolved;
-      }
     }
 
     _selectedLocationId = fallback.id;
@@ -276,8 +333,9 @@ class _OpenDecisionSheet extends StatelessWidget {
   final double cashAfter;
   final double competitionPressure;
   final bool loading;
+  final bool locationSelectionLocked;
   final VoidCallback onOpen;
-  final VoidCallback onBack;
+  final VoidCallback onSecondaryAction;
 
   const _OpenDecisionSheet({
     super.key,
@@ -290,8 +348,9 @@ class _OpenDecisionSheet extends StatelessWidget {
     required this.cashAfter,
     required this.competitionPressure,
     required this.loading,
+    required this.locationSelectionLocked,
     required this.onOpen,
-    required this.onBack,
+    required this.onSecondaryAction,
   });
 
   @override
@@ -450,8 +509,12 @@ class _OpenDecisionSheet extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
-              onPressed: onBack,
-              child: const Text('Zurück zur Karte'),
+              onPressed: onSecondaryAction,
+              child: Text(
+                locationSelectionLocked
+                    ? 'Standort ändern'
+                    : 'Zurück zur Karte',
+              ),
             ),
           ),
         ],

@@ -271,8 +271,8 @@ class GameNotifier extends Notifier<GameState?> {
       final yesterday =
           oldState.history.isNotEmpty ? oldState.history.last : null;
       final anyLoss = oldState.shops.any((s) {
-        final r = GameEngine.calculateDailyRevenue(s,
-            day: today, state: oldState);
+        final r =
+            GameEngine.calculateDailyRevenue(s, day: today, state: oldState);
         final c =
             GameEngine.calculateDailyCosts(s, day: today, state: oldState);
         return r - c < 0;
@@ -446,6 +446,16 @@ class GameNotifier extends Notifier<GameState?> {
     _save();
   }
 
+  void expandShop(String shopId) {
+    if (state == null) return;
+    final before = state!.cash;
+    state = GameEngine.expandShop(state!, shopId);
+    if (state!.cash != before) {
+      SoundService.play(Sfx.purchase);
+      _save();
+    }
+  }
+
   void buyEquipment(String shopId, EquipmentData equipment) {
     if (state == null) return;
     state = GameEngine.buyEquipment(state!, shopId, equipment);
@@ -539,9 +549,24 @@ class GameNotifier extends Notifier<GameState?> {
     return tutorialStepFromIndex(s.tutorialStep);
   }
 
+  bool get canSkipTutorial {
+    final s = state;
+    if (s == null || !s.tutorialEnabled || s.tutorialDone) return false;
+    if (s.shops.isEmpty) return false;
+    final step = tutorialStepFromIndex(s.tutorialStep);
+    final afterReadReport = step.index >= TutorialStep.readDayReport.index;
+    final afterFirstDay = s.currentDay > 1;
+    return afterReadReport || afterFirstDay;
+  }
+
   void skipTutorial() {
     if (state == null) return;
-    state = state!.copyWith(tutorialEnabled: false);
+    if (!canSkipTutorial) return;
+    state = state!.copyWith(
+      tutorialDone: true,
+      tutorialEnabled: false,
+      tutorialStep: kTutorialStepCount - 1,
+    );
     _save();
   }
 
@@ -563,6 +588,7 @@ class GameNotifier extends Notifier<GameState?> {
     if (current == null) return;
     switch (current) {
       case TutorialStep.understandLocationValues:
+      case TutorialStep.readDayReport:
       case TutorialStep.viewDashboardMetrics:
       case TutorialStep.understandHrCompetitionGrowth:
         _completeTutorialStep(current);
@@ -580,10 +606,6 @@ class GameNotifier extends Notifier<GameState?> {
     if (current == null) return;
     if (current == TutorialStep.openEmpireMenu && tabIndex == 2) {
       _completeTutorialStep(TutorialStep.openEmpireMenu);
-      return;
-    }
-    if (current == TutorialStep.understandLocationValues && tabIndex == 1) {
-      _completeTutorialStep(TutorialStep.understandLocationValues);
       return;
     }
   }

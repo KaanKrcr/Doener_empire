@@ -206,6 +206,11 @@ class _ShopDetailScreenState extends ConsumerState<ShopDetailScreen>
           ),
 
           // ── Tabs ───────────────────────────────────────────────────────
+          _ShopExpansionCard(
+            shop: currentShop,
+            cash: game.cash,
+          ),
+
           Container(
             margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             decoration: BoxDecoration(

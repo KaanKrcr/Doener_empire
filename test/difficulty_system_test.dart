@@ -29,6 +29,81 @@ Shop _shop() {
 }
 
 void main() {
+  test('Difficulty-Modifier entsprechen exakt der Spec', () {
+    final easy = GameDifficulty.easy.modifiers;
+    expect(easy.hrRecruitmentSpeedMultiplier, 1.60);
+    expect(easy.candidateQualityMultiplier, 1.25);
+    expect(easy.candidateSalaryMultiplier, 0.80);
+    expect(easy.competitorAggressivenessMultiplier, 0.60);
+    expect(easy.customerPriceSensitivityMultiplier, 0.65);
+    expect(easy.progressSpeedMultiplier, 1.35);
+    expect(easy.reputationPenaltyMultiplier, 0.60);
+    expect(easy.economicPressureMultiplier, 0.75);
+
+    final normal = GameDifficulty.normal.modifiers;
+    expect(normal.hrRecruitmentSpeedMultiplier, 1.00);
+    expect(normal.candidateQualityMultiplier, 1.00);
+    expect(normal.candidateSalaryMultiplier, 1.00);
+    expect(normal.competitorAggressivenessMultiplier, 1.00);
+    expect(normal.customerPriceSensitivityMultiplier, 1.00);
+    expect(normal.progressSpeedMultiplier, 1.00);
+    expect(normal.reputationPenaltyMultiplier, 1.00);
+    expect(normal.economicPressureMultiplier, 1.00);
+
+    final hard = GameDifficulty.hard.modifiers;
+    expect(hard.hrRecruitmentSpeedMultiplier, 0.70);
+    expect(hard.candidateQualityMultiplier, 0.85);
+    expect(hard.candidateSalaryMultiplier, 1.20);
+    expect(hard.competitorAggressivenessMultiplier, 1.40);
+    expect(hard.customerPriceSensitivityMultiplier, 1.30);
+    expect(hard.progressSpeedMultiplier, 0.80);
+    expect(hard.reputationPenaltyMultiplier, 1.30);
+    expect(hard.economicPressureMultiplier, 1.25);
+
+    final impossible = GameDifficulty.impossible.modifiers;
+    expect(impossible.hrRecruitmentSpeedMultiplier, 0.45);
+    expect(impossible.candidateQualityMultiplier, 0.70);
+    expect(impossible.candidateSalaryMultiplier, 1.45);
+    expect(impossible.competitorAggressivenessMultiplier, 1.90);
+    expect(impossible.customerPriceSensitivityMultiplier, 1.65);
+    expect(impossible.progressSpeedMultiplier, 0.60);
+    expect(impossible.reputationPenaltyMultiplier, 1.70);
+    expect(impossible.economicPressureMultiplier, 1.55);
+  });
+
+  test('Hard und Impossible sind bei Kerndruckfaktoren über Normal', () {
+    final normal = GameDifficulty.normal.modifiers;
+    final hard = GameDifficulty.hard.modifiers;
+    final impossible = GameDifficulty.impossible.modifiers;
+
+    expect(hard.competitorAggressivenessMultiplier,
+        greaterThan(normal.competitorAggressivenessMultiplier));
+    expect(impossible.competitorAggressivenessMultiplier,
+        greaterThan(normal.competitorAggressivenessMultiplier));
+
+    expect(hard.customerPriceSensitivityMultiplier,
+        greaterThan(normal.customerPriceSensitivityMultiplier));
+    expect(impossible.customerPriceSensitivityMultiplier,
+        greaterThan(normal.customerPriceSensitivityMultiplier));
+
+    expect(hard.economicPressureMultiplier,
+        greaterThan(normal.economicPressureMultiplier));
+    expect(impossible.economicPressureMultiplier,
+        greaterThan(normal.economicPressureMultiplier));
+  });
+
+  test('Easy bleibt verzeihender als Normal', () {
+    final easy = GameDifficulty.easy.modifiers;
+    final normal = GameDifficulty.normal.modifiers;
+
+    expect(easy.competitorAggressivenessMultiplier,
+        lessThan(normal.competitorAggressivenessMultiplier));
+    expect(easy.customerPriceSensitivityMultiplier,
+        lessThan(normal.customerPriceSensitivityMultiplier));
+    expect(
+        easy.economicPressureMultiplier, lessThan(normal.economicPressureMultiplier));
+  });
+
   test('Alte Saves ohne difficulty laden als normal', () {
     final state = GameState.initial(
       companyName: 'Legacy',
@@ -130,5 +205,56 @@ void main() {
 
     expect(easyScore / 200, greaterThan(hardScore / 200));
     expect(easySalary / 200, lessThan(hardSalary / 200));
+  });
+
+  test(
+      'Hard und Impossible unterscheiden sich klarer bei Konkurrenz-Aggressivität',
+      () {
+    final normalAgg =
+        GameDifficulty.normal.modifiers.competitorAggressivenessMultiplier;
+    final hardAgg =
+        GameDifficulty.hard.modifiers.competitorAggressivenessMultiplier;
+    final impossibleAgg =
+        GameDifficulty.impossible.modifiers.competitorAggressivenessMultiplier;
+
+    expect(hardAgg, greaterThan(normalAgg + 0.30));
+    expect(impossibleAgg, greaterThan(hardAgg + 0.40));
+  });
+
+  test('Hard/Impossible halten weniger stabile Monopole als Normal', () {
+    GameState simulate(GameDifficulty difficulty, int days) {
+      var state = GameState.initial(
+        companyName: 'Diff',
+        founderName: 'Tester',
+        startCash: 15000,
+        difficulty: difficulty,
+      ).copyWith(
+        shops: [_shop()],
+        competitors: const [],
+      );
+
+      for (var i = 0; i < days; i++) {
+        final updated = CompetitorEngine.processDay(state);
+        state = state.copyWith(
+          competitors: updated,
+          currentDay: state.currentDay + 1,
+        );
+      }
+      return state;
+    }
+
+    final normal = simulate(GameDifficulty.normal, 500);
+    final hard = simulate(GameDifficulty.hard, 500);
+    final impossible = simulate(GameDifficulty.impossible, 500);
+
+    int countFor(GameState state) =>
+        state.competitors.where((c) => c.cityId == 'berlin').length;
+
+    final normalCount = countFor(normal);
+    final hardCount = countFor(hard);
+    final impossibleCount = countFor(impossible);
+
+    expect(hardCount, greaterThanOrEqualTo(normalCount));
+    expect(impossibleCount, greaterThanOrEqualTo(hardCount));
   });
 }

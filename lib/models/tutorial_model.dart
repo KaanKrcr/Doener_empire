@@ -2,9 +2,9 @@ enum TutorialStep {
   openFirstShop,
   understandLocationValues,
   changeProductPrice,
-  hireFirstEmployee,
   endFirstDay,
   readDayReport,
+  hireFirstEmployee,
   viewDashboardMetrics,
   openEmpireMenu,
   understandHrCompetitionGrowth,
@@ -25,9 +25,9 @@ extension TutorialStepMeta on TutorialStep {
       TutorialStep.openFirstShop => 'Erste Filiale eröffnen',
       TutorialStep.understandLocationValues => 'Standortwerte verstehen',
       TutorialStep.changeProductPrice => 'Produktpreis ändern',
-      TutorialStep.hireFirstEmployee => 'Mitarbeiter einstellen',
       TutorialStep.endFirstDay => 'Ersten Tag abschließen',
       TutorialStep.readDayReport => 'Tagesbericht lesen',
+      TutorialStep.hireFirstEmployee => 'Mitarbeiter einstellen',
       TutorialStep.viewDashboardMetrics => 'Dashboard-Kennzahlen ansehen',
       TutorialStep.openEmpireMenu => 'Imperium-Menü öffnen',
       TutorialStep.understandHrCompetitionGrowth => 'HR, Konkurrenz, Wachstum',
@@ -38,17 +38,17 @@ extension TutorialStepMeta on TutorialStep {
   String get description {
     return switch (this) {
       TutorialStep.openFirstShop =>
-        'Wechsle zu Städte und eröffne deine erste Filiale.',
+        'Wechsle zur Stadtkarte und eröffne deine erste Filiale.',
       TutorialStep.understandLocationValues =>
         'Prüfe Miete, Nachfrage und Konkurrenz am Standort.',
       TutorialStep.changeProductPrice =>
         'Passe in einer Filiale mindestens einen Produktpreis an.',
-      TutorialStep.hireFirstEmployee =>
-        'Stelle einen ersten Mitarbeiter aus dem Bewerberpool ein.',
       TutorialStep.endFirstDay =>
         'Beende den Tag für Umsatz, Kosten und Reputation.',
       TutorialStep.readDayReport =>
         'Lies den Tagesabschluss und bestätige ihn.',
+      TutorialStep.hireFirstEmployee =>
+        'Stelle einen ersten Mitarbeiter aus dem Bewerberpool ein.',
       TutorialStep.viewDashboardMetrics =>
         'Sieh dir Kasse, Kunden und Tagesprofit an.',
       TutorialStep.openEmpireMenu =>
@@ -62,15 +62,16 @@ extension TutorialStepMeta on TutorialStep {
 
   String get hint {
     return switch (this) {
-      TutorialStep.openFirstShop => 'Tipp: Tab "Städte"',
+      TutorialStep.openFirstShop => 'Tipp: Starte über die Stadtkarte.',
       TutorialStep.understandLocationValues =>
         'Vergleiche die Werte vor der Standortwahl.',
       TutorialStep.changeProductPrice =>
         'Preise veränderst du in den Filialdetails.',
+      TutorialStep.endFirstDay => 'Nutze den goldenen Button im Dashboard.',
+      TutorialStep.readDayReport =>
+        'Schließe den Tagesbericht nach dem Lesen.',
       TutorialStep.hireFirstEmployee =>
         'Mitarbeiter findest du in der Filiale.',
-      TutorialStep.endFirstDay => 'Nutze den goldenen Button im Dashboard.',
-      TutorialStep.readDayReport => 'Schließe den Tagesbericht nach dem Lesen.',
       TutorialStep.viewDashboardMetrics =>
         'Achte auf Gewinn, Kunden und aktuelle Kosten.',
       TutorialStep.openEmpireMenu => 'Tipp: Tab "Imperium"',
@@ -84,10 +85,26 @@ extension TutorialStepMeta on TutorialStep {
   String? get actionLabel {
     return switch (this) {
       TutorialStep.understandLocationValues => 'Weiter',
-      TutorialStep.viewDashboardMetrics => 'Kennzahlen angesehen',
-      TutorialStep.understandHrCompetitionGrowth => 'Weiter',
+      TutorialStep.readDayReport => 'Tagesbericht verstanden',
+      TutorialStep.viewDashboardMetrics => 'Dashboard ansehen',
+      TutorialStep.understandHrCompetitionGrowth => 'Verstanden',
       TutorialStep.finishTutorial => 'Tutorial beenden',
       _ => null,
+    };
+  }
+
+  String? get jumpLabel {
+    return switch (this) {
+      TutorialStep.openFirstShop => 'Zur Stadtkarte',
+      TutorialStep.understandLocationValues => 'Standortwerte ansehen',
+      TutorialStep.changeProductPrice => 'Preis ändern',
+      TutorialStep.endFirstDay => 'Tag beenden',
+      TutorialStep.readDayReport => 'Tagesbericht ansehen',
+      TutorialStep.hireFirstEmployee => 'Mitarbeiter einstellen',
+      TutorialStep.viewDashboardMetrics => 'Zum Dashboard',
+      TutorialStep.openEmpireMenu => 'Zum Imperium',
+      TutorialStep.understandHrCompetitionGrowth => 'Zum Konzern',
+      TutorialStep.finishTutorial => null,
     };
   }
 
@@ -99,12 +116,12 @@ extension TutorialStepMeta on TutorialStep {
         'Standortwerte bestimmen, wie schnell eine Filiale profitabel wird und wie viel Risiko du trägst.',
       TutorialStep.changeProductPrice =>
         'Preisentscheidungen beeinflussen Nachfrage und Marge direkt. Das ist einer der wichtigsten Hebel.',
-      TutorialStep.hireFirstEmployee =>
-        'Personal sorgt für Kapazität und Servicequalität. Ohne Team wächst die Filiale nicht stabil.',
       TutorialStep.endFirstDay =>
         'Der Tagesabschluss zeigt dir, ob dein Setup wirtschaftlich funktioniert.',
       TutorialStep.readDayReport =>
         'Im Bericht erkennst du früh, ob Preise, Personal oder Kosten angepasst werden müssen.',
+      TutorialStep.hireFirstEmployee =>
+        'Personal sorgt für Kapazität und Servicequalität. Ohne Team wächst die Filiale nicht stabil.',
       TutorialStep.viewDashboardMetrics =>
         'Das Dashboard hilft dir, schnelle Entscheidungen datenbasiert zu treffen.',
       TutorialStep.openEmpireMenu =>
@@ -121,9 +138,9 @@ extension TutorialStepMeta on TutorialStep {
       TutorialStep.openFirstShop => 1,
       TutorialStep.understandLocationValues => 1,
       TutorialStep.changeProductPrice => 1,
-      TutorialStep.hireFirstEmployee => 1,
       TutorialStep.endFirstDay => 0,
       TutorialStep.readDayReport => 0,
+      TutorialStep.hireFirstEmployee => 1,
       TutorialStep.viewDashboardMetrics => 0,
       TutorialStep.openEmpireMenu => 2,
       TutorialStep.understandHrCompetitionGrowth => 3,

@@ -69,9 +69,10 @@ class CompetitorEngine {
   static List<Competitor> processDay(GameState state) {
     final aggressiveness =
         state.difficulty.modifiers.competitorAggressivenessMultiplier;
+    final reactionBoost = _reactionBoostForDifficulty(state.difficulty);
     final updated = state.competitors.map((c) {
       c.daysSinceLastAction += 1;
-      _maybeAct(c, state, aggressiveness);
+      _maybeAct(c, state, aggressiveness, reactionBoost);
       return c;
     }).toList();
 
@@ -95,10 +96,17 @@ class CompetitorEngine {
     // Markteintritt: erfolgreiche Märkte (Spieler präsent, unter natürlicher
     // Sättigung) ziehen neue Konkurrenz an — Gegenstück zum Marktaustritt.
     for (final cityId in state.shops.map((s) => s.cityId).toSet()) {
-      final cap = _naturalCompetitorCap(cityId);
+      final cap = _effectiveCompetitorCap(cityId, state.difficulty);
       final countInCity = survivors.where((c) => c.cityId == cityId).length;
       if (countInCity >= cap) continue;
-      final chance = (0.02 * aggressiveness).clamp(0.01, 0.06);
+      final marketMomentum = _playerCityMomentum(state, cityId);
+      final entryBoost = _entryBoostForDifficulty(state.difficulty);
+      var chance =
+          (0.012 + marketMomentum * 0.06) * aggressiveness * entryBoost;
+      if (countInCity <= 1) {
+        chance += 0.03 * entryBoost;
+      }
+      chance = chance.clamp(0.01, 0.30);
       if (_rng.nextDouble() < chance) {
         survivors.add(CompetitorFactory.create(
           id: 'comp_${cityId}_${DateTime.now().microsecondsSinceEpoch}',
@@ -147,6 +155,50 @@ class CompetitorEngine {
       case CityTier.metropole:
         return 4;
     }
+  }
+
+  static int _effectiveCompetitorCap(String cityId, GameDifficulty difficulty) {
+    final bonus = switch (difficulty) {
+      GameDifficulty.easy => 0,
+      GameDifficulty.normal => 0,
+      GameDifficulty.hard => 1,
+      GameDifficulty.impossible => 2,
+    };
+    return (_naturalCompetitorCap(cityId) + bonus).clamp(1, 6);
+  }
+
+  static double _reactionBoostForDifficulty(GameDifficulty difficulty) {
+    return switch (difficulty) {
+      GameDifficulty.easy => 0.85,
+      GameDifficulty.normal => 1.0,
+      GameDifficulty.hard => 1.20,
+      GameDifficulty.impossible => 1.45,
+    };
+  }
+
+  static double _entryBoostForDifficulty(GameDifficulty difficulty) {
+    return switch (difficulty) {
+      GameDifficulty.easy => 0.90,
+      GameDifficulty.normal => 1.0,
+      GameDifficulty.hard => 1.25,
+      GameDifficulty.impossible => 1.60,
+    };
+  }
+
+  static double _playerCityMomentum(GameState state, String cityId) {
+    final cityShops =
+        state.shops.where((shop) => shop.cityId == cityId).toList();
+    if (cityShops.isEmpty) return 0;
+
+    var score = 0.0;
+    for (final shop in cityShops) {
+      final efficiency = shop.weeklyRent <= 0
+          ? 1.0
+          : (shop.footTraffic / shop.weeklyRent).clamp(0.4, 4.0);
+      final repSignal = ((shop.reputation - 2.8) / 2.2).clamp(-0.2, 0.8);
+      score += 0.30 + (efficiency * 0.10) + (repSignal * 0.18);
+    }
+    return (score / cityShops.length).clamp(0.0, 1.2);
   }
 
   static bool _maybeDeclineOrExit(
@@ -199,8 +251,9 @@ class CompetitorEngine {
     Competitor c,
     GameState state,
     double aggressiveness,
+    double reactionBoost,
   ) {
-    final minDays = (5 / aggressiveness).round().clamp(2, 9);
+    final minDays = (5 / (aggressiveness * reactionBoost)).round().clamp(1, 8);
     if (c.daysSinceLastAction < minDays) return;
 
     final baseActionChance = switch (c.personality) {
@@ -210,16 +263,19 @@ class CompetitorEngine {
       CompetitorPersonality.premium => 0.15,
       CompetitorPersonality.traditional => 0.10,
     };
-    final actionChance = (baseActionChance * aggressiveness).clamp(0.05, 0.90);
+    final actionChance =
+        (baseActionChance * aggressiveness * reactionBoost).clamp(0.06, 0.94);
     if (_rng.nextDouble() > actionChance) return;
 
     c.daysSinceLastAction = 0;
 
     // Welche Aktion?
     final r = _rng.nextDouble();
-    final expansionChance = (0.30 * aggressiveness).clamp(0.15, 0.55);
+    final expansionChance =
+        (0.30 * aggressiveness * reactionBoost).clamp(0.15, 0.65);
     final priceChance =
-        (0.30 + (aggressiveness - 1.0) * 0.10).clamp(0.20, 0.50);
+        (0.30 + (aggressiveness - 1.0) * 0.12 + (reactionBoost - 1.0) * 0.10)
+            .clamp(0.20, 0.56);
     if (r < expansionChance && c.shopCount < 5 && !_isStruggling(c)) {
       // Expansion (strauchelnde Ketten expandieren nicht)
       c.shopCount = (c.shopCount + 1).clamp(1, 5);

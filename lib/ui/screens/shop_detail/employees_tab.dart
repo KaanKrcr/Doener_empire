@@ -104,7 +104,7 @@ class _EmployeesTab extends ConsumerWidget {
                     ),
                     Text(
                       atMax
-                          ? 'Diese Filiale hat Platz für maximal $maxEmp Personen. Eröffne neue Filialen für mehr Personal.'
+                          ? 'Diese Filiale hat Platz für maximal $maxEmp Personen. Nutze "Filiale ausbauen" für mehr Personal-Cap.'
                           : 'Noch ${maxEmp - shop.employees.length} freie Stelle${maxEmp - shop.employees.length == 1 ? "" : "n"}.',
                       style: const TextStyle(
                         fontSize: 11,
@@ -183,7 +183,7 @@ class _EmployeesTab extends ConsumerWidget {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
-                        'Filiale voll besetzt ($maxEmp/$maxEmp). Eröffne neue Filiale.'),
+                        'Filiale voll besetzt ($maxEmp/$maxEmp). Baue die Filiale aus oder eröffne eine weitere.'),
                     backgroundColor: AppColors.warning,
                   ),
                 );
@@ -243,8 +243,7 @@ class _EmployeesTab extends ConsumerWidget {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (ctx) =>
-          _TrainingSheet(shopId: shopId, employeeId: employeeId),
+      builder: (ctx) => _TrainingSheet(shopId: shopId, employeeId: employeeId),
     );
   }
 }
@@ -316,7 +315,8 @@ class _TrainingSheet extends ConsumerWidget {
               skill: skill,
               employee: employee,
               cost: HrEngine.trainingCost(game, employee, skill),
-              canAfford: game.cash >= HrEngine.trainingCost(game, employee, skill),
+              canAfford:
+                  game.cash >= HrEngine.trainingCost(game, employee, skill),
               onTrain: () {
                 ref
                     .read(gameProvider.notifier)
@@ -371,8 +371,8 @@ class _TrainingRow extends StatelessWidget {
                         color: AppColors.textPrimary)),
                 Text(
                   maxed ? 'Maximum erreicht' : 'Stufe $value → ${value + 1}',
-                  style: const TextStyle(
-                      fontSize: 11, color: AppColors.textMuted),
+                  style:
+                      const TextStyle(fontSize: 11, color: AppColors.textMuted),
                 ),
               ],
             ),
@@ -947,9 +947,7 @@ class _ShiftChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: selected
-              ? AppColors.primary.withAlpha(30)
-              : AppColors.bg,
+          color: selected ? AppColors.primary.withAlpha(30) : AppColors.bg,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: color),
         ),
@@ -1171,4 +1169,3 @@ class _HireCard extends StatelessWidget {
     );
   }
 }
-

@@ -7,6 +7,7 @@ import '../core/localization.dart';
 import '../models/tutorial_model.dart';
 import '../providers/game_provider.dart';
 import '../services/sound_service.dart';
+import 'tutorial_navigation.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/cities_screen.dart';
 import 'screens/stats_screen.dart';
@@ -15,7 +16,7 @@ import 'screens/finance_screen.dart';
 import 'screens/bank_screen.dart';
 
 final navIndexProvider = StateProvider<int>((ref) => 0);
-final tutorialCardCollapsedProvider = StateProvider<bool>((ref) => true);
+final tutorialCardCollapsedProvider = StateProvider<bool>((ref) => false);
 
 const int kTabDashboard = 0;
 const int kTabCities = 1;
@@ -47,6 +48,10 @@ class MainScaffold extends ConsumerWidget {
     final tutorialProgress =
         ((game?.tutorialStep ?? 0) + 1).clamp(1, kTutorialStepCount);
     final tutorialCollapsed = ref.watch(tutorialCardCollapsedProvider);
+    final forceExpanded = tutorialStep != null &&
+        tutorialStep.index <= TutorialStep.readDayReport.index;
+    final effectiveCollapsed = forceExpanded ? false : tutorialCollapsed;
+    final canSkipTutorial = ref.read(gameProvider.notifier).canSkipTutorial;
 
     ref.listen<int>(navIndexProvider, (prev, next) {
       ref.read(gameProvider.notifier).onTutorialTabOpened(next);
@@ -93,16 +98,24 @@ class MainScaffold extends ConsumerWidget {
                   step: tutorialStep,
                   currentStep: tutorialProgress,
                   totalSteps: kTutorialStepCount,
-                  collapsed: tutorialCollapsed,
-                  onSkip: () => ref.read(gameProvider.notifier).skipTutorial(),
+                  collapsed: effectiveCollapsed,
+                  canSkip: canSkipTutorial,
+                  allowCollapse: !forceExpanded,
+                  showPauseButton: !forceExpanded,
+                  onSkip: canSkipTutorial
+                      ? () => ref.read(gameProvider.notifier).skipTutorial()
+                      : null,
                   // „Später" klappt nur ein (Tutorial bleibt aktiv), statt es
                   // komplett zu beenden.
-                  onPause: () => ref
-                      .read(tutorialCardCollapsedProvider.notifier)
-                      .state = true,
+                  onPause: forceExpanded
+                      ? null
+                      : () => ref
+                          .read(tutorialCardCollapsedProvider.notifier)
+                          .state = true,
                   onToggleCollapse: () {
+                    if (forceExpanded) return;
                     ref.read(tutorialCardCollapsedProvider.notifier).state =
-                        !tutorialCollapsed;
+                        !effectiveCollapsed;
                   },
                   onAction: () =>
                       ref.read(gameProvider.notifier).acknowledgeTutorialStep(),
@@ -146,10 +159,21 @@ class MainScaffold extends ConsumerWidget {
                     ),
                   ),
                   onJump: () {
-                    final target = tutorialStep.targetTabIndex;
-                    if (target == null) return;
-                    ref.read(navIndexProvider.notifier).state = target;
-                    ref.read(gameProvider.notifier).onTutorialTabOpened(target);
+                    final currentGame = game;
+                    if (currentGame == null) return;
+                    final jumpTarget =
+                        tutorialJumpTarget(currentGame, tutorialStep);
+                    final targetTab = jumpTarget.tabIndex;
+                    if (targetTab != null) {
+                      ref.read(navIndexProvider.notifier).state = targetTab;
+                      ref.read(gameProvider.notifier).onTutorialTabOpened(
+                            targetTab,
+                          );
+                    }
+                    final route = jumpTarget.route;
+                    if (route != null) {
+                      context.push(route);
+                    }
                   },
                 ),
               ),
@@ -511,8 +535,11 @@ class _TutorialCard extends StatelessWidget {
   final int currentStep;
   final int totalSteps;
   final bool collapsed;
-  final VoidCallback onSkip;
-  final VoidCallback onPause;
+  final bool canSkip;
+  final bool allowCollapse;
+  final bool showPauseButton;
+  final VoidCallback? onSkip;
+  final VoidCallback? onPause;
   final VoidCallback onWhy;
   final VoidCallback onAction;
   final VoidCallback onJump;
@@ -523,6 +550,9 @@ class _TutorialCard extends StatelessWidget {
     required this.currentStep,
     required this.totalSteps,
     required this.collapsed,
+    required this.canSkip,
+    required this.allowCollapse,
+    required this.showPauseButton,
     required this.onSkip,
     required this.onPause,
     required this.onWhy,
@@ -570,13 +600,13 @@ class _TutorialCard extends StatelessWidget {
     );
   }
 
-  /// Schlanke Ein-Zeilen-Pille — blockiert nur minimal den oberen Rand.
+  /// Schlanke Ein-Zeilen-Pille - blockiert nur minimal den oberen Rand.
   Widget _buildCollapsed() {
     return Material(
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        onTap: onToggleCollapse,
+        onTap: allowCollapse ? onToggleCollapse : null,
         child: Container(
           padding: const EdgeInsets.fromLTRB(12, 7, 6, 7),
           decoration: _boxDeco,
@@ -598,8 +628,13 @@ class _TutorialCard extends StatelessWidget {
                   ),
                 ),
               ),
-              const Icon(Icons.keyboard_arrow_down_rounded,
-                  color: AppColors.textSecondary, size: 22),
+              Icon(
+                allowCollapse
+                    ? Icons.keyboard_arrow_down_rounded
+                    : Icons.lock_outline_rounded,
+                color: AppColors.textSecondary,
+                size: 20,
+              ),
             ],
           ),
         ),
@@ -627,24 +662,26 @@ class _TutorialCard extends StatelessWidget {
               const SizedBox(width: 8),
               _stepBadge,
               const Spacer(),
-              TextButton(
-                onPressed: onSkip,
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.textMuted,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  visualDensity: VisualDensity.compact,
+              if (canSkip)
+                TextButton(
+                  onPressed: onSkip,
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.textMuted,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  child: const Text('Überspringen'),
                 ),
-                child: const Text('Überspringen'),
-              ),
-              InkWell(
-                onTap: onToggleCollapse,
-                borderRadius: BorderRadius.circular(20),
-                child: const Padding(
-                  padding: EdgeInsets.all(4),
-                  child: Icon(Icons.keyboard_arrow_up_rounded,
-                      color: AppColors.textSecondary, size: 22),
+              if (allowCollapse)
+                InkWell(
+                  onTap: onToggleCollapse,
+                  borderRadius: BorderRadius.circular(20),
+                  child: const Padding(
+                    padding: EdgeInsets.all(4),
+                    child: Icon(Icons.keyboard_arrow_up_rounded,
+                        color: AppColors.textSecondary, size: 22),
+                  ),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 6),
@@ -695,7 +732,7 @@ class _TutorialCard extends StatelessWidget {
                     visualDensity: VisualDensity.compact,
                   ),
                   icon: const Icon(Icons.near_me_rounded, size: 16),
-                  label: const Text('Zum Ziel'),
+                  label: Text(step.jumpLabel ?? 'Zum Ziel'),
                 ),
               OutlinedButton(
                 onPressed: onWhy,
@@ -711,18 +748,19 @@ class _TutorialCard extends StatelessWidget {
           const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: onPause,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.textMuted,
-                    side: const BorderSide(color: AppColors.border),
+              if (showPauseButton)
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: onPause,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.textMuted,
+                      side: const BorderSide(color: AppColors.border),
+                    ),
+                    child: const Text('Später'),
                   ),
-                  child: const Text('Später'),
                 ),
-              ),
               if (canConfirmStep) ...[
-                const SizedBox(width: 8),
+                if (showPauseButton) const SizedBox(width: 8),
                 Expanded(
                   child: ElevatedButton(
                     onPressed: onAction,
@@ -752,3 +790,5 @@ class _TutorialCard extends StatelessWidget {
     );
   }
 }
+
+
