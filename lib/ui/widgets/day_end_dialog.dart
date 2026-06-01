@@ -3,9 +3,12 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme.dart';
+import '../../models/game_state.dart';
+import '../../models/shop_model.dart';
 import '../../models/event_model.dart';
 import '../../models/achievement_model.dart';
 import '../../providers/game_provider.dart';
+import '../../services/game_engine.dart';
 import 'animated_money.dart';
 import 'confetti_overlay.dart';
 
@@ -31,8 +34,10 @@ class DayEndDialog extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final r = result;
+    final game = ref.watch(gameProvider);
     final isGoodDay = r.profit >= 0;
     final weekday = _kWeekdays[r.day % 7];
+    final insights = _buildInsights(r, game);
 
     return Dialog(
       backgroundColor: AppColors.bgCard,
@@ -145,8 +150,10 @@ class DayEndDialog extends ConsumerWidget {
                     color: AppColors.accent,
                     icon: Icons.people_alt_rounded,
                   ).animate().fadeIn(delay: 480.ms).slideX(begin: -0.1, end: 0),
+                  const Divider(color: AppColors.border, height: 24),
+                  _InsightCard(insights: insights),
                   if (r.missionCompleted != null) ...[
-                    const Divider(color: AppColors.border, height: 24),
+                    const SizedBox(height: 10),
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
@@ -286,6 +293,139 @@ class DayEndDialog extends ConsumerWidget {
       ),
     );
   }
+
+  List<_InsightLine> _buildInsights(DayEndResult r, GameState? game) {
+    final insights = <_InsightLine>[];
+
+    final margin = r.revenue > 0 ? r.profit / r.revenue : 0.0;
+    if (r.profit < 0) {
+      insights.add(
+        _InsightLine(
+          text:
+              'Verlusttag: Kosten lagen ${_fmt.format(r.costs - r.revenue)} EUR ueber dem Umsatz.',
+          tone: _InsightTone.danger,
+        ),
+      );
+    } else if (margin < 0.12) {
+      insights.add(
+        _InsightLine(
+          text:
+              'Gewinn ist knapp (${(margin * 100).round()}% Marge): Preis und Kosten eng monitoren.',
+          tone: _InsightTone.warning,
+        ),
+      );
+    } else {
+      insights.add(
+        _InsightLine(
+          text:
+              'Solider Tag: ${(margin * 100).round()}% Marge bei ${_fmt.format(r.customers)} Kunden.',
+          tone: _InsightTone.success,
+        ),
+      );
+    }
+
+    DailyRecord? yesterday;
+    if (game != null) {
+      for (final record in game.history) {
+        if (record.day == r.day - 1) {
+          yesterday = record;
+          break;
+        }
+      }
+    }
+    if (yesterday != null) {
+      final delta = r.customers - yesterday.customers;
+      if (delta >= 20) {
+        insights.add(
+          _InsightLine(
+            text: 'Kundenzahl stieg um +$delta vs. gestern.',
+            tone: _InsightTone.success,
+          ),
+        );
+      } else if (delta <= -20) {
+        insights.add(
+          _InsightLine(
+            text:
+                'Kundenzahl fiel um ${delta.abs()} vs. gestern: Standortfit und Preis pruefen.',
+            tone: _InsightTone.warning,
+          ),
+        );
+      } else {
+        insights.add(
+          _InsightLine(
+            text: 'Kundenzahl stabil (Delta ${delta >= 0 ? '+' : ''}$delta).',
+            tone: _InsightTone.neutral,
+          ),
+        );
+      }
+    } else {
+      insights.add(
+        const _InsightLine(
+          text:
+              'Tag 1 Referenz: erst mit Tag 2 wird ein sauberer Trendvergleich moeglich.',
+          tone: _InsightTone.neutral,
+        ),
+      );
+    }
+
+    if (game == null || game.shops.isEmpty) {
+      insights.add(
+        const _InsightLine(
+          text:
+              'Naechster Schritt: erste Filiale eroefnen und dann Preise nachziehen.',
+          tone: _InsightTone.neutral,
+        ),
+      );
+      return insights;
+    }
+
+    Shop? capacityShop;
+    for (final shop in game.shops) {
+      if (GameEngine.isCapacityLimited(shop, day: r.day, state: game)) {
+        capacityShop = shop;
+        break;
+      }
+    }
+
+    if (capacityShop != null) {
+      insights.add(
+        _InsightLine(
+          text:
+              'Upgrade zuerst: ${capacityShop.displayName} verliert Nachfrage durch Kapazitaetslimit.',
+          tone: _InsightTone.warning,
+        ),
+      );
+      return insights;
+    }
+
+    var cheapestDeposit = double.infinity;
+    for (final shop in game.shops) {
+      final deposit = shop.weeklyRent * 2;
+      if (deposit < cheapestDeposit) cheapestDeposit = deposit;
+    }
+
+    final hasExpansionBudget =
+        cheapestDeposit.isFinite && game.cash >= cheapestDeposit * 1.2;
+    if (r.profit > 0 && hasExpansionBudget) {
+      insights.add(
+        const _InsightLine(
+          text:
+              'Expansion moeglich: Cash reicht fuer eine zweite Filiale in aehnlicher Lage.',
+          tone: _InsightTone.success,
+        ),
+      );
+    } else {
+      insights.add(
+        const _InsightLine(
+          text:
+              'Vor Expansion zuerst Upgrade-Zyklus fahren: Preis, Team oder Equipment stabilisieren.',
+          tone: _InsightTone.warning,
+        ),
+      );
+    }
+
+    return insights;
+  }
 }
 
 class _SummaryRow extends StatelessWidget {
@@ -334,6 +474,109 @@ class _SummaryRow extends StatelessWidget {
       ),
     );
   }
+}
+
+class _InsightCard extends StatelessWidget {
+  final List<_InsightLine> insights;
+
+  const _InsightCard({required this.insights});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.bgSurface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'TOP 3 INSIGHTS',
+            style: TextStyle(
+              fontSize: 10,
+              color: AppColors.textMuted,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.6,
+            ),
+          ),
+          const SizedBox(height: 8),
+          for (final insight in insights)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    _iconForTone(insight.tone),
+                    size: 14,
+                    color: _colorForTone(insight.tone),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      insight.text,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                        height: 1.35,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  IconData _iconForTone(_InsightTone tone) {
+    switch (tone) {
+      case _InsightTone.success:
+        return Icons.check_circle_outline;
+      case _InsightTone.warning:
+        return Icons.warning_amber_rounded;
+      case _InsightTone.danger:
+        return Icons.error_outline_rounded;
+      case _InsightTone.neutral:
+        return Icons.info_outline_rounded;
+    }
+  }
+
+  Color _colorForTone(_InsightTone tone) {
+    switch (tone) {
+      case _InsightTone.success:
+        return AppColors.success;
+      case _InsightTone.warning:
+        return AppColors.warning;
+      case _InsightTone.danger:
+        return AppColors.danger;
+      case _InsightTone.neutral:
+        return AppColors.textMuted;
+    }
+  }
+}
+
+class _InsightLine {
+  final String text;
+  final _InsightTone tone;
+
+  const _InsightLine({
+    required this.text,
+    required this.tone,
+  });
+}
+
+enum _InsightTone {
+  success,
+  warning,
+  danger,
+  neutral,
 }
 
 // ── Event-Dialog ──────────────────────────────────────────────────────────
