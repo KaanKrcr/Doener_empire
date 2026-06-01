@@ -47,7 +47,7 @@ class _CitiesScreenState extends ConsumerState<CitiesScreen> {
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
-        title: const Text('Staedtekarte'),
+        title: const Text('Städtekarte'),
         automaticallyImplyLeading: false,
         toolbarHeight: 52,
       ),
@@ -69,7 +69,7 @@ class _CitiesScreenState extends ConsumerState<CitiesScreen> {
                   color: AppColors.accent,
                 ),
                 PremiumMetricData(
-                  label: 'Staedte offen',
+                  label: 'Städte offen',
                   value: '$unlockedCount / ${kAllCities.length}',
                   color: AppColors.secondary,
                 ),
@@ -156,7 +156,7 @@ class _CitiesScreenState extends ConsumerState<CitiesScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Nicht genug Kapital. Benoetigt: ${_fmt.format(city.unlockCost)} EUR',
+            'Nicht genug Kapital. Benötigt: ${_fmt.format(city.unlockCost)} EUR',
           ),
         ),
       );
@@ -609,7 +609,7 @@ class _CityDecisionSheet extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          const PremiumSectionLabel(text: 'PRIORITAET JETZT'),
+          const PremiumSectionLabel(text: 'PRIORITÄT JETZT'),
           const SizedBox(height: 6),
           PremiumStatusHint(
             tone: _priorityTone(canAffordUnlock, remainingRevenue),
@@ -626,7 +626,7 @@ class _CityDecisionSheet extends StatelessWidget {
                   ? PremiumStatusTone.success
                   : PremiumStatusTone.danger,
               text: canAffordUnlock
-                  ? 'Kapital gedeckt: Freischaltung sofort moeglich.'
+                  ? 'Kapital gedeckt: Freischaltung sofort möglich.'
                   : 'Kapital fehlt: ${_fmt.format(missingCash)} EUR.',
             ),
           ],
@@ -670,33 +670,33 @@ class _CityDecisionSheet extends StatelessWidget {
 
   String _primaryActionLabel(double remainingRevenue) {
     if (status.isUnlocked) {
-      return 'Standorte pruefen';
+      return 'Standorte prüfen';
     }
     if (city.unlockCost == 0 || status.canUnlock) {
       return city.unlockCost == 0
           ? 'Stadt aktivieren'
           : 'Stadt freischalten - ${_fmt.format(city.unlockCost)} EUR';
     }
-    return 'Noch ${_fmt.format(remainingRevenue)} EUR Umsatz noetig';
+    return 'Noch ${_fmt.format(remainingRevenue)} EUR Umsatz nötig';
   }
 
   String _recommendationLine(double remainingRevenue) {
     if (status.isUnlocked && shopCount == 0) {
       return competitionPressure >= 0.45
-          ? 'Markt offen, aber umkaempft: jetzt frueh guten Standort sichern.'
+          ? 'Markt offen, aber umkämpft: jetzt früh guten Standort sichern.'
           : 'Markt ist offen: jetzt ersten Standort sichern und Tagesgewinn starten.';
     }
     if (status.isUnlocked) {
       return competitionPressure >= 0.45
           ? 'Druck steigt: starke Lage halten oder zweite Filiale defensiv platzieren.'
-          : 'Naechster Schritt: schwache Lage optimieren oder zweite Filiale planen.';
+          : 'Nächster Schritt: schwache Lage optimieren oder zweite Filiale planen.';
     }
     if (status.canUnlock) {
       return competitionPressure >= 0.45
-          ? 'Finanziell bereit: Expansion jetzt verhindert spaeteren Preiskampf.'
-          : 'Finanziell bereit: Expansion jetzt sichert fruehen Marktanteil.';
+          ? 'Finanziell bereit: Expansion jetzt verhindert späteren Preiskampf.'
+          : 'Finanziell bereit: Expansion jetzt sichert frühen Marktanteil.';
     }
-    return 'Umsatzziel fuer Expansion: noch ${_fmt.format(remainingRevenue)} EUR bis Freischaltung.';
+    return 'Umsatzziel für Expansion: noch ${_fmt.format(remainingRevenue)} EUR bis Freischaltung.';
   }
 
   String _pressureLabel(double pressure) {
@@ -723,15 +723,15 @@ class _CityDecisionSheet extends StatelessWidget {
   String _priorityLine(bool canAffordUnlock, double remainingRevenue) {
     if (status.isUnlocked) {
       return competitionPressure >= 0.50
-          ? 'Prioritaet jetzt: in dieser Stadt Wettbewerbsdruck aktiv managen.'
-          : 'Prioritaet jetzt: Standortwahl fuer naechste Filiale vorbereiten.';
+          ? 'Priorität jetzt: in dieser Stadt Wettbewerbsdruck aktiv managen.'
+          : 'Priorität jetzt: Standortwahl für nächste Filiale vorbereiten.';
     }
     if (status.canUnlock && canAffordUnlock) {
-      return 'Prioritaet jetzt: Stadt freischalten und ersten Standort sichern.';
+      return 'Priorität jetzt: Stadt freischalten und ersten Standort sichern.';
     }
     if (status.canUnlock && !canAffordUnlock) {
-      return 'Prioritaet jetzt: Cash-Luecke schliessen, dann sofort freischalten.';
+      return 'Priorität jetzt: Cash-Lücke schließen, dann sofort freischalten.';
     }
-    return 'Prioritaet jetzt: noch ${_fmt.format(remainingRevenue)} EUR Umsatz bis Freischaltung.';
+    return 'Priorität jetzt: noch ${_fmt.format(remainingRevenue)} EUR Umsatz bis Freischaltung.';
   }
 }

@@ -47,7 +47,7 @@ class _CityMapScreenState extends ConsumerState<CityMapScreen> {
     final locations = LocationEngine.locationsFor(city);
     if (locations.isEmpty) {
       return const Scaffold(
-        body: Center(child: Text('Keine Standorte verfuegbar.')),
+        body: Center(child: Text('Keine Standorte verfügbar.')),
       );
     }
 
@@ -356,11 +356,11 @@ class _LocationDecisionSheet extends StatelessWidget {
                 ? PremiumStatusTone.success
                 : PremiumStatusTone.danger,
             text: canAfford
-                ? 'Kaution gedeckt: Standort kann sofort geoeffnet werden.'
-                : 'Kaution fehlt: ${_fmt.format(deposit - cash)} EUR zusaetzlich einplanen.',
+                ? 'Kaution gedeckt: Standort kann sofort geöffnet werden.'
+                : 'Kaution fehlt: ${_fmt.format(deposit - cash)} EUR zusätzlich einplanen.',
           ),
           const SizedBox(height: 8),
-          const PremiumSectionLabel(text: 'PRIORITAET JETZT'),
+          const PremiumSectionLabel(text: 'PRIORITÄT JETZT'),
           const SizedBox(height: 6),
           PremiumStatusHint(
             tone: _priorityTone(footTraffic, weeklyRent, competitionPressure),
@@ -380,8 +380,8 @@ class _LocationDecisionSheet extends StatelessWidget {
               onPressed: canAfford ? onOpenShop : null,
               child: Text(
                 canAfford
-                    ? 'Filiale eroeffnen'
-                    : 'Zu wenig Kapital fuer ${_fmt.format(deposit)} EUR Kaution',
+                    ? 'Filiale eröffnen'
+                    : 'Zu wenig Kapital für ${_fmt.format(deposit)} EUR Kaution',
               ),
             ),
           ),
@@ -436,12 +436,12 @@ class _LocationDecisionSheet extends StatelessWidget {
   ) {
     final ratio = footTraffic / weeklyRent;
     if (ratio < 1.0) {
-      return 'Prioritaet jetzt: nur mit klarer Preisstrategie und hoher Geschwindigkeit eroeffnen.';
+      return 'Priorität jetzt: nur mit klarer Preisstrategie und hoher Geschwindigkeit eröffnen.';
     }
     if (competitionPressure >= 0.50) {
-      return 'Prioritaet jetzt: Wettbewerb hoch - mit schlankem Menue und Tempo starten.';
+      return 'Priorität jetzt: Wettbewerb hoch - mit schlankem Menü und Tempo starten.';
     }
-    return 'Prioritaet jetzt: guter Entry-Punkt - Standort schnell sichern und Ruf aufbauen.';
+    return 'Priorität jetzt: guter Entry-Punkt - Standort schnell sichern und Ruf aufbauen.';
   }
 
   String _decisionLine(
@@ -451,18 +451,18 @@ class _LocationDecisionSheet extends StatelessWidget {
     switch (personality) {
       case LocationPersonality.business:
         return competitionPressure >= 0.45
-            ? 'Mittag stark, aber umkaempft: Tempo plus klares Preisprofil setzen.'
-            : 'Mittagsgeschaeft stark: Tempo und schnelle Ausgabe priorisieren.';
+            ? 'Mittag stark, aber umkämpft: Tempo plus klares Preisprofil setzen.'
+            : 'Mittagsgeschäft stark: Tempo und schnelle Ausgabe priorisieren.';
       case LocationPersonality.university:
-        return 'Preis sensibel: guenstige Kombos bringen hier mehr Volumen.';
+        return 'Preis sensibel: günstige Kombos bringen hier mehr Volumen.';
       case LocationPersonality.touristic:
-        return 'Konstant hoher Strom: stabile Qualitaet haelt die Bewertung oben.';
+        return 'Konstant hoher Strom: stabile Qualität hält die Bewertung oben.';
       case LocationPersonality.residential:
-        return 'Abendspitzen erwarten: Personal fuer Familienzeit einplanen.';
+        return 'Abendspitzen erwarten: Personal für Familienzeit einplanen.';
       case LocationPersonality.nightlife:
-        return 'Spaetgeschaeft dominant: Verfuegbarkeit bis spaet abends sichern.';
+        return 'Spätgeschäft dominant: Verfügbarkeit bis spät abends sichern.';
       case LocationPersonality.transit:
-        return 'Durchlauf-Standort: kurze Wartezeiten schlagen Premium-Menues.';
+        return 'Durchlauf-Standort: kurze Wartezeiten schlagen Premium-Menüs.';
     }
   }
 }
@@ -490,7 +490,7 @@ class _CityOpsBar extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const PremiumSectionLabel(text: 'FILIALE MIT PRIORITAET'),
+                const PremiumSectionLabel(text: 'FILIALE MIT PRIORITÄT'),
                 const SizedBox(height: 4),
                 Text(
                   shopName,
@@ -518,7 +518,7 @@ class _CityOpsBar extends StatelessWidget {
           const SizedBox(width: 10),
           OutlinedButton(
             onPressed: onOpenShop,
-            child: const Text('Oeffnen'),
+            child: const Text('Öffnen'),
           ),
         ],
       ),

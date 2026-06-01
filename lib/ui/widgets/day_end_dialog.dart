@@ -302,7 +302,7 @@ class DayEndDialog extends ConsumerWidget {
       insights.add(
         _InsightLine(
           text:
-              'Verlusttag: Kosten lagen ${_fmt.format(r.costs - r.revenue)} EUR ueber dem Umsatz.',
+              'Verlusttag: Kosten lagen ${_fmt.format(r.costs - r.revenue)} EUR über dem Umsatz.',
           tone: _InsightTone.danger,
         ),
       );
@@ -346,7 +346,7 @@ class DayEndDialog extends ConsumerWidget {
         insights.add(
           _InsightLine(
             text:
-                'Kundenzahl fiel um ${delta.abs()} vs. gestern: Standortfit und Preis pruefen.',
+                'Kundenzahl fiel um ${delta.abs()} vs. gestern: Standortfit und Preis prüfen.',
             tone: _InsightTone.warning,
           ),
         );
@@ -362,7 +362,7 @@ class DayEndDialog extends ConsumerWidget {
       insights.add(
         const _InsightLine(
           text:
-              'Tag 1 Referenz: erst mit Tag 2 wird ein sauberer Trendvergleich moeglich.',
+              'Tag 1 Referenz: erst mit Tag 2 wird ein sauberer Trendvergleich möglich.',
           tone: _InsightTone.neutral,
         ),
       );
@@ -372,7 +372,7 @@ class DayEndDialog extends ConsumerWidget {
       insights.add(
         const _InsightLine(
           text:
-              'Naechster Schritt: erste Filiale eroefnen und dann Preise nachziehen.',
+              'Nächster Schritt: erste Filiale eröffnen und dann Preise nachziehen.',
           tone: _InsightTone.neutral,
         ),
       );
@@ -391,7 +391,7 @@ class DayEndDialog extends ConsumerWidget {
       insights.add(
         _InsightLine(
           text:
-              'Upgrade zuerst: ${capacityShop.displayName} verliert Nachfrage durch Kapazitaetslimit.',
+              'Upgrade zuerst: ${capacityShop.displayName} verliert Nachfrage durch Kapazitätslimit.',
           tone: _InsightTone.warning,
         ),
       );
@@ -410,7 +410,7 @@ class DayEndDialog extends ConsumerWidget {
       insights.add(
         const _InsightLine(
           text:
-              'Expansion moeglich: Cash reicht fuer eine zweite Filiale in aehnlicher Lage.',
+              'Expansion möglich: Cash reicht für eine zweite Filiale in ähnlicher Lage.',
           tone: _InsightTone.success,
         ),
       );

@@ -69,7 +69,7 @@ class _OpenShopScreenState extends ConsumerState<OpenShopScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Nicht genug Kapital fuer die Kaution (${_fmt.format(deposit)} EUR)',
+            'Nicht genug Kapital für die Kaution (${_fmt.format(deposit)} EUR)',
           ),
         ),
       );
@@ -110,7 +110,7 @@ class _OpenShopScreenState extends ConsumerState<OpenShopScreen> {
     final locations = LocationEngine.locationsFor(city);
     if (locations.isEmpty) {
       return const Scaffold(
-        body: Center(child: Text('Keine Standorte verfuegbar.')),
+        body: Center(child: Text('Keine Standorte verfügbar.')),
       );
     }
 
@@ -408,11 +408,11 @@ class _OpenDecisionSheet extends StatelessWidget {
                 ? PremiumStatusTone.success
                 : PremiumStatusTone.danger,
             text: canAfford
-                ? 'Kaution gedeckt: Eroeffnung sofort moeglich.'
+                ? 'Kaution gedeckt: Eröffnung sofort möglich.'
                 : 'Kaution fehlt: ${_fmt.format(-cashAfter)} EUR.',
           ),
           const SizedBox(height: 8),
-          const PremiumSectionLabel(text: 'PRIORITAET JETZT'),
+          const PremiumSectionLabel(text: 'PRIORITÄT JETZT'),
           const SizedBox(height: 6),
           PremiumStatusHint(
             tone: _priorityTone(footTraffic, weeklyRent, competitionPressure),
@@ -441,8 +441,8 @@ class _OpenDecisionSheet extends StatelessWidget {
                     )
                   : Text(
                       canAfford
-                          ? 'Filiale eroeffnen'
-                          : 'Zu wenig Kapital fuer Kaution',
+                          ? 'Filiale eröffnen'
+                          : 'Zu wenig Kapital für Kaution',
                     ),
             ),
           ),
@@ -451,7 +451,7 @@ class _OpenDecisionSheet extends StatelessWidget {
             width: double.infinity,
             child: OutlinedButton(
               onPressed: onBack,
-              child: const Text('Zurueck zur Karte'),
+              child: const Text('Zurück zur Karte'),
             ),
           ),
         ],
@@ -505,12 +505,12 @@ class _OpenDecisionSheet extends StatelessWidget {
   ) {
     final ratio = footTraffic / weeklyRent;
     if (ratio < 1.0) {
-      return 'Prioritaet jetzt: nur mit Effizienz-Fokus und diszipliniertem Preislevel starten.';
+      return 'Priorität jetzt: nur mit Effizienz-Fokus und diszipliniertem Preislevel starten.';
     }
     if (competitionPressure >= 0.50) {
-      return 'Prioritaet jetzt: hoher Druck - mit klarer Positionierung und Tempo eroefnen.';
+      return 'Priorität jetzt: hoher Druck - mit klarer Positionierung und Tempo eröffnen.';
     }
-    return 'Prioritaet jetzt: Lage passt - jetzt schnell eroefnen und Bewertungen sichern.';
+    return 'Priorität jetzt: Lage passt - jetzt schnell eröffnen und Bewertungen sichern.';
   }
 
   String _recommendation(
@@ -520,16 +520,16 @@ class _OpenDecisionSheet extends StatelessWidget {
     switch (personality) {
       case LocationPersonality.business:
         return competitionPressure >= 0.45
-            ? 'Mittag umkaempft: Speed plus preisliche Klarheit zuerst stabilisieren.'
+            ? 'Mittag umkämpft: Speed plus preisliche Klarheit zuerst stabilisieren.'
             : 'Mittag dominiert: Ausgabe-Takt priorisieren, Premium nur selektiv.';
       case LocationPersonality.university:
         return 'Preis wirkt schnell hoch: Kombi-Angebote halten den Durchlauf stabil.';
       case LocationPersonality.touristic:
-        return 'Konstanter Strom: Qualitaet und Sichtbarkeit liefern stabile Bewertung.';
+        return 'Konstanter Strom: Qualität und Sichtbarkeit liefern stabile Bewertung.';
       case LocationPersonality.residential:
-        return 'Abenddruck einplanen: Personal fuer Peak-Zeiten zuerst absichern.';
+        return 'Abenddruck einplanen: Personal für Peak-Zeiten zuerst absichern.';
       case LocationPersonality.nightlife:
-        return 'Spaetgeschaeft treibt Umsatz: Oeffnungszeiten und Speed entscheiden.';
+        return 'Spätgeschäft treibt Umsatz: Öffnungszeiten und Speed entscheiden.';
       case LocationPersonality.transit:
         return 'Transit braucht Tempo: kurze Wartezeit ist wichtiger als Produktbreite.';
     }
