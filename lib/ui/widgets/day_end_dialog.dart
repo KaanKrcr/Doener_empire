@@ -45,250 +45,263 @@ class DayEndDialog extends ConsumerWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
         child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420),
-        child: Stack(
-          children: [
-            Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Header mit Gradient
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: isGoodDay
-                      ? [AppColors.success, AppColors.accent]
-                      : [AppColors.danger, AppColors.primaryDark],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: Column(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Stack(
+            children: [
+              Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withAlpha(40),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          'TAG ${r.day}  ·  $weekday',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1.5,
-                          ),
-                        ),
+                  // Header mit Gradient
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: isGoodDay
+                            ? [AppColors.success, AppColors.accent]
+                            : [AppColors.danger, AppColors.primaryDark],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
-                      Text(
-                        isGoodDay ? '😊' : '😬',
-                        style: const TextStyle(fontSize: 28),
-                      )
-                          .animate()
-                          .scale(
-                            delay: 120.ms,
-                            duration: 460.ms,
-                            begin: const Offset(0.3, 0.3),
-                            end: const Offset(1, 1),
-                            curve: Curves.elasticOut,
+                      borderRadius:
+                          const BorderRadius.vertical(top: Radius.circular(24)),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withAlpha(40),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                'TAG ${r.day}  ·  $weekday',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1.5,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              isGoodDay ? '😊' : '😬',
+                              style: const TextStyle(fontSize: 28),
+                            ).animate().scale(
+                                  delay: 120.ms,
+                                  duration: 460.ms,
+                                  begin: const Offset(0.3, 0.3),
+                                  end: const Offset(1, 1),
+                                  curve: Curves.elasticOut,
+                                ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          isGoodDay ? 'Erfolgreicher Tag!' : 'Schwieriger Tag',
+                          style: AppText.display(
+                            size: 22,
+                            weight: FontWeight.w700,
+                            color: Colors.white,
                           ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    isGoodDay ? 'Erfolgreicher Tag!' : 'Schwieriger Tag',
-                    style: AppText.display(
-                      size: 22,
-                      weight: FontWeight.w700,
-                      color: Colors.white,
+                        ),
+                        const SizedBox(height: 4),
+                        AnimatedMoney(
+                          amount: r.profit,
+                          fontSize: 34,
+                          showSign: true,
+                          compact: true,
+                          color: Colors.white,
+                          fontFamily: AppTheme.displayFont,
+                        )
+                            .animate()
+                            .fadeIn(delay: 200.ms, duration: 400.ms)
+                            .slideY(
+                                begin: 0.3, end: 0, curve: Curves.easeOutCubic),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  AnimatedMoney(
-                    amount: r.profit,
-                    fontSize: 34,
-                    showSign: true,
-                    compact: true,
-                    color: Colors.white,
-                    fontFamily: AppTheme.displayFont,
-                  )
-                      .animate()
-                      .fadeIn(delay: 200.ms, duration: 400.ms)
-                      .slideY(begin: 0.3, end: 0, curve: Curves.easeOutCubic),
-                ],
-              ),
-            ),
 
-            // Zahlen-Aufschlüsselung
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  _SummaryRow(
-                    label: 'Umsatz',
-                    value: '+${_fmt.format(r.revenue)} €',
-                    color: AppColors.success,
-                    icon: Icons.trending_up,
-                  ).animate().fadeIn(delay: 320.ms).slideX(begin: -0.1, end: 0),
-                  _SummaryRow(
-                    label: 'Kosten',
-                    value: '-${_fmt.format(r.costs)} €',
-                    color: AppColors.danger,
-                    icon: Icons.trending_down,
-                  ).animate().fadeIn(delay: 400.ms).slideX(begin: -0.1, end: 0),
-                  _SummaryRow(
-                    label: 'Kunden bedient',
-                    value: _fmt.format(r.customers),
-                    color: AppColors.accent,
-                    icon: Icons.people_alt_rounded,
-                  ).animate().fadeIn(delay: 480.ms).slideX(begin: -0.1, end: 0),
-                  const Divider(color: AppColors.border, height: 24),
-                  _InsightCard(insights: insights),
-                  if (r.missionCompleted != null) ...[
-                    const SizedBox(height: 10),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.gold.withAlpha(30),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.gold.withAlpha(80)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Text('🏆', style: TextStyle(fontSize: 24)),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                  // Zahlen-Aufschlüsselung
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      children: [
+                        _SummaryRow(
+                          label: 'Umsatz',
+                          value: '+${_fmt.format(r.revenue)} €',
+                          color: AppColors.success,
+                          icon: Icons.trending_up,
+                        )
+                            .animate()
+                            .fadeIn(delay: 320.ms)
+                            .slideX(begin: -0.1, end: 0),
+                        _SummaryRow(
+                          label: 'Kosten',
+                          value: '-${_fmt.format(r.costs)} €',
+                          color: AppColors.danger,
+                          icon: Icons.trending_down,
+                        )
+                            .animate()
+                            .fadeIn(delay: 400.ms)
+                            .slideX(begin: -0.1, end: 0),
+                        _SummaryRow(
+                          label: 'Kunden bedient',
+                          value: _fmt.format(r.customers),
+                          color: AppColors.accent,
+                          icon: Icons.people_alt_rounded,
+                        )
+                            .animate()
+                            .fadeIn(delay: 480.ms)
+                            .slideX(begin: -0.1, end: 0),
+                        const Divider(color: AppColors.border, height: 24),
+                        _InsightCard(insights: insights),
+                        if (r.missionCompleted != null) ...[
+                          const SizedBox(height: 10),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.gold.withAlpha(30),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                  color: AppColors.gold.withAlpha(80)),
+                            ),
+                            child: Row(
                               children: [
-                                const Text(
-                                  'AUFTRAG ERFÜLLT!',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: AppColors.gold,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 2,
+                                const Text('🏆',
+                                    style: TextStyle(fontSize: 24)),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'AUFTRAG ERFÜLLT!',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: AppColors.gold,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: 2,
+                                        ),
+                                      ),
+                                      Text(
+                                        r.missionCompleted!.title,
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.textPrimary,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                                 Text(
-                                  r.missionCompleted!.title,
+                                  '+${_fmt.format(r.missionCompleted!.cashReward)} €',
                                   style: const TextStyle(
                                     fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.textPrimary,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.gold,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          Text(
-                            '+${_fmt.format(r.missionCompleted!.cashReward)} €',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.gold,
-                            ),
-                          ),
                         ],
-                      ),
-                    ),
-                  ],
-                  if (r.newAchievements.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    for (final a in r.newAchievements)
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 6),
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: AppColors.secondary.withAlpha(30),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                              color: AppColors.secondary.withAlpha(80)),
-                        ),
-                        child: Row(
-                          children: [
-                            Text(a.emoji, style: const TextStyle(fontSize: 18)),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                        if (r.newAchievements.isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          for (final a in r.newAchievements)
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 6),
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: AppColors.secondary.withAlpha(30),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                    color: AppColors.secondary.withAlpha(80)),
+                              ),
+                              child: Row(
                                 children: [
-                                  const Text(
-                                    'TROPHÄE!',
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      color: AppColors.secondary,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 2,
+                                  Text(a.emoji,
+                                      style: const TextStyle(fontSize: 18)),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'TROPHÄE!',
+                                          style: TextStyle(
+                                            fontSize: 9,
+                                            color: AppColors.secondary,
+                                            fontWeight: FontWeight.w800,
+                                            letterSpacing: 2,
+                                          ),
+                                        ),
+                                        Text(
+                                          a.title,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.textPrimary,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                   Text(
-                                    a.title,
+                                    '+${a.tier.points} Pkt',
                                     style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.textPrimary,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.secondary,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                            Text(
-                              '+${a.tier.points} Pkt',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.secondary,
-                              ),
-                            ),
-                          ],
+                        ],
+                        const SizedBox(height: 20),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              // Wenn Event vorhanden → Event-Dialog direkt zeigen
+                              if (r.event != null) {
+                                Future.microtask(() {
+                                  if (context.mounted) {
+                                    EventDialog.show(context, r.event!);
+                                  }
+                                });
+                              }
+                            },
+                            icon: Icon(
+                                r.event != null
+                                    ? Icons.local_fire_department
+                                    : Icons.arrow_forward_rounded,
+                                size: 18),
+                            label: Text(r.event != null
+                                ? 'Ereignis ansehen'
+                                : 'Weiter zum nächsten Tag'),
+                          ),
                         ),
-                      ),
-                  ],
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        // Wenn Event vorhanden → Event-Dialog direkt zeigen
-                        if (r.event != null) {
-                          Future.microtask(() {
-                            if (context.mounted) {
-                              EventDialog.show(context, r.event!);
-                            }
-                          });
-                        }
-                      },
-                      icon: Icon(
-                          r.event != null
-                              ? Icons.local_fire_department
-                              : Icons.arrow_forward_rounded,
-                          size: 18),
-                      label: Text(r.event != null
-                          ? 'Ereignis ansehen'
-                          : 'Weiter zum nächsten Tag'),
+                      ],
                     ),
                   ),
                 ],
               ),
-            ),
-          ],
-            ),
-            if (isGoodDay && r.profit > 0)
-              const Positioned.fill(
-                child: ConfettiOverlay(),
-              ),
-          ],
-        ),
+              if (isGoodDay && r.profit > 0)
+                const Positioned.fill(
+                  child: ConfettiOverlay(),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -388,10 +401,17 @@ class DayEndDialog extends ConsumerWidget {
     }
 
     if (capacityShop != null) {
+      final capStats =
+          GameEngine.calculateShopStats(capacityShop, day: r.day, state: game);
+      final demandServedPct =
+          (capStats.utilization * 100).clamp(0, 100).round();
+      final maxEmp = GameEngine.maxEmployeesForShop(capacityShop);
+      final atEmployeeCap = capacityShop.employees.length >= maxEmp;
       insights.add(
         _InsightLine(
-          text:
-              'Upgrade zuerst: ${capacityShop.displayName} verliert Nachfrage durch Kapazitätslimit.',
+          text: atEmployeeCap
+              ? 'Kapazitätslimit bei ${capacityShop.displayName}: $demandServedPct% der Nachfrage bedient. Personal-Cap erreicht → Filiale ausbauen.'
+              : 'Kapazitätslimit bei ${capacityShop.displayName}: $demandServedPct% der Nachfrage bedient. Mehr Personal oder Kapazitäts-Upgrades helfen.',
           tone: _InsightTone.warning,
         ),
       );

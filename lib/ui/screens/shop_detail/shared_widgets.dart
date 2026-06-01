@@ -193,17 +193,17 @@ class _CapacityBanner extends StatelessWidget {
     if (isLimited && atMaxEmployees) {
       color = AppColors.warning;
       icon = Icons.warning_amber_rounded;
-      label = 'Maximale Personalstärke erreicht';
+      label = 'Personal-Cap erreicht';
       detail =
-          'Auslastung ${util.toStringAsFixed(0)}% - Potenzial ${_fmt.format(stats.lostRevenue)} € liegt brach. Filiale ausbauen hilft jetzt direkt.';
+          'Du bedienst nur ${util.toStringAsFixed(0)}% der Nachfrage. Geschätztes Umsatzpotenzial: ${_fmt.format(stats.lostRevenue)} €/Tag. Mehr Personal ist erst nach einem Filialausbau möglich.';
     } else if (isLimited) {
       color = AppColors.primary;
       icon = Icons.bolt_rounded;
       final extra = GameEngine.recommendedExtraEmployees(shop);
       color = AppColors.primary;
-      label = 'Personal-Engpass!';
+      label = 'Nachfrage nicht vollständig gedeckt';
       detail =
-          '${util.toStringAsFixed(0)}% Auslastung - du verlierst ${_fmt.format(stats.lostRevenue)} €/Tag. Stelle ~$extra weitere Mitarbeiter ein.';
+          'Du bedienst nur ${util.toStringAsFixed(0)}% der Nachfrage. Geschätztes Umsatzpotenzial: ${_fmt.format(stats.lostRevenue)} €/Tag. Stelle ~$extra weitere Mitarbeiter ein.';
     } else if (util > 80) {
       color = AppColors.gold;
       icon = Icons.local_fire_department_rounded;

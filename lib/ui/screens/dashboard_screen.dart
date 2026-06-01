@@ -22,6 +22,7 @@ import '../widgets/pressable.dart';
 import '../widgets/bankruptcy_dialog.dart';
 import '../widgets/quarterly_report_dialog.dart';
 import '../widgets/weekly_report_dialog.dart';
+import '../widgets/premium_mobile_ui.dart';
 
 final _fmtInt = NumberFormat('#,##0', 'de_DE');
 const _kWeekdays = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
@@ -216,6 +217,35 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
             ),
 
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                child: PremiumMetricStrip(
+                  dense: true,
+                  items: [
+                    PremiumMetricData(
+                      label: 'PROFIT HEUTE',
+                      value:
+                          '${dailyProfit >= 0 ? '+' : ''}${_fmtInt.format(dailyProfit)} €',
+                      color: dailyProfit >= 0
+                          ? AppColors.success
+                          : AppColors.danger,
+                    ),
+                    PremiumMetricData(
+                      label: 'KUNDEN HEUTE',
+                      value: _fmtInt.format(customersToday),
+                      color: AppColors.accent,
+                    ),
+                    PremiumMetricData(
+                      label: 'RUF',
+                      value: '${avgReputation.toStringAsFixed(1)} / 5',
+                      color: AppColors.gold,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
             // ── Hinweise / Warnungen ────────────────────────────────────
             if (alerts.isNotEmpty)
               SliverToBoxAdapter(
@@ -294,8 +324,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     trend: _trendIcon(
                         customersToday.toDouble(), yCustomers.toDouble()),
                     accent: AppColors.accent,
-                  ).animate().fadeIn(delay: 60.ms, duration: 360.ms).slideY(
-                      begin: 0.15, end: 0, curve: Curves.easeOutCubic),
+                  )
+                      .animate()
+                      .fadeIn(delay: 60.ms, duration: 360.ms)
+                      .slideY(begin: 0.15, end: 0, curve: Curves.easeOutCubic),
                   _MetricCard(
                     emoji: '💰',
                     label: 'Umsatz heute',
@@ -303,8 +335,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     sub: _trendLabel(dailyRevenue, yRevenue, 'gestern'),
                     trend: _trendIcon(dailyRevenue, yRevenue),
                     accent: AppColors.gold,
-                  ).animate().fadeIn(delay: 120.ms, duration: 360.ms).slideY(
-                      begin: 0.15, end: 0, curve: Curves.easeOutCubic),
+                  )
+                      .animate()
+                      .fadeIn(delay: 120.ms, duration: 360.ms)
+                      .slideY(begin: 0.15, end: 0, curve: Curves.easeOutCubic),
                   _MetricCard(
                     emoji: '📅',
                     label: 'Kunden 7 Tage',
@@ -314,8 +348,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         : 'Ø ${_fmtInt.format(w7Customers / last7.length)} / Tag',
                     trend: null,
                     accent: AppColors.secondary,
-                  ).animate().fadeIn(delay: 180.ms, duration: 360.ms).slideY(
-                      begin: 0.15, end: 0, curve: Curves.easeOutCubic),
+                  )
+                      .animate()
+                      .fadeIn(delay: 180.ms, duration: 360.ms)
+                      .slideY(begin: 0.15, end: 0, curve: Curves.easeOutCubic),
                   _MetricCard(
                     emoji: '⭐',
                     label: 'Beliebtheit',
@@ -323,8 +359,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     sub: _reputationLabel(avgReputation),
                     trend: null,
                     accent: AppColors.cream,
-                  ).animate().fadeIn(delay: 240.ms, duration: 360.ms).slideY(
-                      begin: 0.15, end: 0, curve: Curves.easeOutCubic),
+                  )
+                      .animate()
+                      .fadeIn(delay: 240.ms, duration: 360.ms)
+                      .slideY(begin: 0.15, end: 0, curve: Curves.easeOutCubic),
                 ]),
               ),
             ),
@@ -559,9 +597,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             duration: 340.ms,
                             curve: Curves.easeOut)
                         .slideX(
-                            begin: 0.08,
-                            end: 0,
-                            curve: Curves.easeOutCubic);
+                            begin: 0.08, end: 0, curve: Curves.easeOutCubic);
                   },
                   childCount: game.shops.length,
                 ),
@@ -913,7 +949,8 @@ class _MetricCard extends StatelessWidget {
           const Spacer(),
           Text(
             value,
-            style: AppText.display(size: 23, weight: FontWeight.w800, color: accent),
+            style: AppText.display(
+                size: 23, weight: FontWeight.w800, color: accent),
           ),
           const SizedBox(height: 2),
           Text(
