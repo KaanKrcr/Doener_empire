@@ -5,6 +5,36 @@ Newest entries at the top.
 
 ---
 
+## 2026-06-02 (update 2) — Claude (reviewer)
+
+**Action:** Re-fetched remotes and investigated. Confirmed the CityMap work is
+NOT in this repo. Did NOT implement anything.
+
+**Findings:**
+- New remote branches appeared: `feature/gameplay-expansion` (fully merged into
+  `main`, 0 commits ahead, empty diff — not the slice) and an old
+  `claude/doner-empire-mvp-pIqUq`. `main` advanced to `b2b7363`.
+- Commit `b2b7363` = *"move Unity 3D rewrite to Doener-Empire-3D repo"*:
+  deleted `docs/UNITY_REWRITE_PLAN.md`, all `unity/` C# code, logic-test
+  harness (1207 deletions). Message: Unity foundation + design image +
+  redesign brief now live in `KaanKrcr/Doener-Empire-3D`.
+- `docs/UNITY_CITY_MAP_UX.md` exists nowhere in this repo's history → expected
+  in the 3D repo.
+- This session is scoped to `kaankrcr/doener_empire` only; re-scoping tools
+  (`mcp__claude-code-remote__list_repos`/`add_repo`) unavailable here.
+
+**Conclusion:** Cannot review from this session. The review must run in
+`KaanKrcr/Doener-Empire-3D`. Escalated to user for a repo decision.
+
+**User-confirmed interim references:** `docs/PR_REVIEW_CHECKLIST.md` +
+`docs/MVP_3D_CITY_MAP.md` (apply only if the slice turns out to target the
+Flutter repo after all).
+
+**Next step:** Await user decision on target repo / session re-scope. See
+`STATUS.md` unblock checklist.
+
+---
+
 ## 2026-06-02 — Claude (reviewer)
 
 **Action:** Picked up reviewer task for the CityMap vertical-slice. Did NOT
